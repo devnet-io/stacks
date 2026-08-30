@@ -1,0 +1,24 @@
+# Current installation and deployment contract
+
+This document describes what this checkout supports now. Hosted execution remains proposed in RFC-0001.
+
+## Local development installation
+
+Run `npm run install:local` from the Stacks source repository. It builds the CLI and static web application, creates an npm package archive, and globally installs that archive. npm copies the package into machine-level storage; no installed path points back to the clone. The command is idempotent and replaces the previous snapshot. Verify with `stacks help`, then use `stacks stack list` and `stacks status --stack namespace/name`.
+
+The registry package is not published, so installation still begins from a clone. After installation the clone is unnecessary: the archive includes `dist/cli.js` plus the static Vite artifact. `stacks ui` serves that artifact and the read-only API from the same Node process; Vinext, Wrangler, and a separate frontend server are not part of the installed runtime.
+
+## Environment-correct instructions
+
+User-facing agent setup comes from `GET /api/v0.1/integrations?stack=namespace/name`, not hard-coded machine paths. The response is generated from the selected Stack, package version, running CLI entrypoint, and adapter configuration. `stacks doctor --json` retains the same data for explicit troubleshooting, but it is not part of the normal workflow.
+
+Local MCP is stdio and has neither a URL nor an authentication token. If a deployment later supplies hosted adapter metadata, use:
+
+- `STACKS_HOSTED_MCP_URL` for the Streamable HTTP endpoint;
+- `STACKS_HOSTED_MCP_TOKEN_ENV_VAR` for the **name** of the environment variable containing its bearer token.
+
+Never put the bearer token value in documentation, URLs, committed configuration, API responses, or the admin UI. Codex Streamable HTTP configuration should reference the environment-variable name.
+
+## Release verification
+
+Before release, run `npm run check`, install the packed candidate with `npm run install:local`, create or select a registered Stack, run `stacks status --stack namespace/name`, start `stacks ui`, switch Stacks, and confirm Tools & agents reports the intended adapter metadata.

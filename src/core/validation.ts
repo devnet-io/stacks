@@ -79,6 +79,8 @@ function validateComponent(value: unknown, index: number, errors: string[]): val
   else if (!PORTABLE_NAME.test(value.id)) errors.push(`${at}.id must contain only letters, numbers, dots, underscores, and hyphens.`);
   if (!isRecord(value.source)) {
     errors.push(`${at}.source must be an object.`);
+  } else if (value.source.type === "local") {
+    // Machine-specific paths live in the catalog binding, not the portable definition.
   } else if (value.source.type === "path") {
     if (!isNonEmptyString(value.source.path)) errors.push(`${at}.source.path must be a non-empty string.`);
   } else if (value.source.type === "git") {
@@ -86,7 +88,7 @@ function validateComponent(value: unknown, index: number, errors: string[]): val
     if (value.source.ref !== undefined && !isNonEmptyString(value.source.ref)) errors.push(`${at}.source.ref must be a non-empty string.`);
     if (value.source.checkout !== undefined && !isNonEmptyString(value.source.checkout)) errors.push(`${at}.source.checkout must be a non-empty string.`);
   } else {
-    errors.push(`${at}.source.type must be path or git.`);
+    errors.push(`${at}.source.type must be local, path, or git.`);
   }
   if (value.access !== undefined && !["read-only", "read-write"].includes(String(value.access))) {
     errors.push(`${at}.access must be read-only or read-write.`);

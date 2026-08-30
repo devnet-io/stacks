@@ -51,7 +51,7 @@ export async function syncComponent(
   options: { dryRun?: boolean; update?: boolean } = {},
 ): Promise<SyncResult> {
   const root = componentRoot(stack, component);
-  if (component.source.type === "path") {
+  if (component.source.type === "path" || component.source.type === "local") {
     return {
       componentId: component.id,
       action: "inspect",

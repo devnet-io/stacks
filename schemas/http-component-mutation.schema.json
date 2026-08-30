@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-component-mutation.schema.json",
+  "title": "Component mutation response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stack", "component", "sync"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "namespace", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "namespace": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path"],
+      "properties": {
+        "id": { "type": "string" },
+        "path": { "type": "string" }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["componentId", "action", "root", "changed", "message"],
+      "properties": {
+        "componentId": { "type": "string" },
+        "action": { "enum": ["skip", "clone", "fetch", "inspect", "error"] },
+        "root": { "type": "string" },
+        "changed": { "type": "boolean" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

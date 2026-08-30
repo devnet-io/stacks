@@ -4,11 +4,12 @@
 
 | Intent | MCP | CLI |
 |---|---|---|
-| Read effective Stack | `stack_get` or `stack://manifest` | inspect `stack.json`; `stacks validate` |
-| Inspect component state | `stack_status` | `stacks status` |
-| Resolve target context | `context_resolve` or `stack://context/{target}` | `stacks context <target> --task "..." --json` |
-| Read one declaration | `stack://component/{id}` | inspect the matching manifest component |
-| Aggregate usage | `usage_report` | `stacks usage report --json` |
+| Read operating instructions | `instructions_get` or `stacks://instructions` | `stacks help commands` and `stacks help <command>` |
+| List Stacks | `stack_list` or `stacks://catalog` | `stacks stack list --json` |
+| Read effective Stack | `stack_get` with `stack` | No direct read-only equivalent; use `status` or `context` for the intended operation |
+| Inspect component state | `stack_status` with `stack` | `stacks status --stack <namespace/name>` |
+| Resolve target context | `context_resolve` with `stack` | `stacks context <target> --stack <namespace/name> --task "..." --json` |
+| Aggregate usage | `usage_report` with `stack` | `stacks usage report --stack <namespace/name> --json` |
 
 ## Work lifecycle
 
@@ -20,6 +21,7 @@ CLI:
 
 ```bash
 stacks checkin start \
+  --stack <namespace/name> \
   --component <component-id> \
   --summary "<what is starting>" \
   --work <optional-external-id> \
@@ -39,6 +41,7 @@ CLI:
 
 ```bash
 stacks checkin turn \
+  --stack <namespace/name> \
   --session <session-id> \
   --summary "<what changed or was learned>" \
   --status progress \
@@ -57,6 +60,7 @@ CLI:
 
 ```bash
 stacks checkin complete \
+  --stack <namespace/name> \
   --session <session-id> \
   --summary "<result>" \
   --outcome success \
@@ -74,6 +78,7 @@ CLI:
 
 ```bash
 stacks usage record \
+  --stack <namespace/name> \
   --session <session-id> \
   --provider <provider> \
   --model <model> \
@@ -103,10 +108,10 @@ Do not include raw prompts, completions, secrets, or full source payloads in usa
 Use the CLI, not MCP, for the initial mutation surface:
 
 ```bash
-stacks sync --dry-run
-stacks sync
-stacks sync --update
-stacks lock
+stacks sync --stack <namespace/name> --dry-run
+stacks sync --stack <namespace/name>
+stacks sync --stack <namespace/name> --update
+stacks lock --stack <namespace/name>
 ```
 
 `--update` fetches. It must not merge, rebase, reset, clean, or discard dirty work.

@@ -16,7 +16,7 @@ export async function createLockSnapshot(stack: LoadedStack) {
     components: statuses.map((status) => ({
       id: status.id,
       sourceType: status.sourceType,
-      root: path.relative(stack.root, status.root) || ".",
+      root: stack.registered ? status.root : path.relative(stack.root, status.root) || ".",
       exists: status.exists,
       ...(status.git?.branch === undefined ? {} : { branch: status.git.branch }),
       ...(status.git?.commit === undefined ? {} : { commit: status.git.commit }),
@@ -28,7 +28,9 @@ export async function createLockSnapshot(stack: LoadedStack) {
 }
 
 export async function writeLockSnapshot(stack: LoadedStack): Promise<string> {
-  const lockPath = path.join(stack.root, "stack.lock.json");
+  const lockPath = stack.registered
+    ? path.join(stack.root, `${stack.manifest.metadata.id}.lock.json`)
+    : path.join(stack.root, "stack.lock.json");
   const snapshot = await createLockSnapshot(stack);
   await writeFile(lockPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
   return lockPath;

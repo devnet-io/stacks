@@ -7,7 +7,7 @@ Build **Stacks** as a local-first, portable, agent-agnostic composition and cont
 - a Stack as a declarative graph, curated body of knowledge, and event protocol; and
 - agents or orchestrators that actually plan and perform work.
 
-Read `CODEX_START_HERE.md` and `docs/00-input-synthesis.md` before making architectural changes.
+Read `docs/00-input-synthesis.md` and the current-state documentation named below before making architectural changes.
 
 ## Documentation truth policy
 
@@ -22,7 +22,7 @@ Read `CODEX_START_HERE.md` and `docs/00-input-synthesis.md` before making archit
 ## Non-negotiable product rules
 
 1. Keep the durable stack definition readable in ordinary files and suitable for Git. Do not make SQLite, a hosted service, or an opaque vector database the sole source of truth.
-2. Keep component repositories independent. The default workspace layout uses ordinary cloned repositories under an ignored directory, not Git submodules.
+2. Keep component repositories independent. Every registered component has an explicit machine-local path; never require a hidden Stack-owned workspace, Git submodule, or membership marker.
 3. Keep the core independent of Codex, ChatGPT, Claude, or any single agent framework. CLI, MCP, and Skills are adapters.
 4. Do not turn Stacks into a build system, package manager, task scheduler, or Vaultar-style agent orchestrator.
 5. Treat context as a bounded plan of relevant resources, not “concatenate every repository into the prompt.” Every future context materializer must have explicit size limits.
@@ -33,6 +33,8 @@ Read `CODEX_START_HERE.md` and `docs/00-input-synthesis.md` before making archit
 10. Prefer a small stable core and concrete vertical slices over an early generalized plugin framework.
 11. Treat Windows, macOS, and Linux as first-class. Use Node path/process APIs, argument arrays, temporary-directory tests, and the cross-platform CI matrix; do not make Unix shells part of product behavior.
 12. Keep portable application semantics independent of local filesystem, Git, database, or hosting implementations. Local files remain canonical through adapters; hosted state is optional representation unless an ADR explicitly changes that rule.
+13. Use lowercase `stacks` in Unix and macOS application-data paths. Treat Linux/XDG and macOS behavior as first-class while preserving excellent Windows behavior.
+14. New user flows use the global catalog and `--stack namespace/name`. Keep `--root` and directory manifests clearly labeled as migration compatibility.
 
 ## Engineering expectations
 
@@ -56,7 +58,7 @@ Read `CODEX_START_HERE.md` and `docs/00-input-synthesis.md` before making archit
 3. Implement the smallest coherent milestone from `docs/08-roadmap.md`.
 4. Add or update tests and schemas.
 5. Run `npm run check` before considering a milestone complete.
-6. Update `CODEX_START_HERE.md` only when the handoff state materially changes.
+6. Update current documentation and `docs/project-status.md` before considering the work complete.
 
 ## Admin UI vertical slices
 

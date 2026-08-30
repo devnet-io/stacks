@@ -17,7 +17,7 @@ This document defines the product independent of release state. See [Project sta
 
 ## Human experience
 
-People interact with a Stack through ordinary files, the `stacks` CLI, and a local web control plane. The web experience brings together component relationships, status, context plans, activity, usage, product documentation, architecture, and developer guidance.
+People interact through readable definitions, the global `stacks` CLI, and one local web control plane with a Stack selector. Component repositories remain wherever developers normally keep and open them. The web experience brings together relationships, status, context, activity, usage, and documentation.
 
 ## Agent experience
 

@@ -38,6 +38,7 @@ Add:
 - installed `stacks ui` command and local HTTP API;
 - live component overview, graph, status, context, activity, usage, and documentation;
 - stable versioned CLI, HTTP, and MCP contracts.
+- machine-level catalog, explicit component bindings, one global UI selector, and one global stdio MCP adapter.
 
 Exit condition: the CLI, local web UI, and MCP use the same application services, and pure graph/context selection has no Node filesystem dependency.
 
@@ -99,3 +100,18 @@ Exit condition: people and remote agent clients can inspect authorized Stacks wi
 ## Sequencing rule
 
 Do not begin a milestone because it is architecturally interesting. Begin it when the preceding milestone is exercised by a real stack and the missing capability creates measurable friction.
+
+## Active implementation sequence
+
+This is the agreed delivery order after the first global catalog, UI, and MCP slices were exercised:
+
+1. Finish global CLI migration. Global commands use the machine catalog; single-Stack commands require `--stack`; directory manifests are reached only through explicit legacy `--root` or `init` behavior.
+2. Establish one `StacksApplication` use-case boundary and move CLI, MCP, and HTTP orchestration behind it. Keep an in-process implementation as the default.
+3. Complete write-operation parity for Stack/component management through the application boundary, versioned HTTP API, CLI, and full UI editing slices.
+4. Add remote transports together: an HTTP application client plus global `--endpoint` and `STACKS_ENDPOINT` selection for the CLI, and a Streamable HTTP MCP endpoint backed by the same `StacksApplication` and authentication boundary. Local in-process CLI execution and local stdio MCP remain the defaults; `stacks mcp --endpoint` may bridge stdio-only clients to a remote application. Non-loopback exposure requires authentication.
+5. Define a portable Stack collection format. A collection versions Stack definitions but excludes machine bindings, credentials, caches, and local activity state.
+6. Implement generic Git-backed collection add, list, sync, remove, and explicit publish workflows using existing Git authentication.
+7. Build the Collections admin section as a complete vertical slice, including divergence and conflict states.
+8. Add optional GitHub conveniences—OAuth or GitHub App connection, repository selection/creation, permissions, and pull-request publishing—without embedding GitHub in the core model.
+
+Each numbered item must update tests, schemas, interface references, current architecture, and project status in the same change. The REST and MCP HTTP surfaces share application semantics, service origin, Stack authorization, and credential policy rather than becoming separate hosted systems. Generic Git collections precede GitHub-specific integration.

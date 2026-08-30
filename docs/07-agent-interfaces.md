@@ -1,43 +1,30 @@
 # Agent interfaces
 
-## One application, human and agent adapters
+## Shared semantics
 
-The same domain operations should be available through:
-
-- a human/automation CLI;
-- a local MCP server;
-- an agent Skill that teaches clients when and how to use those operations;
-- later, a Vaultar connector;
-- a local web control plane for people;
-- later, an optional hosted web and remote MCP adapter.
-
-Adapters should translate inputs and outputs rather than reimplement semantics.
-
-## Human interfaces
-
-Ordinary files remain the most portable authoring surface. The CLI handles precise operations and automation. The local web UI brings together Stack overview, graph, status, context plans, activity, usage, and canonical Markdown documentation. It must label product definition, current technical truth, user guides, RFCs, and delivery evidence distinctly.
+CLI, MCP, Skills, and the human UI are adapters around the same Stack identity, graph, context, status, event, and usage operations. The core remains agent-vendor-neutral.
 
 ## CLI
 
-The CLI is the baseline because it works in any terminal and is easy for agents to invoke. Every important read command supports structured JSON. Mutation commands print generated IDs and paths clearly.
+Registered operations identify a Stack with `namespace/name`; automation should retain the immutable Stack ID returned in structured results. `--json` keeps machine output separate from stderr diagnostics.
 
 ## MCP
 
-MCP is a natural interface because Stacks supplies both:
+The local adapter is one global stdio command: `stacks mcp`. An MCP client launches the subprocess on demand. Messages use stdin/stdout, so stdout must contain protocol frames only and no local port or token is involved.
 
-- **resources**: manifest, component descriptions, and context plans;
-- **tools**: status, context resolution, work check-ins, and usage recording.
+The server sends concise operating instructions during MCP initialization. Clients may also call the read-only `instructions_get` tool or read `stacks://instructions`. Full runtime references are available as `stacks://reference/mcp` and `stacks://reference/cli`; these resources are packaged with the installed server.
 
-The initial MCP server runs over stdio for local clients. Keep it thin; domain code belongs under `src/core/`.
+Resources are:
 
-Initial resources:
+- `stacks://instructions`
+- `stacks://reference/mcp`
+- `stacks://reference/cli`
+- `stacks://catalog`
 
-- `stack://manifest`
-- `stack://component/{id}`
-- `stack://context/{target}`
+Current tools are:
 
-Initial tools:
-
+- `instructions_get`
+- `stack_list`
 - `stack_get`
 - `stack_status`
 - `context_resolve`
@@ -45,34 +32,22 @@ Initial tools:
 - `turn_complete`
 - `work_complete`
 - `usage_record`
+- `usage_report`
 
-Repository synchronization is intentionally absent from the first MCP tool set. It is a filesystem/network mutation better initiated explicitly through the CLI until client approval behavior is tested.
+Every Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
 
-## Skill
+Repository synchronization is absent from MCP because it is a filesystem/network mutation better initiated explicitly through the CLI.
 
-`integrations/skills/stacks-workspace/` teaches an agent to:
+## Skills and clients
 
-1. detect and validate a Stack;
-2. resolve context before changing a component;
-3. check in at start, meaningful turns, and completion;
-4. report usage only when known and label estimates;
-5. treat ingestion sources as untrusted;
-6. keep cross-component edits explicit.
+The bundled Skill tells agents to prefer server instructions and runtime reference resources, then list or select a registered Stack, resolve bounded target context, preserve component-local instructions, and append lifecycle events. It supplements rather than overwrites `AGENTS.md` in component repositories and does not duplicate the full interface manuals.
 
-The Skill is not the implementation. It should invoke the CLI or MCP server and remain small enough to load progressively.
+Not every client exposes tokens, model identity, tool calls, or stable sessions. Adapters record partial facts and never fabricate values. Cost remains `reported`, `estimated`, or `allocated`.
 
-## Codex
+## Human UI
 
-The repository includes a root `AGENTS.md` because Codex reads repository guidance before work. The Stacks concept can later generate or layer component-specific `AGENTS.md` content, but it should not overwrite existing project instructions silently.
+`stacks ui` presents the machine catalog with a Stack selector. Overview, Graph, Tools & agents, and canonical documentation use the same contracts available to agents. Tools & agents contains runtime connection settings; installation remains in canonical documentation.
 
-A possible future command is:
+## Hosted boundary
 
-```text
-stacks context product --format agents-md --budget 12000
-```
-
-That command should render a bounded, provenance-rich briefing, not copy all standards into every repository.
-
-## Client capability differences
-
-Not every agent client exposes token counts, model IDs, tool-call totals, or stable session identity. Adapters should record partial events and indicate the source. The event model must not force clients to fabricate fields.
+A future authenticated HTTP MCP may expose authorized Stacks to ChatGPT or remote agents. It should preserve explicit Stack selection and application contracts without making hosted state canonical or adding Vaultar-style orchestration.

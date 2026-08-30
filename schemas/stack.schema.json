@@ -167,6 +167,14 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "local" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": [
             "type",
             "path"

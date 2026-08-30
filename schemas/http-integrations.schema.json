@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-integrations.schema.json",
+  "title": "Stacks CLI and MCP integration response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stack", "cli", "mcp", "checks"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "stack": {
+      "type": "object",
+      "required": ["id", "namespace", "name", "definitionPath"],
+      "properties": {
+        "id": { "type": "string" }, "namespace": { "type": "string" },
+        "name": { "type": "string" }, "definitionPath": { "type": "string" }
+      }
+    },
+    "cli": {
+      "type": "object",
+      "required": ["packageName", "version", "command", "entrypoint", "mode", "developerInstallCommand", "refreshCommand", "watchCommand", "doctorCommand", "uiCommand"]
+    },
+    "mcp": {
+      "type": "object",
+      "required": ["serverName", "local", "hosted", "officialCodexDocumentation"],
+      "properties": {
+        "local": {
+          "type": "object",
+          "required": ["transport", "authentication", "command", "args", "codexAddCommand", "codexToml"],
+          "properties": { "transport": { "const": "stdio" }, "authentication": { "const": "none" } }
+        },
+        "hosted": { "type": "object", "required": ["status"] }
+      }
+    },
+    "checks": { "type": "array", "items": { "type": "object", "required": ["id", "label", "status", "detail"] } }
+  }
+}

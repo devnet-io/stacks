@@ -1,22 +1,59 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 const cliPath = path.resolve("src/cli.ts");
 
-function runJson(args: string[], expectedStatus = 0): Record<string, unknown> {
+function runJson(args: string[], expectedStatus = 0, env: NodeJS.ProcessEnv = process.env): Record<string, unknown> {
   const execution = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, ...args, "--json"], {
     cwd: path.resolve("."),
     encoding: "utf8",
     windowsHide: true,
+    env,
   });
   assert.equal(execution.status, expectedStatus, execution.stderr || execution.stdout);
   assert.equal(execution.stderr, "");
   return JSON.parse(execution.stdout) as Record<string, unknown>;
 }
+
+test("global catalog CLI creates, binds, and inspects a Stack from any directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-global-cli-"));
+  const component = path.join(root, "ordinary-project-location", "app");
+  const env = { ...process.env, STACKS_CONFIG_HOME: path.join(root, "config", "stacks"), STACKS_STATE_HOME: path.join(root, "state", "stacks") };
+  try {
+    await mkdir(component, { recursive: true });
+    const created = runJson(["stack", "create", "tests/global-cli"], 0, env);
+    const identity = object(created.stack);
+    assert.equal(identity.namespace, "tests");
+    assert.equal(identity.name, "global-cli");
+
+    const added = runJson(["component", "add", "tests/global-cli", "app", "--path", component, "--kind", "product"], 0, env);
+    assert.equal(added.stack, "tests/global-cli");
+    assert.equal(added.path, path.resolve(component));
+
+    const listed = runJson(["stack", "list"], 0, env);
+    assert.equal((listed.stacks as unknown[]).length, 1);
+    const validated = runJson(["validate", "--stack", "tests/global-cli"], 0, env);
+    assert.equal(validated.valid, true);
+    const status = runJson(["status", "--stack", "tests/global-cli"], 0, env);
+    assert.equal(object((status.components as unknown[])[0]).root, path.resolve(component));
+
+    const globalStatus = runJson(["status"], 0, env);
+    assert.equal(globalStatus.schemaVersion, "0.1");
+    assert.equal((globalStatus.stacks as unknown[]).length, 1);
+    assert.equal(object(object((globalStatus.stacks as unknown[])[0]).stack).name, "global-cli");
+
+    const missingSelector = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "sync", "--dry-run"], {
+      cwd: root, encoding: "utf8", windowsHide: true, env,
+    });
+    assert.equal(missingSelector.status, 1);
+    assert.match(missingSelector.stderr, /Select a registered Stack with --stack/u);
+    assert.doesNotMatch(missingSelector.stderr, /No Stack manifest found/u);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 function object(value: unknown): Record<string, unknown> {
   assert.ok(value && typeof value === "object" && !Array.isArray(value));
@@ -54,6 +91,12 @@ test("CLI JSON contracts cover the five-minute Stack lifecycle", async () => {
     assert.deepEqual(Object.keys(status).sort(), ["components", "schemaVersion", "stack"]);
     assert.deepEqual(status.stack, identity);
     assert.equal((status.components as unknown[]).length, 1);
+
+    const doctor = runJson(["doctor", "--root", root]);
+    assert.equal(doctor.schemaVersion, "0.1");
+    assert.deepEqual(object(doctor.stack).id, identity.id);
+    assert.equal(object(object(doctor.mcp).local).transport, "stdio");
+    assert.ok((doctor.checks as Array<{ status: string }>).every((check) => check.status === "pass"));
 
     const synced = runJson(["sync", "--root", root, "--dry-run"]);
     assert.deepEqual(Object.keys(synced).sort(), ["results", "schemaVersion", "stack"]);
@@ -95,4 +138,31 @@ test("CLI JSON contracts cover the five-minute Stack lifecycle", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("CLI runs when its entrypoint is reached through an npm-style link", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-cli-link-"));
+  const linkedPackage = path.join(root, "linked-package");
+  const linked = path.join(linkedPackage, "src", "cli.ts");
+  try {
+    await symlink(path.resolve("."), linkedPackage, process.platform === "win32" ? "junction" : "dir");
+    const execution = spawnSync(process.execPath, ["--experimental-strip-types", linked, "help"], { encoding: "utf8", windowsHide: true });
+    assert.equal(execution.status, 0, execution.stderr);
+    assert.match(execution.stdout, /^Stacks - portable/u);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("CLI help keeps routine commands concise and explains advanced commands", () => {
+  const common = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "help"], { encoding: "utf8", windowsHide: true });
+  assert.equal(common.status, 0, common.stderr);
+  assert.match(common.stdout, /Common commands/u);
+  assert.doesNotMatch(common.stdout, /stacks doctor/u);
+
+  const all = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "help", "commands"], { encoding: "utf8", windowsHide: true });
+  assert.equal(all.status, 0, all.stderr);
+  assert.match(all.stdout, /doctor\s+Troubleshoot runtime/u);
+
+  const status = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "help", "status"], { encoding: "utf8", windowsHide: true });
+  assert.equal(status.status, 0, status.stderr);
+  assert.match(status.stdout, /Loading a Stack also validates its definition/u);
 });

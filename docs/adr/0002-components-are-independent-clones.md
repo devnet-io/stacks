@@ -1,6 +1,6 @@
 # ADR 0002: external components are independent clones, not submodules by default
 
-- Status: accepted for alpha
+- Status: superseded by ADR 0006
 - Date: 2026-08-29
 
 ## Decision

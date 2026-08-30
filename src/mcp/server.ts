@@ -1,268 +1,102 @@
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
+import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
-import { statusOutput } from "../application/contracts.ts";
-import { buildUsageReport } from "../core/usage.ts";
-import { completeTurn, completeWork, recordUsage, startWork } from "../core/events.ts";
-import { resolveContext } from "../core/context.ts";
-import { componentById, loadStack } from "../core/manifest.ts";
-import { getComponentStatuses } from "../core/status.ts";
+import { createLocalStacksApplication, type StacksApplication } from "../application/stacks-application.ts";
 import type { CostKind, UsageData } from "../core/types.ts";
+import { readMcpReference, STACKS_MCP_INSTRUCTIONS, STACKS_MCP_RESOURCES } from "./instructions.ts";
 
 function result(value: Record<string, unknown>) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
-    structuredContent: value,
-  };
+  return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }], structuredContent: value };
 }
 
-export function buildMcpServer(root: string): McpServer {
-  const server = new McpServer({ name: "stacks", version: "0.0.0-alpha.1" });
+const selector = z.string().min(1).describe("Registered Stack selector in namespace/name form");
 
-  server.registerResource(
-    "stack-manifest",
-    "stack://manifest",
-    { title: "Stack manifest", description: "The effective portable Stack declaration.", mimeType: "application/json" },
-    async (uri) => {
-      const stack = await loadStack(root);
-      return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(stack.manifest, null, 2) }] };
-    },
-  );
+export function buildMcpServer(application: StacksApplication = createLocalStacksApplication()): McpServer {
+  const server = new McpServer({ name: "stacks", version: "0.0.0-alpha.1" }, { instructions: STACKS_MCP_INSTRUCTIONS });
 
-  server.registerResource(
-    "stack-component",
-    new ResourceTemplate("stack://component/{id}", {
-      list: async () => {
-        const stack = await loadStack(root);
-        return {
-          resources: stack.manifest.components.map((component) => ({
-            uri: `stack://component/${encodeURIComponent(component.id)}`,
-            name: component.name ?? component.id,
-            ...(component.description === undefined ? {} : { description: component.description }),
-          })),
-        };
-      },
-    }),
-    { title: "Stack component", description: "One component declaration from the Stack.", mimeType: "application/json" },
-    async (uri, variables) => {
-      const stack = await loadStack(root);
-      const id = decodeURIComponent(String(variables.id));
-      const component = componentById(stack.manifest, id);
-      if (!component) throw new Error(`Unknown component: ${id}.`);
-      return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(component, null, 2) }] };
-    },
-  );
+  server.registerResource("stacks-instructions", "stacks://instructions", {
+    title: "Stacks agent instructions", description: "Concise operating instructions and canonical reference links.", mimeType: "text/markdown",
+  }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: STACKS_MCP_INSTRUCTIONS }] }));
 
-  server.registerResource(
-    "stack-context-plan",
-    new ResourceTemplate("stack://context/{target}", { list: undefined }),
-    { title: "Stack context plan", description: "Deterministic context selected for a target component.", mimeType: "application/json" },
-    async (uri, variables) => {
-      const stack = await loadStack(root);
-      const target = decodeURIComponent(String(variables.target));
-      const plan = resolveContext(stack, target);
-      return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(plan, null, 2) }] };
-    },
-  );
+  server.registerResource("stacks-mcp-reference", "stacks://reference/mcp", {
+    title: "Stacks MCP reference", description: "Complete reference for every Stacks MCP tool and resource.", mimeType: "text/markdown",
+  }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: await readMcpReference("mcp") }] }));
 
-  server.registerTool(
-    "stack_get",
-    {
-      title: "Get Stack",
-      description: "Return the effective Stack manifest. Read-only.",
-      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    },
-    async () => {
-      const stack = await loadStack(root);
-      return result({ root: stack.root, manifestPath: stack.manifestPath, manifest: stack.manifest });
-    },
-  );
+  server.registerResource("stacks-cli-reference", "stacks://reference/cli", {
+    title: "Stacks CLI reference", description: "Complete reference for every Stacks CLI command, including CLI-only operations.", mimeType: "text/markdown",
+  }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: await readMcpReference("cli") }] }));
 
-  server.registerTool(
-    "stack_status",
-    {
-      title: "Inspect Stack status",
-      description: "Inspect materialized component paths and Git state without modifying them.",
-      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    },
-    async () => {
-      const stack = await loadStack(root);
-      return result(statusOutput(stack, getComponentStatuses(stack)) as unknown as Record<string, unknown>);
-    },
-  );
+  server.registerResource("stacks-catalog", "stacks://catalog", {
+    title: "Registered Stacks", description: "Machine-level catalog of registered Stacks.", mimeType: "application/json",
+  }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ schemaVersion: "0.1", stacks: await application.listStacks() }, null, 2) }] }));
 
-  server.registerTool(
-    "context_resolve",
-    {
-      title: "Resolve component context",
-      description: "Build a deterministic, provenance-rich context plan for one target component. This returns descriptors and does not concatenate file contents.",
-      inputSchema: z.object({
-        target: z.string().min(1).describe("Target component ID"),
-        task: z.string().optional().describe("Optional task description, retained for later selectors"),
-      }),
-      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    },
-    async ({ target, task }) => {
-      const stack = await loadStack(root);
-      const plan = resolveContext(stack, target, task);
-      return result(plan as unknown as Record<string, unknown>);
-    },
-  );
+  server.registerTool("instructions_get", {
+    title: "Get Stacks instructions", description: "Read the Stacks operating protocol and canonical CLI/MCP reference links before using Stack lifecycle tools.",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async () => result({ schemaVersion: "0.1", instructions: STACKS_MCP_INSTRUCTIONS, resources: [...STACKS_MCP_RESOURCES] }));
 
-  server.registerTool(
-    "work_start",
-    {
-      title: "Start Stack work session",
-      description: "Record that an agent has started work on a component and return the generated session ID.",
-      inputSchema: z.object({
-        componentId: z.string().min(1),
-        summary: z.string().min(1),
-        workId: z.string().optional(),
-        agent: z.string().optional(),
-        client: z.string().optional(),
-        model: z.string().optional(),
-      }),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    },
-    async ({ componentId, summary, workId, agent, client, model }) => {
-      const stack = await loadStack(root);
-      const actor = agent || client || model ? {
-        ...(agent === undefined ? {} : { agent }),
-        ...(client === undefined ? {} : { client }),
-        ...(model === undefined ? {} : { model }),
-      } : undefined;
-      const event = await startWork(stack, {
-        componentId,
-        summary,
-        ...(workId === undefined ? {} : { workId }),
-        ...(actor === undefined ? {} : { actor }),
-      });
-      return result(event as unknown as Record<string, unknown>);
-    },
-  );
+  server.registerTool("stack_list", {
+    title: "List Stacks", description: "List registered Stacks available on this machine.",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async () => result({ schemaVersion: "0.1", stacks: await application.listStacks() }));
 
-  server.registerTool(
-    "turn_complete",
-    {
-      title: "Record completed agent turn",
-      description: "Append a meaningful progress checkpoint for an existing Stack work session.",
-      inputSchema: z.object({
-        sessionId: z.string().min(1),
-        summary: z.string().min(1),
-        status: z.enum(["progress", "blocked", "failed", "complete"]).optional(),
-        changedPaths: z.array(z.string()).optional(),
-        nextStep: z.string().optional(),
-      }),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    },
-    async ({ sessionId, summary, status, changedPaths, nextStep }) => {
-      const stack = await loadStack(root);
-      const event = await completeTurn(stack, {
-        sessionId,
-        summary,
-        ...(status === undefined ? {} : { status }),
-        ...(changedPaths === undefined ? {} : { changedPaths }),
-        ...(nextStep === undefined ? {} : { nextStep }),
-      });
-      return result(event as unknown as Record<string, unknown>);
-    },
-  );
+  server.registerTool("stack_get", {
+    title: "Get Stack", description: "Return one registered Stack definition and component bindings.", inputSchema: z.object({ stack: selector }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector }) => result(await application.getStack({ stack: stackSelector }) as unknown as Record<string, unknown>));
 
-  server.registerTool(
-    "work_complete",
-    {
-      title: "Complete Stack work session",
-      description: "Append the outcome and remaining work for an existing Stack session.",
-      inputSchema: z.object({
-        sessionId: z.string().min(1),
-        summary: z.string().min(1),
-        outcome: z.enum(["success", "partial", "failed", "cancelled"]).optional(),
-        remaining: z.array(z.string()).optional(),
-      }),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    },
-    async ({ sessionId, summary, outcome, remaining }) => {
-      const stack = await loadStack(root);
-      const event = await completeWork(stack, {
-        sessionId,
-        summary,
-        ...(outcome === undefined ? {} : { outcome }),
-        ...(remaining === undefined ? {} : { remaining }),
-      });
-      return result(event as unknown as Record<string, unknown>);
-    },
-  );
+  server.registerTool("stack_status", {
+    title: "Inspect Stack status", description: "Inspect explicit component paths and Git state without modifying them.", inputSchema: z.object({ stack: selector }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector }) => result(await application.getStatus({ stack: stackSelector }) as unknown as Record<string, unknown>));
 
-  server.registerTool(
-    "usage_record",
-    {
-      title: "Record agent usage",
-      description: "Append provider/model/token/cost telemetry. Monetary amounts must identify whether they are reported, estimated, or allocated.",
-      inputSchema: z.object({
-        sessionId: z.string().min(1),
-        provider: z.string().min(1),
-        model: z.string().min(1),
-        inputTokens: z.number().nonnegative().optional(),
-        outputTokens: z.number().nonnegative().optional(),
-        cachedInputTokens: z.number().nonnegative().optional(),
-        reasoningTokens: z.number().nonnegative().optional(),
-        toolCalls: z.number().nonnegative().optional(),
-        durationMs: z.number().nonnegative().optional(),
-        amount: z.number().nonnegative().optional(),
-        currency: z.string().optional(),
-        costKind: z.enum(["reported", "estimated", "allocated"]).optional(),
-        pricingReference: z.string().optional(),
-        note: z.string().optional(),
-      }).refine((value) => value.amount === undefined || value.costKind !== undefined, {
-        message: "costKind is required whenever amount is supplied",
-      }),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    },
-    async ({ sessionId, provider, model, inputTokens, outputTokens, cachedInputTokens, reasoningTokens, toolCalls, durationMs, amount, currency, costKind, pricingReference, note }) => {
-      const stack = await loadStack(root);
-      const usage: UsageData = {
-        provider,
-        model,
-        ...(inputTokens === undefined ? {} : { inputTokens }),
-        ...(outputTokens === undefined ? {} : { outputTokens }),
-        ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
-        ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
-        ...(toolCalls === undefined ? {} : { toolCalls }),
-        ...(durationMs === undefined ? {} : { durationMs }),
-        ...(amount === undefined ? {} : { amount }),
-        ...(currency === undefined ? {} : { currency }),
-        ...(costKind === undefined ? {} : { costKind: costKind as CostKind }),
-        ...(pricingReference === undefined ? {} : { pricingReference }),
-        ...(note === undefined ? {} : { note }),
-      };
-      const event = await recordUsage(stack, { sessionId, usage });
-      return result(event as unknown as Record<string, unknown>);
-    },
-  );
+  server.registerTool("context_resolve", {
+    title: "Resolve component context", description: "Build a bounded, explainable context plan for one target component.",
+    inputSchema: z.object({ stack: selector, target: z.string().min(1), task: z.string().optional() }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, target, task }) => result(await application.resolveContext({ stack: stackSelector }, target, task) as unknown as Record<string, unknown>));
 
-  server.registerTool(
-    "usage_report",
-    {
-      title: "Get usage report",
-      description: "Aggregate normalized usage events by provider, model, and component.",
-      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-    },
-    async () => {
-      const stack = await loadStack(root);
-      return result(await buildUsageReport(stack) as unknown as Record<string, unknown>);
-    },
-  );
+  server.registerTool("work_start", {
+    title: "Start Stack work session", description: "Append a work-start event for a component.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), summary: z.string().min(1), workId: z.string().optional(), agent: z.string().optional(), client: z.string().optional(), model: z.string().optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, componentId, summary, workId, agent, client, model }) => {
+    const actor = agent || client || model ? { ...(agent ? { agent } : {}), ...(client ? { client } : {}), ...(model ? { model } : {}) } : undefined;
+    return result(await application.startWork({ stack: stackSelector }, { componentId, summary, ...(workId ? { workId } : {}), ...(actor ? { actor } : {}) }) as unknown as Record<string, unknown>);
+  });
+
+  server.registerTool("turn_complete", {
+    title: "Record completed agent turn", description: "Append a progress checkpoint for a Stack work session.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), summary: z.string().min(1), status: z.enum(["progress", "blocked", "failed", "complete"]).optional(), changedPaths: z.array(z.string()).optional(), nextStep: z.string().optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, sessionId, summary, status, changedPaths, nextStep }) => result(await application.completeTurn({ stack: stackSelector }, { sessionId, summary, ...(status ? { status } : {}), ...(changedPaths ? { changedPaths } : {}), ...(nextStep ? { nextStep } : {}) }) as unknown as Record<string, unknown>));
+
+  server.registerTool("work_complete", {
+    title: "Complete Stack work session", description: "Append the outcome for a Stack work session.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), summary: z.string().min(1), outcome: z.enum(["success", "partial", "failed", "cancelled"]).optional(), remaining: z.array(z.string()).optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, sessionId, summary, outcome, remaining }) => result(await application.completeWork({ stack: stackSelector }, { sessionId, summary, ...(outcome ? { outcome } : {}), ...(remaining ? { remaining } : {}) }) as unknown as Record<string, unknown>));
+
+  server.registerTool("usage_record", {
+    title: "Record agent usage", description: "Append provider/model/token/cost telemetry with explicit cost provenance.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), provider: z.string().min(1), model: z.string().min(1), componentId: z.string().optional(), inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), cachedInputTokens: z.number().nonnegative().optional(), reasoningTokens: z.number().nonnegative().optional(), toolCalls: z.number().nonnegative().optional(), durationMs: z.number().nonnegative().optional(), amount: z.number().nonnegative().optional(), currency: z.string().optional(), costKind: z.enum(["reported", "estimated", "allocated"]).optional(), pricingReference: z.string().optional(), note: z.string().optional() }).refine((value) => value.amount === undefined || value.costKind !== undefined, { message: "costKind is required whenever amount is supplied" }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, sessionId, componentId, provider, model, inputTokens, outputTokens, cachedInputTokens, reasoningTokens, toolCalls, durationMs, amount, currency, costKind, pricingReference, note }) => {
+    const usage: UsageData = { provider, model, ...(inputTokens === undefined ? {} : { inputTokens }), ...(outputTokens === undefined ? {} : { outputTokens }), ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }), ...(reasoningTokens === undefined ? {} : { reasoningTokens }), ...(toolCalls === undefined ? {} : { toolCalls }), ...(durationMs === undefined ? {} : { durationMs }), ...(amount === undefined ? {} : { amount }), ...(currency === undefined ? {} : { currency }), ...(costKind === undefined ? {} : { costKind: costKind as CostKind }), ...(pricingReference === undefined ? {} : { pricingReference }), ...(note === undefined ? {} : { note }) };
+    return result(await application.recordUsage({ stack: stackSelector }, { sessionId, ...(componentId ? { componentId } : {}), usage }) as unknown as Record<string, unknown>);
+  });
+
+  server.registerTool("usage_report", {
+    title: "Get usage report", description: "Aggregate usage for one registered Stack.", inputSchema: z.object({ stack: selector }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector }) => result(await application.getUsageReport({ stack: stackSelector }) as unknown as Record<string, unknown>));
 
   return server;
 }
 
-export function startMcpServer(root: string): void {
-  const handle = serveStdio(() => buildMcpServer(root));
-  console.error(`Stacks MCP server is listening for ${root}`);
-  process.on("SIGINT", () => {
-    void handle.close();
-  });
-  process.on("SIGTERM", () => {
-    void handle.close();
-  });
+export function startMcpServer(): void {
+  const handle = serveStdio(() => buildMcpServer());
+  console.error("Stacks MCP server is listening for the machine catalog");
+  process.on("SIGINT", () => { void handle.close(); });
+  process.on("SIGTERM", () => { void handle.close(); });
 }

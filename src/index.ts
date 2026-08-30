@@ -9,3 +9,4 @@ export * from "./core/lock.ts";
 export * from "./core/events.ts";
 export * from "./core/usage.ts";
 export * from "./core/init.ts";
+export * from "./application/stacks-application.ts";

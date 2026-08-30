@@ -1,0 +1,13 @@
+.git
+.github
+.stacks
+.stack-workspace
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

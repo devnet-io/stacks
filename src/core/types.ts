@@ -31,6 +31,10 @@ export interface PathSource {
   path: string;
 }
 
+export interface LocalSource {
+  type: "local";
+}
+
 export interface GitSource {
   type: "git";
   url: string;
@@ -38,7 +42,7 @@ export interface GitSource {
   checkout?: string;
 }
 
-export type ComponentSource = PathSource | GitSource;
+export type ComponentSource = LocalSource | PathSource | GitSource;
 
 export interface StackComponent {
   id: string;
@@ -79,6 +83,9 @@ export interface LoadedStack {
   root: string;
   manifestPath: string;
   manifest: StackManifest;
+  bindings?: Record<string, string>;
+  stateRoot?: string;
+  registered?: boolean;
 }
 
 export interface ContextPlanItem {

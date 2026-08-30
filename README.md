@@ -1,201 +1,90 @@
 # Stacks
 
-Stacks is a portable, versioned composition and context layer for agent-assisted development.
+Stacks is a local-first, portable composition and context layer for software development. A Stack is a named graph of independent components—products, libraries, standards, reference implementations, tools, and knowledge—with explicit relationships and bounded guidance for people and agents.
 
-A **Stack** is not merely a list of repositories and it is not a build system. It is an evolving, curated declaration of:
+Stacks is not a build system, package manager, task scheduler, or agent orchestrator. Component repositories keep their own locations and workflows. Stacks records what exists, how it relates, and what context matters.
 
-- what components belong to a body of work;
-- what each component provides and consumes;
-- which standards, preferences, examples, and implementation knowledge should guide agents;
-- how local repositories are materialized;
-- what agents are doing across the stack;
-- how usage, cost, provenance, and adoption decisions are recorded.
+## Try it
 
-The long-term idea is a stack that captures a particular view of how software should be built, from product repositories through reusable application patterns, primitive UI controls, infrastructure reference implementations, and eventually any lower layer worth making explicit. The model intentionally does not assume every stack is an npm workspace—or even that every component is software.
-
-## The key separation
-
-The Git-backed stack repository is the durable control plane. It contains the manifest, knowledge, policies, provenance, proposals, and optional lock snapshots.
-
-Materialized component repositories and high-volume operational state are local by default:
-
-```text
-stack-repository/
-  stack.json                  # portable declaration
-  stack.lock.json             # optional reproducibility snapshot
-  docs/                       # stack-owned knowledge and decisions
-  proposals/                  # reviewed ingestion/adoption proposals
-  .stack-workspace/           # cloned component repositories; ignored
-  .stacks/                    # local events, sessions, indexes; ignored
-```
-
-SQLite is permitted later as a local index or cache. It should not become the only representation of the stack.
-
-## What this starter includes
-
-This archive is both a product brief and an executable seed:
-
-- a deliberately small TypeScript core and CLI;
-- a versioned `stack.json` manifest format plus JSON Schemas;
-- safe component status and clone/fetch primitives;
-- capability-based context resolution;
-- append-only agent check-ins and usage events;
-- an MCP stdio adapter using the 2026 MCP TypeScript SDK v2 surface;
-- a reusable `stacks-workspace` agent Skill;
-- an example foundational stack with standards, UI primitives, application patterns, Cloudflare references, and a product;
-- a staged Codex implementation brief and acceptance criteria.
-
-The repository also declares itself in the root [`stack.json`](stack.json). Resolving context for `stacks-core` therefore exercises the same component/capability model that the project is building; the implementation, agent Skill, and foundational example are not disconnected artifacts.
-
-The code is an architectural spike, not a production release. Its purpose is to make the first decisions concrete enough for Codex to test, improve, and replace deliberately.
-
-## Start here
+Install the development build once from this checkout:
 
 ```bash
 npm install
-npm test
-npm run dev:web
-npm run demo:self
-npm run demo:validate
-npm run demo:context
+npm run install:local
 ```
 
-Then give Codex [`CODEX_START_HERE.md`](CODEX_START_HERE.md) as its initial brief. Codex also reads [`AGENTS.md`](AGENTS.md) automatically when operating in the repository.
-
-`npm run dev:web` now starts both the Stack-scoped loopback API and the local admin UI. Open the printed `Stacks UI` URL; the Overview section reads live manifest, filesystem, and Git status without changing component repositories.
-
-The CLI can run directly on Node 22+ without a build for commands that do not require optional integrations:
+Create a globally registered Stack and attach an existing project directory:
 
 ```bash
-node --experimental-strip-types src/cli.ts help
-node --experimental-strip-types src/cli.ts validate --root examples/foundation-stack
-node --experimental-strip-types src/cli.ts context product --root examples/foundation-stack
+stacks stack create your-name/my-stack
+stacks component add your-name/my-stack app --path /path/to/app --kind product
+stacks status --stack your-name/my-stack
+stacks ui
 ```
 
-After a build:
+On PowerShell or Command Prompt, use normal Windows paths without Unix-style single quotes:
+
+```powershell
+stacks component add your-name/my-stack app --path C:\Users\you\projects\app --kind product
+```
+
+`stacks ui` opens one local management interface for the machine catalog. Use the Stack selector to switch between registered Stacks; Manage can create Stacks, add components, and change local bindings. The UI includes the same getting-started and reference documentation as this repository.
+
+Connect Codex once for all registered Stacks:
 
 ```bash
-node dist/cli.js init --namespace my-team --name my-first-stack --root ../my-first-stack
-node dist/cli.js validate --root ../my-first-stack
-node dist/cli.js mcp --root ../my-first-stack
+codex mcp add stacks -- stacks mcp
 ```
 
-## Declare a first Stack in about five minutes
+The MCP adapter uses stdio: Codex launches it when needed, so it has no port or long-running daemon. It supplies agent instructions during initialization and exposes complete CLI/MCP reference resources. Stack-specific MCP tools require a `namespace/name` selector.
 
-The initializer creates a portable metadata repository without assuming an ecosystem:
+## Where data lives
+
+There is no required Stack workspace directory. The global catalog uses lowercase platform-native application directories:
+
+| Platform | Definitions and bindings | Operational state |
+| --- | --- | --- |
+| Linux | `$XDG_CONFIG_HOME/stacks` or `~/.config/stacks` | `$XDG_STATE_HOME/stacks` or `~/.local/state/stacks` |
+| macOS | `~/Library/Application Support/stacks` | `~/Library/Application Support/stacks/state` |
+| Windows | `%APPDATA%\stacks` | `%LOCALAPPDATA%\stacks` |
+
+Stack definitions remain readable JSON. Machine-local bindings map each component ID to an explicit absolute path; they are separate because paths differ by computer. A directory may be attached to more than one Stack. Stacks does not write ownership markers into component repositories.
+
+For a Git component, the destination is still explicit:
 
 ```bash
-node --experimental-strip-types src/cli.ts init \
-  --namespace my-team \
-  --name my-first-stack \
-  --root ../my-first-stack
+stacks component add your-name/my-stack standards \
+  --git https://github.com/your-name/standards.git \
+  --path /path/where/standards-should-live \
+  --kind knowledge
 ```
 
-Create or clone the real component repositories, then edit `../my-first-stack/stack.json`. A minimal useful declaration looks like this:
+If the directory is absent, Stacks clones there. If it exists, Stacks inspects it conservatively and never resets, cleans, or silently moves it.
 
-```json
-{
-  "apiVersion": "stacks.dev/v0alpha1",
-  "kind": "Stack",
-  "metadata": {
-    "id": "generate-with-stacks-init",
-    "namespace": "my-team",
-    "name": "my-first-stack",
-    "description": "The standards, shared layers, references, and products I build together."
-  },
-  "workspace": {
-    "directory": ".stack-workspace",
-    "stateDirectory": ".stacks"
-  },
-  "context": {
-    "always": [
-      {
-        "path": "STACK_GUIDE.md",
-        "strength": "required",
-        "priority": 1200
-      }
-    ]
-  },
-  "components": [
-    {
-      "id": "standards",
-      "kind": "knowledge",
-      "source": { "type": "git", "url": "git@github.com:you/standards.git" },
-      "provides": [
-        {
-          "capability": "practice.software-development",
-          "context": [{ "path": "README.md", "strength": "required" }]
-        }
-      ]
-    },
-    {
-      "id": "product",
-      "kind": "product",
-      "source": { "type": "git", "url": "git@github.com:you/product.git" },
-      "consumes": [
-        { "capability": "practice.software-development", "from": "standards" }
-      ],
-      "guidance": [
-        { "path": "AGENTS.md", "strength": "required", "priority": 1100 }
-      ]
-    }
-  ]
-}
-```
+Knowledge and engineering standards are ordinary components, usually with `kind: knowledge`. Their exported capabilities and guidance are what make them available through context resolution; they do not live in a magic Stack-owned folder.
 
-Add `STACK_GUIDE.md`, then exercise the declaration before asking an agent to work:
-
-```bash
-node --experimental-strip-types src/cli.ts validate --root ../my-first-stack
-node --experimental-strip-types src/cli.ts sync --root ../my-first-stack --dry-run
-node --experimental-strip-types src/cli.ts sync --root ../my-first-stack
-node --experimental-strip-types src/cli.ts status --root ../my-first-stack
-node --experimental-strip-types src/cli.ts context product \
-  --task "Describe the first product change" \
-  --root ../my-first-stack
-```
-
-The Git URLs above are placeholders. For an immediately runnable declaration, copy and modify [`examples/foundation-stack`](examples/foundation-stack); the automated suite loads that exact example, verifies every component path, and resolves all context selected for its `product` component.
-
-## Initial command surface
+## Everyday commands
 
 ```text
-stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]
-stacks validate [--root <dir>] [--json]
-stacks status [--root <dir>] [--json]
-stacks sync [--root <dir>] [--dry-run] [--update] [--json]
-stacks lock [--root <dir>] [--json]
-stacks context <target-component> [--task <text>] [--json]
-stacks checkin start --component <id> --summary <text> [...]
-stacks checkin turn --session <id> --summary <text> [...]
-stacks checkin complete --session <id> --summary <text> [...]
-stacks usage record --session <id> --provider <name> --model <name> [...]
-stacks usage report [--root <dir>] [--json]
-stacks ui [--root <dir>] [--port <number>] [--api-port <number>] [--api-only]
-stacks mcp [--root <dir>]
+stacks stack create <namespace/name> [--json]
+stacks stack list [--json]
+stacks stack register <definition.json> [--json]
+stacks stack export <namespace/name> --to <definition.json> [--json]
+stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]
+stacks component bind <namespace/name> <id> --path <dir> [--json]
+stacks status --stack <namespace/name> [--json]
+stacks sync --stack <namespace/name> [--dry-run] [--update] [--json]
+stacks context <target> --stack <namespace/name> [--task <text>] [--json]
+stacks ui
+stacks mcp
 ```
 
-## Product boundary
+Run `stacks help commands` for the complete command surface, including portable definition, event, usage, troubleshooting, and legacy commands. Registered Stacks are validated whenever they are loaded; `doctor` is reserved for explicit installation or adapter troubleshooting.
 
-Stacks should remain useful even when no autonomous agent runtime is present. It supplies the environment, context graph, and observability protocol. It does not choose the next task, schedule agents, manage cloud runners, or replace the project management model.
+The checked-in root manifest and `examples/foundation-stack` remain directory-based fixtures for compatibility and dogfooding. Legacy `--root` commands still work, but new user Stacks should use the global catalog.
 
-That boundary is intentional. A separate agent orchestration system such as **Vaultar** can consume Stacks as a local/portable substrate. Optional hosted Stacks access may expose documentation, snapshots, and remote MCP without turning Stacks into Vaultar.
+## Develop and verify
 
-## Repository map
+`npm run install:local` is idempotent: it builds a complete package, packs it, and installs that snapshot into npm's machine-level package storage. The installed CLI and built web UI do not link back to this checkout, so the clone may be moved or deleted afterward. Rerun the command when you want to install newer source changes. `npm run check` also installs and starts a temporary packed copy to prove this contract. `npm run check:docker` repeats the gate in clean Node 22 Linux userspace.
 
-- [`docs/00-input-synthesis.md`](docs/00-input-synthesis.md): every major idea from the originating discussion and how it is represented.
-- [`docs/README.md`](docs/README.md): documentation truth policy and index.
-- [`docs/product.md`](docs/product.md): durable product definition.
-- [`docs/architecture.md`](docs/architecture.md): current implemented architecture and limitations.
-- [`docs/user-guide.md`](docs/user-guide.md): commands and procedures that work now.
-- [`docs/project-status.md`](docs/project-status.md): evidence-backed delivery state.
-- [`docs/01-vision-and-boundaries.md`](docs/01-vision-and-boundaries.md): product definition and non-goals.
-- [`docs/02-domain-model.md`](docs/02-domain-model.md): entities, graph, and lifecycle.
-- [`docs/03-storage-and-layout.md`](docs/03-storage-and-layout.md): Git, worktrees, local state, and lock snapshots.
-- [`docs/04-context-resolution.md`](docs/04-context-resolution.md): how agents receive bounded, relevant context.
-- [`docs/05-events-usage-and-analytics.md`](docs/05-events-usage-and-analytics.md): check-ins, cost, and analytics.
-- [`docs/06-ingestion-and-evolution.md`](docs/06-ingestion-and-evolution.md): safe ingestion and cross-stack learning.
-- [`docs/07-agent-interfaces.md`](docs/07-agent-interfaces.md): CLI, MCP, Skills, and Codex.
-- [`docs/08-roadmap.md`](docs/08-roadmap.md): staged implementation plan.
-- [`docs/09-open-questions.md`](docs/09-open-questions.md): decisions intentionally deferred.
-- [`docs/10-validation-and-handoff.md`](docs/10-validation-and-handoff.md): verification performed on this starter and the remaining environment-dependent checks.
+Start with [Getting started](docs/getting-started.md), then see the [user guide](docs/user-guide.md), complete [CLI command reference](docs/cli-reference.md), complete [MCP server reference](docs/mcp-reference.md), [current architecture](docs/architecture.md), and [project status](docs/project-status.md).

@@ -17,9 +17,10 @@ export interface StackOverview {
     version?: string;
   };
   workspace: {
-    root: string;
-    manifestPath: string;
-    componentDirectory: string;
+    mode: "registered" | "legacy-directory";
+    definitionPath: string;
+    legacyRoot?: string;
+    legacyComponentDirectory?: string;
     stateDirectory: string;
   };
   summary: {
@@ -50,7 +51,7 @@ export function buildStackOverview(stack: LoadedStack): StackOverview {
   });
   const identity = stackIdentity(stack.manifest);
   const componentDirectory = stack.manifest.workspace?.directory ?? ".stack-workspace";
-  const stateDirectory = stack.manifest.workspace?.stateDirectory ?? ".stacks";
+  const stateDirectory = stack.stateRoot ?? path.resolve(stack.root, stack.manifest.workspace?.stateDirectory ?? ".stacks");
   return {
     schemaVersion: "0.1",
     stack: {
@@ -59,10 +60,10 @@ export function buildStackOverview(stack: LoadedStack): StackOverview {
       ...(stack.manifest.metadata.version === undefined ? {} : { version: stack.manifest.metadata.version }),
     },
     workspace: {
-      root: stack.root,
-      manifestPath: stack.manifestPath,
-      componentDirectory: path.resolve(stack.root, componentDirectory),
-      stateDirectory: path.resolve(stack.root, stateDirectory),
+      mode: stack.registered ? "registered" : "legacy-directory",
+      definitionPath: stack.manifestPath,
+      ...(!stack.registered ? { legacyRoot: stack.root, legacyComponentDirectory: path.resolve(stack.root, componentDirectory) } : {}),
+      stateDirectory,
     },
     summary: {
       components: components.length,

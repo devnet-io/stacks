@@ -32,9 +32,9 @@ Adoption proposal -----> target component changes + provenance
 
 ## Stack
 
-A named, versioned composition. It owns:
+A named, versioned composition registered by immutable ID and readable `namespace/name`. It owns:
 
-- workspace and local-state layout defaults;
+- a readable graph definition and local operational state identity;
 - stack-wide context;
 - component declarations and overlays;
 - optional lock snapshots;
@@ -58,12 +58,13 @@ A component has a source, access policy, capabilities, requirements, explicit de
 
 ## Source
 
-The materialization strategy for a component.
+The provenance/materialization strategy for a component. Every registered component also has a separate explicit machine-local path binding.
 
 Initial source types:
 
-- `path`: already available at a path relative to the stack repository;
-- `git`: clone into the stack workspace directory, optionally tracking a ref.
+- `local`: available at its explicit registered binding;
+- `git`: clone or inspect at its explicit registered binding, optionally tracking a ref;
+- `path`: legacy relative path inside a directory-based manifest.
 
 Future types may include remote documents, package registries, generated components, and externally managed worktrees.
 

@@ -1,16 +1,16 @@
 # RFC-0001: Portable runtime and hosted adapters
 
-Status: Implementing
+Status: Partially implemented
 
 ## Problem
 
-Stacks must operate fully against local files and Git while preserving a cheap path to hosted documentation, Stack snapshots, and remote MCP. The current spike passes a filesystem-root object through core operations and uses an editable Stack name as identity.
+Stacks must operate fully against local files and Git while preserving a cheap path to hosted documentation, Stack snapshots, and remote MCP. Stable identity, the global local catalog, and explicit Stack selection are implemented; transport-neutral storage ports and hosted adapters are not.
 
 ## Proposal
 
 - Give every Stack an immutable opaque ID plus a readable namespace and name. Implemented by ADR-0005.
 - Address portable resources by Stack ID, component ID, relative path, and optional revision rather than absolute local path.
-- Make application operations accept an explicit Stack reference. Local adapters may bind it from the current directory or process root.
+- Make application operations accept an explicit Stack reference. Implemented in the catalog CLI, local HTTP API, and stdio MCP; legacy directory commands remain.
 - Depend on focused `StackStore`, `ContentStore`, and `EventStore` ports at the application boundary.
 - Keep Node filesystem, Git, JSONL, stdio MCP, and local HTTP as local adapters.
 - Reserve authenticated HTTP, snapshot storage, hosted web, and Streamable HTTP MCP as hosted adapters.

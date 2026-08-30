@@ -22,11 +22,12 @@
     "workspace": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["root", "manifestPath", "componentDirectory", "stateDirectory"],
+      "required": ["mode", "definitionPath", "stateDirectory"],
       "properties": {
-        "root": { "type": "string" },
-        "manifestPath": { "type": "string" },
-        "componentDirectory": { "type": "string" },
+        "mode": { "enum": ["registered", "legacy-directory"] },
+        "definitionPath": { "type": "string" },
+        "legacyRoot": { "type": "string" },
+        "legacyComponentDirectory": { "type": "string" },
         "stateDirectory": { "type": "string" }
       }
     },
@@ -51,7 +52,7 @@
           "id": { "type": "string" },
           "name": { "type": "string" },
           "kind": { "type": "string" },
-          "sourceType": { "enum": ["path", "git"] },
+          "sourceType": { "enum": ["local", "path", "git"] },
           "root": { "type": "string" },
           "exists": { "type": "boolean" },
           "access": { "enum": ["read-only", "read-write"] },

@@ -8,7 +8,7 @@
   --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --font-sans: var(--font-geist-sans); --font-mono: var(--font-geist-mono); --font-heading: var(--font-sans);
+  --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --font-sans: var(--font-ui); --font-mono: var(--font-code); --font-heading: var(--font-sans);
   --radius-sm: calc(var(--radius) * .65); --radius-md: calc(var(--radius) * .82); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) * 1.35); --radius-2xl: calc(var(--radius) * 1.75);
 }
 
@@ -17,10 +17,12 @@
   --primary: #167c5a; --primary-foreground: #f7fffb; --secondary: #e3ece7; --secondary-foreground: #244238;
   --muted: #edf1ee; --muted-foreground: #64726c; --border: #dce4df; --input: #d5dfd9; --ring: #2c9a75;
   --sidebar: #0d1720; --sidebar-foreground: #d9e4df; --radius: .7rem;
+  --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 * { border-color: var(--border); scrollbar-color: #9aaba3 transparent; }
 html, body { min-height: 100%; }
-body { margin: 0; min-width: 320px; background: var(--background); font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; }
+body { margin: 0; min-width: 320px; background: var(--background); font-family: var(--font-ui); }
 button:not(:disabled), a[href], input { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }

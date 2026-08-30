@@ -1,84 +1,44 @@
-# Storage and workspace layout
+# Storage and component layout
 
-## Two classes of state
+## Platform locations
 
-### Durable, reviewable state
+Stacks uses lowercase platform-native application directories:
 
-Commit this when useful:
+| Platform | Config | State |
+| --- | --- | --- |
+| Linux | `$XDG_CONFIG_HOME/stacks` or `~/.config/stacks` | `$XDG_STATE_HOME/stacks` or `~/.local/state/stacks` |
+| macOS | `~/Library/Application Support/stacks` | `~/Library/Application Support/stacks/state` |
+| Windows | `%APPDATA%\stacks` | `%LOCALAPPDATA%\stacks` |
 
-- `stack.json`
-- `stack.lock.json`
-- stack-owned docs and standards
-- architecture decisions
-- ingestion records and adoption proposals
-- exported/sanitized activity summaries
+`STACKS_CONFIG_HOME` and `STACKS_STATE_HOME` provide explicit overrides for tests or controlled deployments.
 
-### Local operational state
+## Data classes
 
-Ignore this by default:
+The config directory contains a catalog, readable definitions, and machine-local component bindings. Definitions contain identity, graph relationships, and context declarations. Bindings map component IDs to absolute directories and are separate because machines arrange repositories differently.
 
-- cloned external component repositories under `.stack-workspace/`
-- `.stacks/events.jsonl`
-- session pointers and temporary files
-- indexes, caches, and future SQLite databases
-- credentials and provider-specific telemetry payloads
+The state directory contains append-only events, observed lock snapshots, caches, and future indexes. Credentials do not belong in either committed definitions or rendered UI data.
 
-This distinction preserves portability without turning normal agent activity into constant noisy commits.
+## No required Stack directory
 
-## Default layout
+A Stack is a registered graph, not a parent directory. A developer may choose this layout:
 
 ```text
-my-stack/
-  stack.json
-  stack.lock.json
-  AGENTS.md
-  docs/
-  proposals/
-  .stack-workspace/
-    standards/.git/
-    ui-primitives/.git/
-    ui-patterns/.git/
-    product-a/.git/
-  .stacks/
-    events.jsonl
-    sessions/
-    index.sqlite            # optional future derived index
+projects/
+  product/
+  shared-ui/
+  engineering-standards/
 ```
 
-A path-backed component may live inside the stack repository instead, which is useful for examples or a stack that is itself a monorepo.
+or put those repositories anywhere else. Each registration supplies its actual path. Git components also require a destination path; Stacks never invents a hidden checkout location. The same directory may participate in multiple Stacks, and Stacks records no ownership marker inside it.
 
-## Why not Git submodules by default
+Knowledge, rules, and standards are normal components—often `kind: knowledge`—and may be independent Git repositories or existing local directories. Their capabilities and exported resources determine how agents see them.
 
-Submodules are useful when a parent repository intentionally pins exact child commits as part of its source tree. Stacks also needs active, independently changing repositories, branch tracking, uncommitted work, and local overlays. Ordinary clones under an ignored workspace make that relationship less surprising.
+## Git and lock semantics
 
-Stacks can still snapshot observed commits in `stack.lock.json`. A future layout adapter may support submodules for stacks that genuinely want submodule semantics.
+`stacks component add ... --git <url> --path <dir>` clones only when the explicit destination is absent. Existing repositories are inspected. `sync --update` may fetch but does not merge, rebase, reset, clean, or move work.
 
-## Sync semantics
+Lock files are observations of remote, branch, commit, and dirty state. They are not checkout enforcement.
 
-`stacks sync` is intentionally conservative:
+## Legacy directory manifests
 
-- create the workspace directory;
-- clone missing Git components;
-- inspect existing components;
-- with `--update`, fetch remotes but do not merge, rebase, reset, or clean;
-- report remote mismatches and dirty state;
-- never destroy local work.
-
-A future explicit `stacks update` command may offer opt-in fast-forward behavior with a precise policy.
-
-## Lock snapshots
-
-`stack.lock.json` records observed source metadata such as remote URL, branch, commit, and dirty state. It is a reproducibility and review artifact, not a command to force every active repository to that state.
-
-Reference/immutable components may later support enforceable pins. Active-development components generally need descriptive snapshots rather than coercive pins.
-
-## SQLite policy
-
-SQLite is appropriate for:
-
-- indexing a large event stream;
-- cached full-text search;
-- precomputed usage aggregates;
-- local concurrency and query performance.
-
-It is not appropriate as the only home for manifests, standards, decisions, or adoption provenance. Any essential SQLite-held state needs a documented export format.
+Relative path sources, `workspace.directory`, `.stack-workspace`, `.stacks`, and root-level lock files remain supported for checked-in examples and older Stack manifests. They are compatibility behavior, not the default architecture for newly registered Stacks.

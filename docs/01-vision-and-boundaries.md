@@ -12,7 +12,7 @@ Stacks should make an agent entering a local development environment immediately
 6. What did prior agents do, decide, and spend?
 7. What external references have been considered, adopted, rejected, or deferred?
 
-The system should remain inspectable without a server. A person should be able to clone the stack metadata repository, inspect the manifest and docs, run one sync command, and obtain a useful workspace.
+The system should remain inspectable without a server. A person should be able to inspect readable definitions, keep component repositories in ordinary locations, run explicit CLI operations, and understand the composed system.
 
 People also need a coherent local control plane. The local web UI presents component relationships, status, selected context, activity, usage, and the Stack's canonical documentation. It is an adapter over the same application behavior as CLI and MCP, not a second source of truth.
 

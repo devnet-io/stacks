@@ -11,6 +11,15 @@
   "bin": {
     "stacks": "dist/cli.js"
   },
+  "files": [
+    "dist/",
+    "apps/web/dist/",
+    "apps/web/package.json",
+    "docs/cli-reference.md",
+    "docs/mcp-reference.md",
+    "docs/http-reference.md",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22.6.0"
   },
@@ -20,10 +29,14 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run build:core && npm run build:web",
     "build:core": "tsc -p tsconfig.build.json",
+    "install:local": "npm run build && node scripts/install-local.mjs",
+    "dev:cli": "tsc -p tsconfig.build.json --watch",
     "build:web": "npm run build -w @stacks-dev/web",
     "dev:web": "node --experimental-strip-types src/cli.ts ui",
     "dev:web:client": "npm run dev -w @stacks-dev/web",
-    "check": "npm run test && npm run typecheck && npm run build",
+    "check": "npm run test && npm run typecheck && npm run build && npm run verify:package",
+    "verify:package": "node scripts/verify-package.mjs",
+    "check:docker": "docker build --file Dockerfile.quality --target quality --tag stacks-quality:local .",
     "demo:self:validate": "node --experimental-strip-types src/cli.ts validate --root .",
     "demo:self:context": "node --experimental-strip-types src/cli.ts context stacks-core --task \"Complete Milestone 1\" --root .",
     "demo:self": "npm run demo:self:validate && npm run demo:self:context",

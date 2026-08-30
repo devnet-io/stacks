@@ -19,12 +19,6 @@
         "description": "Non-negotiable product and engineering rules for agents working on Stacks.",
         "strength": "required",
         "priority": 1300
-      },
-      {
-        "path": "CODEX_START_HERE.md",
-        "description": "Current implementation handoff and Milestone 1 acceptance criteria.",
-        "strength": "required",
-        "priority": 1250
       }
     ]
   },

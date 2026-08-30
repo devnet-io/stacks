@@ -11,16 +11,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { fetchOverview } from '@/lib/stacks-api';
 
-export function StackOverview({ onLoaded }: { onLoaded(data: StackOverviewData): void }) {
+export function StackOverview({ stack, onLoaded }: { stack?: string; onLoaded(data: StackOverviewData): void }) {
   const [data, setData] = useState<StackOverviewData>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true); setError(undefined);
-    try { const overview = await fetchOverview(signal); setData(overview); onLoaded(overview); }
+    try { const overview = await fetchOverview(stack, signal); setData(overview); onLoaded(overview); }
     catch (caught) { if (caught instanceof DOMException && caught.name === 'AbortError') return; setError(caught instanceof Error ? caught.message : String(caught)); }
     finally { if (!signal?.aborted) setLoading(false); }
-  }, [onLoaded]);
+  }, [onLoaded, stack]);
   useEffect(() => { const controller = new AbortController(); void load(controller.signal); return () => controller.abort(); }, [load]);
 
   if (loading && !data) return <OverviewSkeleton />;
@@ -29,7 +29,7 @@ export function StackOverview({ onLoaded }: { onLoaded(data: StackOverviewData):
   const attention = data.summary.dirty + data.summary.missing + data.summary.issues;
   return <div className="space-y-7">
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Stack health summary">
-      <SummaryCard label="Components" value={String(data.summary.components)} detail="Declared in the active manifest" />
+      <SummaryCard label="Components" value={String(data.summary.components)} detail="Registered in the active Stack" />
       <SummaryCard label="Ready" value={String(data.summary.ready)} detail="Present with no detected issues" tone="ready" />
       <SummaryCard label="Needs attention" value={String(attention)} detail={`${data.summary.dirty} dirty · ${data.summary.missing} missing · ${data.summary.issues} issues`} tone={attention ? 'attention' : 'ready'} />
       <SummaryCard label="Stack version" value={data.stack.version ?? 'Unversioned'} detail={`Contract ${data.schemaVersion}`} />
@@ -37,9 +37,9 @@ export function StackOverview({ onLoaded }: { onLoaded(data: StackOverviewData):
     {error && <Alert variant="destructive"><AlertCircle /><AlertTitle>Refresh failed</AlertTitle><AlertDescription>{error} Showing the most recent successful result.</AlertDescription></Alert>}
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <Card><CardHeader className="border-b"><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle>Components</CardTitle><CardDescription className="mt-1">Live filesystem and Git status. Refreshing never changes a component repository.</CardDescription></div><Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw className={loading ? 'animate-spin' : ''} />Refresh</Button></div></CardHeader><CardContent className="px-0">
-        {data.components.length === 0 ? <div className="px-5 py-12 text-center"><CircleDotDashed className="mx-auto size-7 text-muted-foreground" /><p className="mt-3 font-medium">No components declared</p><p className="mt-1 text-sm text-muted-foreground">Add a component to stack.json, then refresh this overview.</p></div> : <Table><TableHeader><TableRow><TableHead className="pl-5">Component</TableHead><TableHead>Health</TableHead><TableHead>Source</TableHead><TableHead>Revision</TableHead><TableHead className="pr-5">Access</TableHead></TableRow></TableHeader><TableBody>{data.components.map((component) => <TableRow key={component.id}><TableCell className="pl-5"><div className="font-medium">{component.name}</div><div className="mt-0.5 font-mono text-xs text-muted-foreground">{component.id}</div>{component.issues.map((issue) => <div key={issue} className="mt-1 max-w-xl whitespace-normal text-xs text-destructive">{issue}</div>)}</TableCell><TableCell><HealthBadge health={component.health} /></TableCell><TableCell><div className="flex items-center gap-1.5"><FolderGit2 className="size-3.5 text-muted-foreground" />{component.sourceType}</div></TableCell><TableCell className="font-mono text-xs text-muted-foreground">{component.git?.commit?.slice(0, 12) ?? '—'}{component.git?.branch && <div className="mt-1 font-sans">{component.git.branch}</div>}</TableCell><TableCell className="pr-5">{component.access}</TableCell></TableRow>)}</TableBody></Table>}
+        {data.components.length === 0 ? <div className="px-5 py-12 text-center"><CircleDotDashed className="mx-auto size-7 text-muted-foreground" /><p className="mt-3 font-medium">No components registered</p><p className="mt-1 text-sm text-muted-foreground">Use <code>stacks component add namespace/name component --path directory</code>, then refresh.</p></div> : <Table><TableHeader><TableRow><TableHead className="pl-5">Component</TableHead><TableHead>Health</TableHead><TableHead>Source</TableHead><TableHead>Revision</TableHead><TableHead className="pr-5">Access</TableHead></TableRow></TableHeader><TableBody>{data.components.map((component) => <TableRow key={component.id}><TableCell className="pl-5"><div className="font-medium">{component.name}</div><div className="mt-0.5 font-mono text-xs text-muted-foreground">{component.id}</div>{component.issues.map((issue) => <div key={issue} className="mt-1 max-w-xl whitespace-normal text-xs text-destructive">{issue}</div>)}</TableCell><TableCell><HealthBadge health={component.health} /></TableCell><TableCell><div className="flex items-center gap-1.5"><FolderGit2 className="size-3.5 text-muted-foreground" />{component.sourceType}</div></TableCell><TableCell className="font-mono text-xs text-muted-foreground">{component.git?.commit?.slice(0, 12) ?? '—'}{component.git?.branch && <div className="mt-1 font-sans">{component.git.branch}</div>}</TableCell><TableCell className="pr-5">{component.access}</TableCell></TableRow>)}</TableBody></Table>}
       </CardContent></Card>
-      <Card className="self-start"><CardHeader><CardTitle>Workspace</CardTitle><CardDescription>The local roots used by this control plane.</CardDescription></CardHeader><CardContent className="space-y-4"><PathDetail label="Stack root" value={data.workspace.root} /><PathDetail label="Manifest" value={data.workspace.manifestPath} /><PathDetail label="Components" value={data.workspace.componentDirectory} /><PathDetail label="Local state" value={data.workspace.stateDirectory} /></CardContent></Card>
+      <Card className="self-start"><CardHeader><CardTitle>{data.workspace.mode === 'registered' ? 'Storage' : 'Legacy workspace'}</CardTitle><CardDescription>{data.workspace.mode === 'registered' ? 'Readable definition, explicit component paths, and machine-local state.' : 'Directory-based compatibility mode.'}</CardDescription></CardHeader><CardContent className="space-y-4"><PathDetail label="Definition" value={data.workspace.definitionPath} />{data.workspace.legacyRoot && <PathDetail label="Stack root" value={data.workspace.legacyRoot} />}{data.workspace.legacyComponentDirectory && <PathDetail label="Default components" value={data.workspace.legacyComponentDirectory} />}{data.workspace.mode === 'registered' && <PathDetail label="Component locations" value="Explicit per component; repositories are not moved or claimed." />}<PathDetail label="Local state" value={data.workspace.stateDirectory} /></CardContent></Card>
     </section>
   </div>;
 }

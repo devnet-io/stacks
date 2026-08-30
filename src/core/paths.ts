@@ -19,10 +19,14 @@ export function workspaceDirectory(stack: LoadedStack): string {
 }
 
 export function stateDirectory(stack: LoadedStack): string {
+  if (stack.stateRoot) return path.resolve(stack.stateRoot);
   return resolveWithin(stack.root, stack.manifest.workspace?.stateDirectory ?? ".stacks", "workspace.stateDirectory");
 }
 
 export function componentRoot(stack: LoadedStack, component: StackComponent): string {
+  const binding = stack.bindings?.[component.id];
+  if (binding) return path.resolve(binding);
+  if (component.source.type === "local") throw new Error(`Component ${component.id} has no local path binding.`);
   if (component.source.type === "path") {
     return resolveWithin(stack.root, component.source.path, `component ${component.id} source.path`);
   }

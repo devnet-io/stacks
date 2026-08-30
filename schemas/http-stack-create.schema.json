@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-stack-create.schema.json",
+  "title": "Create Stack response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stack"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "namespace", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "namespace": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    }
+  }
+}

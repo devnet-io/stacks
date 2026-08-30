@@ -12,7 +12,7 @@ This document re-evaluates the complete originating discussion and converts each
 
 **Input:** A stack has state, may be associated with a GitHub repository, may use SQLite at most, and must be easy to store in a filesystem and check into a repository.
 
-**Implication:** Human-readable files in a stack metadata repository are canonical. Local event streams and indexes may use JSONL and SQLite, but every essential declaration must be exportable and reviewable. The initial format is `stack.json`; YAML is an optional parser surface, not a separate semantic model.
+**Implication:** Human-readable Stack definitions are canonical. The local catalog stores them in platform-native config storage; users may version or export them as ordinary files. Machine path bindings and local event streams are separate. SQLite may index data but cannot be the only source of truth.
 
 ## 3. Local workspace manager now; Vaultar remains separate
 
@@ -24,7 +24,7 @@ This document re-evaluates the complete originating discussion and converts each
 
 **Input:** A stack can contain a UI library, a standards/reference repository, and one or many products, each with its own GitHub repository and local checkout.
 
-**Implication:** Components remain independent Git repositories. The stack metadata repository records where they belong and materializes them under an ignored workspace directory. Git submodules are not the default because they mix composition with commit pinning and make active multi-repository development awkward.
+**Implication:** Components remain independent Git repositories at explicit user-chosen paths. A Stack does not require a parent workspace, may share a directory with another Stack, and writes no ownership marker into components. Git submodules are not the default.
 
 ## 5. Standards and preferences are active context
 
@@ -88,4 +88,4 @@ This document re-evaluates the complete originating discussion and converts each
 
 ## Resulting definition
 
-> A Stack is a portable, versioned graph of independently owned components, capabilities, guidance, and provenance that materializes a local workspace, supplies bounded task-relevant context to agents, and records their activity—while leaving actual planning and implementation to those agents or to a separate orchestrator.
+> A Stack is a portable, versioned graph of independently owned components, capabilities, guidance, and provenance with explicit machine-local bindings. It supplies bounded task-relevant context and records agent activity while leaving planning and implementation to agents or a separate orchestrator.

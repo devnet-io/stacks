@@ -8,7 +8,7 @@ An agent working on `product` should receive the relevant standards, usage guide
 
 Given a target component:
 
-1. Add stack-wide guidance.
+1. For legacy directory manifests, add stack-wide guidance. Registered Stacks model shared guidance as a knowledge component.
 2. Add the target component’s own guidance.
 3. Follow explicit `dependsOn` edges and add the depended-on component guidance.
 4. For each capability requirement:
@@ -45,10 +45,7 @@ A repository dependency says that code or artifacts are linked. A capability req
 
 ## Context path safety
 
-A context path must resolve within either:
-
-- the stack repository, for stack-wide guidance; or
-- the owning component root, for component guidance and exports.
+A registered context path must resolve within its explicitly bound owning component root. Legacy directory manifests may additionally resolve stack-wide guidance inside their manifest root.
 
 Readers must resolve real paths and reject symlink/path traversal escapes before returning file contents through MCP. Globs are plans, not permission to read outside the root.
 

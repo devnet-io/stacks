@@ -5,13 +5,16 @@ This document records the current checkout's validation surface and remaining Mi
 ## Exercised locally
 
 - Installed the root npm workspace and generated the unified lockfile.
-- Ran 16 Node tests covering versioned CLI JSON contracts, the local Overview HTTP API and launcher, context, documentation truth, events, the foundation example, Git safety, initialization, and validation.
+- The Node suite covers global catalog paths and bindings, versioned CLI JSON contracts and linked-entrypoint resolution, exhaustive CLI/MCP documentation drift, MCP initialization instructions and reference resources, local Overview, Graph, integration HTTP APIs, global stdio MCP transport, context, documentation truth, events, examples, Git safety, initialization, and validation.
 - Ran strict TypeScript checking successfully.
 - Built the core package successfully.
-- Built the local web workspace successfully with the canonical Markdown documentation library.
-- Served the local web workspace and received HTTP 200 for the root route.
+- Built the static Vite web workspace successfully with the canonical Markdown documentation library.
+- Served the packaged web workspace and same-origin API from one Node process, receiving HTTP 200 for the root route, marker, and health endpoint.
 - Exercised the self-hosting and foundation validate/context/status demos after the identity migration.
 - Ran the complete `npm run check` gate successfully after all code and documentation changes.
+- Packed Stacks, installed it into an isolated npm prefix, confirmed the package was a copy rather than a symlink, ran its copied CLI, and served and fetched the packaged production web UI. This verification is part of `npm run check`.
+- Replaced the machine's former development link with `npm run install:local`, confirmed the global package is not a symlink, and launched the UI from that installed copy.
+- Built the Docker quality image and ran the same complete gate in clean Node 22 Linux userspace.
 
 ## CI portability
 
@@ -22,9 +25,8 @@ This document records the current checkout's validation surface and remaining Mi
 - Runtime validation and JSON Schema remain separate representations and can drift.
 - JSONL appends are not protected by a cross-process locking strategy.
 - Canonical context-plan DTOs still contain local absolute paths.
-- MCP lacks a real client/server transport test.
-- Git coverage does not yet prove the initialized workspace clone remains ignored and cannot become a submodule.
-- The Overview section is complete against the checked-in web workspace; packaging that web artifact for registry installation remains incomplete.
+- Registered Git components require explicit destinations; broader remote mismatch and failure-rollback coverage remains useful.
+- The beginner documentation, Overview, Graph, and Tools & agents sections are complete against the checked-in web workspace and copied local installation. Publishing the package to a registry remains future release work.
 
 ## Handoff rule
 
