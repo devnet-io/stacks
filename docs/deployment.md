@@ -4,9 +4,13 @@ This document describes what this checkout supports now. Hosted execution remain
 
 ## Local development installation
 
-Run `npm run install:local` from the Stacks source repository. It builds the CLI and static web application, creates an npm package archive, and globally installs that archive. npm copies the package into machine-level storage; no installed path points back to the clone. The command is idempotent and replaces the previous snapshot. Verify with `stacks help`, then use `stacks stack list` and `stacks status --stack namespace/name`.
+Run `npm run install:local` from the Stacks source repository. It builds the CLI and static web application, gracefully stops every registered local Stacks UI process, creates an npm package archive, and globally installs that archive. npm copies the package into machine-level storage; no installed path points back to the clone. The command is idempotent and replaces the previous snapshot. It does not restart the UI automatically; run `stacks ui` after installation when you want it running again. Verify with `stacks --version`, then use `stacks stack list` and `stacks status --stack namespace/name`.
 
 The registry package is not published, so installation still begins from a clone. After installation the clone is unnecessary: the archive includes `dist/cli.js` plus the static Vite artifact. `stacks ui` serves that artifact and the read-only API from the same Node process; Vinext, Wrangler, and a separate frontend server are not part of the installed runtime.
+
+Each UI process writes a small runtime record under the lowercase platform state directory. The record contains its PID, loopback origin, product version, and a random shutdown token. The installer uses that token to request graceful shutdown before replacement; it never kills an arbitrary PID based only on a process listing. A newly installed `stacks ui` also refuses to reuse a healthy UI from a different product version.
+
+The root `package.json` version is the product version and is incremented for each pushed product delivery. `stacks --version`, the UI application menu, `GET /api/v0.1/health`, and generated integration metadata use that value.
 
 ## Environment-correct instructions
 

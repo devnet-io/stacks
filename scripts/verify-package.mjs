@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, lstat, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { access, lstat, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -73,10 +73,19 @@ try {
 
   const cli = await run(process.execPath, [path.join(packageRoot, "dist", "cli.js"), "help"]);
   assert.match(cli.stdout, /^Stacks - portable/u);
+  const version = await run(process.execPath, [path.join(packageRoot, "dist", "cli.js"), "--version"]);
+  assert.equal(version.stdout.trim(), JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8")).version);
 
   const port = await availablePort();
   web = spawn(process.execPath, [path.join(packageRoot, "dist", "cli.js"), "ui", "--port", String(port), "--no-open"], {
-    cwd: packageRoot, windowsHide: true, stdio: "ignore",
+    cwd: packageRoot,
+    windowsHide: true,
+    stdio: "ignore",
+    env: {
+      ...process.env,
+      STACKS_CONFIG_HOME: path.join(temporary, "runtime-config"),
+      STACKS_STATE_HOME: path.join(temporary, "runtime-state"),
+    },
   });
   await waitForMarker(port);
   const health = await (await fetch(`http://127.0.0.1:${port}/api/v0.1/health`)).json();

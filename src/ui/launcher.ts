@@ -4,6 +4,8 @@ import process from "node:process";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { startLocalApi, type LocalApiHandle } from "../http/server.ts";
+import { STACKS_VERSION } from "../version.ts";
+import { createUiRuntimeToken, registerUiRuntime } from "./runtime.ts";
 
 export const DEFAULT_UI_PORT = 3210;
 
@@ -38,9 +40,9 @@ export async function existingStacksWeb(port: number): Promise<boolean> {
     ]);
     if (!markerResponse.ok || !healthResponse.ok) return false;
     const marker = await markerResponse.json() as { schemaVersion?: string; product?: string; role?: string };
-    const health = await healthResponse.json() as { schemaVersion?: string; status?: string };
+    const health = await healthResponse.json() as { schemaVersion?: string; status?: string; version?: string };
     return marker.schemaVersion === "0.1" && marker.product === "stacks" && marker.role === "local-web"
-      && health.schemaVersion === "0.1" && health.status === "ok";
+      && health.schemaVersion === "0.1" && health.status === "ok" && health.version === STACKS_VERSION;
   } catch { return false; }
 }
 
@@ -66,7 +68,11 @@ function addressInUse(error: unknown): boolean {
   return error instanceof Error && (error as NodeJS.ErrnoException).code === "EADDRINUSE";
 }
 
-async function startUiServer(options: UiLaunchOptions, staticRoot: string): Promise<{ api?: LocalApiHandle; port: number; reused: boolean }> {
+async function startUiServer(
+  options: UiLaunchOptions,
+  staticRoot: string,
+  runtimeControl: { token: string; onShutdownRequested(): void },
+): Promise<{ api?: LocalApiHandle; port: number; reused: boolean }> {
   const requested = options.webPort ?? DEFAULT_UI_PORT;
   for (let port = requested; port <= Math.min(65535, requested + 100); port += 1) {
     if (await existingStacksWeb(port)) return { port, reused: true };
@@ -79,6 +85,7 @@ async function startUiServer(options: UiLaunchOptions, staticRoot: string): Prom
           url: process.env.STACKS_HOSTED_MCP_URL,
           bearerTokenEnvVar: process.env.STACKS_HOSTED_MCP_TOKEN_ENV_VAR,
         },
+        runtimeControl,
       });
       return { api, port, reused: false };
     } catch (error) {
@@ -93,22 +100,27 @@ export async function launchLocalUi(options: UiLaunchOptions): Promise<void> {
   const packageRoot = await findPackageRoot();
   const staticRoot = path.join(packageRoot, "apps", "web", "dist");
   if (!await exists(path.join(staticRoot, "index.html"))) throw new Error("The installed Stacks package is missing its web application. Reinstall Stacks.");
-  const server = await startUiServer(options, staticRoot);
+  const runtimeToken = createUiRuntimeToken();
+  let requestShutdown: () => void = () => {};
+  const shutdownRequested = new Promise<void>((resolve) => { requestShutdown = resolve; });
+  const server = await startUiServer(options, staticRoot, { token: runtimeToken, onShutdownRequested: requestShutdown });
   const uiUrl = `http://localhost:${server.port}/`;
   if (server.reused) process.stdout.write(`Using the running Stacks UI on port ${server.port}.\n`);
   else if (server.port !== (options.webPort ?? DEFAULT_UI_PORT)) process.stdout.write(`Port ${options.webPort ?? DEFAULT_UI_PORT} is in use; using ${server.port}.\n`);
   process.stdout.write(`Stacks UI: ${uiUrl}\n`);
   if (options.openBrowser !== false) openUiInBrowser(uiUrl);
   if (!server.api) return;
-
-  await new Promise<void>((resolve, reject) => {
-    let stopping = false;
-    const stop = () => {
-      if (stopping) return;
-      stopping = true;
-      void server.api!.close().then(resolve, reject);
-    };
-    process.once("SIGINT", stop);
-    process.once("SIGTERM", stop);
-  });
+  const unregister = await registerUiRuntime(server.api.origin, runtimeToken);
+  let resolveSignal: () => void = () => {};
+  const signalReceived = new Promise<void>((resolve) => { resolveSignal = resolve; });
+  process.once("SIGINT", resolveSignal);
+  process.once("SIGTERM", resolveSignal);
+  try {
+    await Promise.race([shutdownRequested, signalReceived]);
+    await server.api.close();
+  } finally {
+    process.off("SIGINT", resolveSignal);
+    process.off("SIGTERM", resolveSignal);
+    await unregister();
+  }
 }

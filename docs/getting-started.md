@@ -10,9 +10,10 @@ cd stacks
 npm install
 npm run install:local
 stacks --help
+stacks --version
 ```
 
-The installer builds and packs a self-contained snapshot into npm's machine-level package storage. It does not link to the clone, so you may move or delete the clone afterward. Run the command again only when you want to install a newer snapshot of Stacks.
+The installer builds and packs a self-contained snapshot into npm's machine-level package storage. It does not link to the clone, so you may move or delete the clone afterward. Re-running it gracefully stops any registered Stacks UI process before replacement; run `stacks ui` again afterward if you want the UI running. `stacks --version` and the small application menu in the UI show the installed product version.
 
 ## 2. Create a Stack
 

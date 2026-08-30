@@ -34,7 +34,7 @@ test("documents the implemented Graph and supplementary Docker quality gate", ()
 test("documents every CLI operation with focused reference sections", () => {
   const reference = doc("cli-reference.md");
   const operations = [
-    "help", "stack create", "stack list", "stack register", "stack export",
+    "help", "--version", "stack create", "stack list", "stack register", "stack export",
     "component add", "component bind", "status", "context", "sync", "lock", "ui", "mcp",
     "checkin start", "checkin turn", "checkin complete", "usage record", "usage report",
     "doctor", "validate", "init",
@@ -58,7 +58,7 @@ test("documents every implemented local HTTP route and mutation boundary", () =>
   const reference = doc("http-reference.md");
   for (const route of [
     "GET /api/v0.1/health", "GET /api/v0.1/stacks", "GET /api/v0.1/overview", "GET /api/v0.1/activity",
-    "GET /api/v0.1/graph", "GET /api/v0.1/integrations", "POST /api/v0.1/stacks",
+    "GET /api/v0.1/graph", "GET /api/v0.1/integrations", "POST /api/v0.1/runtime/shutdown", "POST /api/v0.1/stacks",
     "POST /api/v0.1/components", "PUT /api/v0.1/component-binding",
   ]) assert.match(reference, new RegExp("### `" + route.replaceAll("/", "\\/") + "`", "u"));
   assert.match(reference, /must not be exposed beyond loopback/u);

@@ -5,7 +5,7 @@ This document records the current checkout's validation surface and remaining Mi
 ## Exercised locally
 
 - Installed the root npm workspace and generated the unified lockfile.
-- The Node suite covers global catalog paths and bindings, versioned CLI JSON contracts and linked-entrypoint resolution, exhaustive CLI/MCP documentation drift, MCP initialization instructions and reference resources, local Overview, Graph, integration HTTP APIs, global stdio MCP transport, context, documentation truth, events, examples, Git safety, initialization, and validation.
+- The Node suite covers global catalog paths and bindings, CLI product/version contracts and linked-entrypoint resolution, exhaustive CLI/MCP documentation drift, MCP initialization instructions and reference resources, local Overview, Graph, Activity, integration/runtime HTTP APIs, global stdio MCP transport, context, documentation truth, events, examples, Git safety, initialization, and validation.
 - Ran strict TypeScript checking successfully.
 - Built the core package successfully.
 - Built the static Vite web workspace successfully with the canonical Markdown documentation library.
@@ -23,7 +23,6 @@ This document records the current checkout's validation surface and remaining Mi
 ## Remaining Milestone 1 gaps
 
 - Runtime validation and JSON Schema remain separate representations and can drift.
-- JSONL appends are not protected by a cross-process locking strategy.
 - Canonical context-plan DTOs still contain local absolute paths.
 - Registered Git components require explicit destinations; broader remote mismatch and failure-rollback coverage remains useful.
 - The beginner documentation, Overview, Graph, and Tools & agents sections are complete against the checked-in web workspace and copied local installation. Publishing the package to a registry remains future release work.

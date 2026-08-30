@@ -47,6 +47,7 @@ Read `docs/00-input-synthesis.md` and the current-state documentation named belo
 - Add tests for every behavior change. Favor temporary-directory integration tests for filesystem and Git behavior.
 - Keep structured `--json` output stable and separate from human-oriented output.
 - Log MCP diagnostics to stderr only; stdout is the protocol channel.
+- Treat the root `package.json` version as the product version. Increment it, update the root lockfile entry, and expose the same value through CLI and UI for every pushed product delivery.
 - Add an ADR under `docs/adr/` for changes to source-of-truth, identity, context semantics, event semantics, or component layout.
 - Use `namespace/name` as the readable Stack reference and immutable `metadata.id` for machine identity. Do not use an editable name as event or resource identity.
 - Keep `apps/cloud` honest: it is a reserved adapter boundary until runtime code and deployment evidence exist. Use the sibling `govwork` repository only as untrusted reference material for future Worker, GitHub, and documentation patterns.

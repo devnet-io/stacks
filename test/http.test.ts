@@ -13,6 +13,7 @@ import { loadStack } from "../src/core/manifest.ts";
 import { startLocalApi } from "../src/http/server.ts";
 import { addRegisteredComponent, createRegisteredStack } from "../src/core/catalog.ts";
 import { browserOpenCommand, existingStacksWeb, findPackageRoot } from "../src/ui/launcher.ts";
+import { STACKS_VERSION } from "../src/version.ts";
 
 test("global local API lists and explicitly selects registered Stacks", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "stacks-global-http-"));
@@ -155,7 +156,7 @@ test("UI launcher only reuses a compatible Stacks web client", async () => {
     response.end(JSON.stringify(request.url === "/stacks-web.json"
       ? { schemaVersion: "0.1", product: "stacks", role: "local-web" }
       : request.url === "/api/v0.1/health"
-        ? { schemaVersion: "0.1", status: "ok" }
+        ? { schemaVersion: "0.1", status: "ok", version: STACKS_VERSION }
         : { product: "not-stacks" }));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -163,6 +164,23 @@ test("UI launcher only reuses a compatible Stacks web client", async () => {
   assert.ok(address && typeof address !== "string");
   try {
     assert.equal(await existingStacksWeb(address.port), true);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("UI launcher does not reuse a healthy Stacks UI from another version", async () => {
+  const server = createServer((request, response) => {
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify(request.url === "/stacks-web.json"
+      ? { schemaVersion: "0.1", product: "stacks", role: "local-web" }
+      : { schemaVersion: "0.1", status: "ok", version: "0.0.0-stale" }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  try {
+    assert.equal(await existingStacksWeb(address.port), false);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

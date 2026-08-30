@@ -1,6 +1,6 @@
 {
   "name": "@stacks-dev/stacks",
-  "version": "0.0.0-alpha.1",
+  "version": "0.0.0-alpha.2",
   "private": true,
   "description": "A portable composition, knowledge, context, and activity layer for human and agent-assisted development.",
   "type": "module",

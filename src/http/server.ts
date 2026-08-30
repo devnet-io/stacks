@@ -4,6 +4,7 @@ import path from "node:path";
 import { createLocalStacksApplication, type StacksApplication, type StackReference } from "../application/stacks-application.ts";
 import type { HostedMcpConfiguration } from "../application/integrations.ts";
 import type { PlatformDirectories } from "../core/catalog.ts";
+import { STACKS_VERSION } from "../version.ts";
 
 export interface LocalApiOptions {
   root?: string;
@@ -13,6 +14,7 @@ export interface LocalApiOptions {
   catalogDirectories?: PlatformDirectories;
   staticRoot?: string;
   application?: StacksApplication;
+  runtimeControl?: { token: string; onShutdownRequested(): void };
 }
 
 export interface LocalApiHandle {
@@ -154,6 +156,14 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         if (request.headers.origin && !localWebOrigin(request.headers.origin)) throw new HttpError(403, "Mutation origin is not allowed.");
         if (!request.headers["content-type"]?.toLowerCase().startsWith("application/json")) throw new HttpError(415, "Mutations require application/json.");
       }
+      if (request.method === "POST" && url.pathname === "/api/v0.1/runtime/shutdown") {
+        if (!options.runtimeControl) throw new HttpError(404, "Runtime control is unavailable.");
+        if (request.headers["x-stacks-runtime-token"] !== options.runtimeControl.token) throw new HttpError(403, "Runtime control token is invalid.");
+        await readJsonBody(request);
+        send(response, 202, { schemaVersion: "0.1", status: "stopping" });
+        setImmediate(options.runtimeControl.onShutdownRequested);
+        return;
+      }
       if (request.method === "POST" && url.pathname === "/api/v0.1/stacks") {
         if (options.root) throw new HttpError(409, "Stack management is unavailable in legacy --root mode.");
         const body = await readJsonBody(request);
@@ -219,7 +229,7 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         return;
       }
       if (url.pathname === "/api/v0.1/health") {
-        send(response, 200, { schemaVersion: "0.1", status: "ok" });
+        send(response, 200, { schemaVersion: "0.1", status: "ok", version: STACKS_VERSION });
         return;
       }
       if (!url.pathname.startsWith("/api/") && options.staticRoot && await sendStatic(response, options.staticRoot, url.pathname)) return;

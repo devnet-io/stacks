@@ -10,7 +10,7 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | Conservative Git operations | Temporary-repository integration test covers clone, fetch, dirty preservation, and lock observation. |
 | Agent events and usage | Lifecycle and aggregation test covers start, turn, usage, and completion. |
 | Foundation example | Example test verifies materialized paths and selected context. |
-| npm workspace and copied installation | Root workspaces include local web and reserved cloud applications. `install:local` packs and globally installs a copied CLI plus static web artifact; the quality gate verifies an isolated non-symlink installation and starts its unified UI/API process. |
+| npm workspace and copied installation | Root workspaces include local web and reserved cloud applications. `install:local` gracefully retires registered UI processes, then packs and globally installs a copied CLI plus static web artifact; the quality gate verifies an isolated non-symlink installation and starts its unified UI/API process. |
 | Stable Stack identity | Manifests require immutable ID, namespace, and name; events and plans use the immutable ID. |
 | Documentation truth model | Product, current architecture, user guide, RFC, and status sources are distinct. |
 | Local documentation UI | `apps/web` renders the canonical Markdown library. |
@@ -21,7 +21,7 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | Cross-platform CI | The same install and check gate passes on GitHub-hosted Windows, macOS, and Linux runners. |
 | Container quality gate | `Dockerfile.quality` runs the complete gate in a clean Node 22 Linux image through `npm run check:docker`. |
 | Global Stack catalog | Readable definitions, lowercase platform config/state locations, stable identity, explicit machine-local component bindings, and identity-preserving export/register/rebind are implemented and tested. |
-| Global UI selection | One Node process serves the static Vite UI and same-origin API, preferring port 3210 with automatic fallback. `/api/v0.1/stacks` discovery, query-scoped endpoints, empty state, and a persistent Stack selector replace per-directory UI processes. |
+| Global UI shell and selection | One Node process serves the static Vite UI and same-origin API, preferring port 3210 with automatic fallback. `/api/v0.1/stacks` discovery, query-scoped endpoints, empty state, a subdued selector above navigation, and a version/settings menu replace per-directory UI processes. Version-aware reuse and authenticated runtime registration prevent stale servers after installation. |
 | Global stdio MCP | One `stacks mcp` registration lists the machine catalog; every Stack-specific tool requires a selector and the transport test protects stdout. |
 | Human and agent interface references | The web documentation library includes exhaustive CLI and MCP references. MCP initialization instructions, `instructions_get`, and packaged `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli` resources expose the same operational truth to agents. |
 | Application use-case boundary | CLI, stdio MCP, and loopback HTTP orchestration use the `StacksApplication` interface with an in-process local implementation. Global `status` reads the catalog; other commands enter directory compatibility mode only through explicit `--root`. ADR 0007 records optional REST-client and Streamable HTTP MCP direction. |

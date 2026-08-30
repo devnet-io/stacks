@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { spawn } from "node:child_process";
+import { stopRunningUiProcesses } from "../dist/ui/runtime.js";
 
 function npmInvocation(args) {
   const npmCli = process.env.npm_execpath;
@@ -23,6 +24,11 @@ function run(args, options = {}) {
     child.once("exit", (code) => code === 0 ? resolve({ stdout, stderr }) : reject(new Error(stderr || stdout || `npm exited with ${code}.`)));
   });
 }
+
+const running = await stopRunningUiProcesses();
+if (running.stopped) process.stdout.write(`Stopped ${running.stopped} running Stacks UI process${running.stopped === 1 ? "" : "es"} before installation.\n`);
+if (running.stale) process.stdout.write(`Removed ${running.stale} stale Stacks UI runtime record${running.stale === 1 ? "" : "s"}.\n`);
+for (const warning of running.warnings) process.stderr.write(`Warning: ${warning}\n`);
 
 const temporary = await mkdtemp(path.join(os.tmpdir(), "stacks-install-"));
 try {

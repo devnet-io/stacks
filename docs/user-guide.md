@@ -24,6 +24,7 @@ The first command shows the normal workflow, `help commands` lists the complete 
 | `stacks context <target> --stack <stack> [--task <text>]` | Resolve bounded, provenance-rich context for a target component. |
 | `stacks sync --stack <stack> [--dry-run] [--update]` | Clone missing Git components or fetch existing remotes with `--update`. |
 | `stacks ui [--port <number>] [--no-open]` | Start the global UI and local API on one loopback address. |
+| `stacks --version` | Print the installed product version. |
 | `stacks mcp` | Run the global stdio MCP adapter for an agent client. |
 
 `component add --path` is mandatory. Without `--git`, the directory must already exist. With `--git`, a missing directory is cloned and an existing directory is inspected. `sync --update` fetches only; Stacks never merges, rebases, resets, cleans, moves, or discards dirty repositories.
@@ -49,9 +50,9 @@ stacks component bind my-team/my-stack app --path /path/on/this-machine/app
 stacks ui
 ```
 
-Stacks serves the static Vite application and `/api/v0.1/*` from the same Node process. The default address is `http://localhost:3210/`. If port 3210 is unavailable, Stacks tries successive ports and prints the selected address. Passing `--port` requests an exact port and reports a conflict instead of silently changing it.
+Stacks serves the static Vite application and `/api/v0.1/*` from the same Node process. The default address is `http://localhost:3210/`. If port 3210 is unavailable, Stacks tries successive ports and prints the selected address. Passing `--port` requests an exact port and reports a conflict instead of silently changing it. Re-running `npm run install:local` gracefully stops registered UI processes before replacing the installed snapshot; restart with `stacks ui` afterward.
 
-The UI is machine-level and includes a Stack selector. Overview shows component health, Graph shows provider and dependency relationships, Activity shows append-only work sessions and provenance-labeled usage, Manage creates Stacks and configures components and bindings, Tools & agents contains runtime connection instructions, and Documentation renders the canonical Markdown from this repository. Installation instructions live in Documentation rather than the operational tabs.
+The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity shows append-only work sessions and provenance-labeled usage, Manage creates Stacks and configures components and bindings, Tools & agents contains runtime connection instructions, and Documentation renders the canonical Markdown from this repository. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
 
 Read-only endpoints:
 

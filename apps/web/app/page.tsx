@@ -15,6 +15,7 @@ import { CliMcp } from '@/components/cli-mcp';
 import { StackGraph } from '@/components/stack-graph';
 import { StackManagement } from '@/components/stack-management';
 import { StackActivity } from '@/components/stack-activity';
+import { AppMenu } from '@/components/app-menu';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { documentation } from '@/lib/documentation';
@@ -113,7 +114,36 @@ export default function Home() {
             <p className="text-xs text-slate-400">Local control plane</p>
           </div>
         </div>
-        <nav className="mt-8 space-y-1" aria-label="Stack navigation">
+        <div className="mt-6 px-2">
+          <label
+            htmlFor="stack-selector"
+            className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-600"
+          >
+            Current Stack
+          </label>
+          {stacks.length ? (
+            <select
+              id="stack-selector"
+              value={selectedStack ?? ''}
+              onChange={(event) => selectStack(event.target.value)}
+              className="mt-1.5 w-full rounded-md border border-white/8 bg-white/[.025] px-2 py-1.5 text-xs text-slate-300 outline-none hover:border-white/15 focus:border-primary/60"
+            >
+              {stacks.map((stack) => (
+                <option
+                  key={stack.id}
+                  value={`${stack.namespace}/${stack.name}`}
+                >
+                  {stack.namespace}/{stack.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="mt-1.5 text-xs leading-5 text-slate-500">
+              No registered Stacks
+            </p>
+          )}
+        </div>
+        <nav className="mt-5 space-y-1" aria-label="Stack navigation">
           {navigation.map(({ name, icon: Icon, section: destination }) => (
             <button
               key={destination}
@@ -126,49 +156,14 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <div className="mt-auto rounded-xl border border-white/8 bg-white/4 p-3">
-          <label
-            htmlFor="stack-selector"
-            className="text-[11px] font-semibold uppercase tracking-[.14em] text-slate-500"
-          >
-            Current Stack
-          </label>
-          {stacks.length ? (
-            <select
-              id="stack-selector"
-              value={selectedStack ?? ''}
-              onChange={(event) => selectStack(event.target.value)}
-              className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-2 py-2 text-sm font-semibold text-white"
-            >
-              {stacks.map((stack) => (
-                <option
-                  key={stack.id}
-                  value={`${stack.namespace}/${stack.name}`}
-                >
-                  {stack.namespace}/{stack.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <>
-              <p className="mt-2 text-sm font-semibold text-white">
-                No registered Stacks
-              </p>
-              <p className="mt-1 text-xs leading-5 text-slate-400">
-                Create one with{' '}
-                <span className="font-mono">
-                  stacks stack create namespace/name
-                </span>
-                .
-              </p>
-            </>
-          )}
+        <div className="mt-auto border-t border-white/6 pt-3">
+          <AppMenu />
         </div>
       </aside>
       <main className="lg:pl-72">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/92 px-5 py-4 backdrop-blur-xl sm:px-8">
-          <div className="mx-auto max-w-[1500px]">
-            <h1 className="text-lg font-semibold tracking-tight">
+          <div className="mx-auto flex max-w-[1500px] items-start justify-between gap-3">
+            <div><h1 className="text-lg font-semibold tracking-tight">
               {section === 'overview'
                 ? 'Overview'
                 : section === 'graph'
@@ -185,7 +180,8 @@ export default function Home() {
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {overview.stack.namespace}/{overview.stack.name}
               </p>
-            )}
+            )}</div>
+            <div className="lg:hidden"><AppMenu compact /></div>
           </div>
         </header>
         <nav

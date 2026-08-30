@@ -46,7 +46,7 @@ Not every client exposes tokens, model identity, tool calls, or stable sessions.
 
 ## Human UI
 
-`stacks ui` presents the machine catalog with a Stack selector. Overview, Graph, Tools & agents, and canonical documentation use the same contracts available to agents. Tools & agents contains runtime connection settings; installation remains in canonical documentation.
+`stacks ui` presents the machine catalog with a Stack selector above its section navigation. Overview, Graph, Activity, Tools & agents, and canonical documentation use the same contracts available to agents. A bottom application menu shows the installed version; Tools & agents contains runtime connection settings, while installation remains in canonical documentation.
 
 ## Hosted boundary
 

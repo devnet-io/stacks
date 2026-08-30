@@ -24,6 +24,16 @@ stacks help component
 
 `help commands` lists every command group. `help <command>` explains one group. `--help` and `-h` are aliases for the short help.
 
+### `stacks --version`
+
+Prints the product version from the root npm package and exits.
+
+```bash
+stacks --version
+```
+
+The same version appears in the UI application menu and the local health response.
+
 ## Stack catalog
 
 ### `stacks stack create`

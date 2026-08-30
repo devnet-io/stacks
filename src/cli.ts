@@ -4,6 +4,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createLocalStacksApplication, type StackReference } from "./application/stacks-application.ts";
 import type { CostKind, EventActor, UsageData } from "./core/types.ts";
+import { STACKS_VERSION } from "./version.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -434,6 +435,10 @@ async function commandUi(parsed: ParsedArgs): Promise<void> {
 }
 
 export async function main(args = process.argv.slice(2)): Promise<void> {
+  if (args[0] === "--version" || args[0] === "-v") {
+    process.stdout.write(`${STACKS_VERSION}\n`);
+    return;
+  }
   const parsed = parseArguments(args);
   const command = parsed.positionals[0] ?? "help";
   switch (command) {

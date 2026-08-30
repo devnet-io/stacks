@@ -16,7 +16,11 @@ The current API is for the local UI and local automation. It has no remote authe
 
 ### `GET /api/v0.1/health`
 
-Returns `{ "schemaVersion": "0.1", "status": "ok" }`.
+Returns `{ "schemaVersion": "0.1", "status": "ok", "version": "<product-version>" }`.
+
+### `POST /api/v0.1/runtime/shutdown`
+
+Internal lifecycle endpoint used only by `npm run install:local`. It exists only on a UI process registered by the launcher, requires `Content-Type: application/json` and that process's random `X-Stacks-Runtime-Token`, and returns `202` before graceful shutdown. The token is stored in the machine-local platform state directory and is never exposed in the web UI or documentation output. Missing or invalid tokens return `403`; servers started without runtime control return `404`.
 
 ### `GET /api/v0.1/stacks`
 

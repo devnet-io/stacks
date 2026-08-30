@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { STACKS_VERSION } from "../src/version.ts";
 
 const cliPath = path.resolve("src/cli.ts");
 
@@ -165,4 +166,10 @@ test("CLI help keeps routine commands concise and explains advanced commands", (
   const status = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "help", "status"], { encoding: "utf8", windowsHide: true });
   assert.equal(status.status, 0, status.stderr);
   assert.match(status.stdout, /Loading a Stack also validates its definition/u);
+});
+
+test("CLI reports the root package version", () => {
+  const execution = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "--version"], { encoding: "utf8", windowsHide: true });
+  assert.equal(execution.status, 0, execution.stderr);
+  assert.equal(execution.stdout.trim(), STACKS_VERSION);
 });
