@@ -14,6 +14,12 @@ test("keeps product, current architecture, RFCs, and delivery evidence distinct"
 test("documents canonical Markdown as the web documentation source", () => {
   assert.match(doc("README.md"), /Markdown files remain the source of truth/u);
   assert.match(doc("user-guide.md"), /do not maintain a second copy/u);
+  const catalog = readFileSync(new URL("../apps/web/lib/documentation.ts", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
+  assert.match(catalog, /import\.meta\.glob\('\.\.\/\.\.\/\.\.\/docs\/\*\*\/\*\.md'/u);
+  for (const category of ["Use Stacks", "Current system & delivery", "Decisions & proposals", "Design archive"]) assert.match(catalog, new RegExp(category, "u"));
+  for (const parameter of ["view", "document", "heading"]) assert.match(page, new RegExp(`searchParams\\.(?:get|set)\\('${parameter}'`, "u"));
+  assert.match(page, /documentationHeadings/u);
 });
 
 test("keeps installation instructions current and secret-safe", () => {

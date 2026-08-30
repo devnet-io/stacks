@@ -81,6 +81,8 @@ stacks mcp
 
 Run `stacks help commands` for the complete command surface, including portable definition, event, usage, troubleshooting, and legacy commands. Registered Stacks are validated whenever they are loaded; `doctor` is reserved for explicit installation or adapter troubleshooting.
 
+`stack register` is the import half of the low-level `stack export`/`stack register` portability pair. It copies an exported definition into the local machine catalog while preserving Stack identity; it does not register a Git repository or carry machine-local component paths.
+
 The checked-in root manifest and `examples/foundation-stack` remain directory-based fixtures for compatibility and dogfooding. Legacy `--root` commands still work, but new user Stacks should use the global catalog.
 
 ## Develop and verify

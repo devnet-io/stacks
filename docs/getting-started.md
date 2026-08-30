@@ -83,7 +83,7 @@ stacks context app --stack your-name/my-stack --task "Describe the change I am a
 
 The CLI and Manage UI create Stacks and attach components. Capability exports, requirements, guidance, and richer metadata are still edited in the readable definition file shown by Overview. The UI does not yet provide those richer definition forms. Directory-based `stack.json` examples remain available as compatibility fixtures, but they are not the recommended setup for a new Stack.
 
-To version or move a definition, export it, commit or transfer that JSON, register it on another machine, then bind each component to that machine's directory:
+To version or move a definition, export it, commit or transfer that JSON, register it on another machine, then bind each component to that machine's directory. In this command, “register” means import the portable definition into that machine's catalog; it is not Git repository registration or publishing:
 
 ```bash
 stacks stack export your-name/my-stack --to my-stack.json

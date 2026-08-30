@@ -64,7 +64,7 @@ stacks stack list --json
 
 ### `stacks stack register`
 
-Registers a portable JSON definition exported elsewhere. Registration preserves its immutable Stack ID but does not import machine-specific component paths.
+Imports a portable JSON definition into this machine's Stack catalog. “Register” means “make this definition known to the local catalog”; it does **not** register a Git repository, publish anything, contact GitHub, or import another machine's component paths.
 
 ```text
 stacks stack register <definition.json> [--json]
@@ -74,7 +74,9 @@ stacks stack register <definition.json> [--json]
 stacks stack register ./customer-portal.stack.json
 ```
 
-Bind every imported component on the new machine with `component bind`.
+The normal source is `stacks stack export` on another installation or a definition file retrieved from version control. Registration copies and validates the definition, preserves its immutable Stack ID and readable `namespace/name`, creates an empty machine-local bindings record, and rejects an ID or selector already present in the catalog. Bind every imported component on the new machine with `component bind`.
+
+This is the low-level manual portability primitive. The planned Git-backed Collections workflow will eventually provide a higher-level way to synchronize groups of definitions; it will build on rather than change Stack identity.
 
 ### `stacks stack export`
 

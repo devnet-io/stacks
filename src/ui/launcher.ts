@@ -110,7 +110,13 @@ export async function launchLocalUi(options: UiLaunchOptions): Promise<void> {
   process.stdout.write(`Stacks UI: ${uiUrl}\n`);
   if (options.openBrowser !== false) openUiInBrowser(uiUrl);
   if (!server.api) return;
-  const unregister = await registerUiRuntime(server.api.origin, runtimeToken);
+  let unregister: () => Promise<void>;
+  try {
+    unregister = await registerUiRuntime(server.api.origin, runtimeToken);
+  } catch (error) {
+    await server.api.close();
+    throw error;
+  }
   let resolveSignal: () => void = () => {};
   const signalReceived = new Promise<void>((resolve) => { resolveSignal = resolve; });
   process.once("SIGINT", resolveSignal);

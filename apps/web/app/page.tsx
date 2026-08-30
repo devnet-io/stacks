@@ -18,7 +18,13 @@ import { StackActivity } from '@/components/stack-activity';
 import { AppMenu } from '@/components/app-menu';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { documentation } from '@/lib/documentation';
+import {
+  documentation,
+  documentationCategories,
+  documentationEntry,
+  documentationHeadings,
+  resolveDocumentationLink,
+} from '@/lib/documentation';
 import {
   fetchOverview,
   fetchStacks,
@@ -43,7 +49,7 @@ const navigation = [
 ] as const;
 
 export default function Home() {
-  const [section, setSection] = useState<Section>('documentation');
+  const [section, setSection] = useState<Section>(() => sectionFromUrl());
   const [overview, setOverview] = useState<StackOverviewData>();
   const [stacks, setStacks] = useState<RegisteredStack[]>([]);
   const [selectedStack, setSelectedStack] = useState<string>();
@@ -82,6 +88,11 @@ export default function Home() {
     return () => controller.abort();
   }, [loadCatalog]);
   useEffect(() => {
+    const readLocation = () => setSection(sectionFromUrl());
+    window.addEventListener('popstate', readLocation);
+    return () => window.removeEventListener('popstate', readLocation);
+  }, []);
+  useEffect(() => {
     if (!selectedStack) {
       setOverview(undefined);
       return;
@@ -99,6 +110,12 @@ export default function Home() {
     if (value) url.searchParams.set('stack', value);
     else url.searchParams.delete('stack');
     window.history.replaceState({}, '', url);
+  };
+  const selectSection = (destination: Section) => {
+    setSection(destination);
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', destination);
+    window.history.pushState({}, '', url);
   };
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -148,7 +165,7 @@ export default function Home() {
             <button
               key={destination}
               type="button"
-              onClick={() => setSection(destination)}
+              onClick={() => selectSection(destination)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium ${destination === section ? 'bg-primary text-primary-foreground' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
             >
               <Icon className="size-4" />
@@ -192,7 +209,7 @@ export default function Home() {
             <button
               key={destination}
               type="button"
-              onClick={() => setSection(destination)}
+              onClick={() => selectSection(destination)}
               aria-current={section === destination ? 'page' : undefined}
               className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ${section === destination ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
             >
@@ -225,6 +242,14 @@ export default function Home() {
   );
 }
 
+function sectionFromUrl(): Section {
+  if (typeof window === 'undefined') return 'documentation';
+  const requested = new URLSearchParams(window.location.search).get('view');
+  return navigation.some((item) => item.section === requested)
+    ? (requested as Section)
+    : 'documentation';
+}
+
 function NoStack() {
   return (
     <section className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-8">
@@ -244,11 +269,22 @@ function NoStack() {
 }
 
 function DocumentationLibrary() {
-  const [selectedId, setSelectedId] = useState('getting-started');
+  const initialDocument = () =>
+    documentationEntry(
+      new URLSearchParams(window.location.search).get('document'),
+    )?.id ?? 'getting-started';
+  const [selectedId, setSelectedId] = useState(initialDocument);
+  const [selectedHeading, setSelectedHeading] = useState(
+    () => new URLSearchParams(window.location.search).get('heading') ?? '',
+  );
   const [query, setQuery] = useState('');
   const selected =
     documentation.find((document) => document.id === selectedId) ??
     documentation[0]!;
+  const headings = useMemo(
+    () => documentationHeadings(selected.markdown),
+    [selected.markdown],
+  );
   const visibleDocuments = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return needle
@@ -259,6 +295,57 @@ function DocumentationLibrary() {
         )
       : documentation;
   }, [query]);
+  useEffect(() => {
+    const readLocation = () => {
+      setSelectedId(initialDocument());
+      setSelectedHeading(
+        new URLSearchParams(window.location.search).get('heading') ?? '',
+      );
+    };
+    window.addEventListener('popstate', readLocation);
+    return () => window.removeEventListener('popstate', readLocation);
+  }, []);
+  useEffect(() => {
+    if (!selectedHeading) return;
+    requestAnimationFrame(() =>
+      document
+        .getElementById(selectedHeading)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  }, [selected.id, selectedHeading]);
+  const updateDocumentationUrl = (documentId: string, heading = '') => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'documentation');
+    url.searchParams.set('document', documentId);
+    if (heading) url.searchParams.set('heading', heading);
+    else url.searchParams.delete('heading');
+    window.history.pushState({}, '', url);
+  };
+  const selectDocument = (documentId: string, heading = '') => {
+    setSelectedId(documentId);
+    setSelectedHeading(heading);
+    updateDocumentationUrl(documentId, heading);
+    requestAnimationFrame(() =>
+      document
+        .getElementById('documentation-content')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  };
+  const selectHeading = (heading: string) => {
+    setSelectedHeading(heading);
+    updateDocumentationUrl(selected.id, heading);
+    requestAnimationFrame(() =>
+      document
+        .getElementById(heading)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  };
+  const followLink = (href: string) => {
+    const target = resolveDocumentationLink(selected.path, href);
+    if (!target) return false;
+    selectDocument(target.document.id, target.heading ?? '');
+    return true;
+  };
   return (
     <section
       className="grid items-start gap-6 xl:grid-cols-[16rem_minmax(0,1fr)]"
@@ -275,22 +362,66 @@ function DocumentationLibrary() {
             className="pl-9"
           />
         </div>
-        <nav className="space-y-1" aria-label="Documentation documents">
-          {visibleDocuments.map((document) => (
-            <button
-              key={document.id}
-              type="button"
-              aria-current={selected.id === document.id ? 'page' : undefined}
-              onClick={() => setSelectedId(document.id)}
-              className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${selected.id === document.id ? 'bg-primary/12 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-            >
-              {document.title}
-            </button>
-          ))}
+        <nav className="space-y-5" aria-label="Documentation documents">
+          {documentationCategories.map((category) => {
+            const documents = visibleDocuments.filter(
+              (document) => document.category === category.id,
+            );
+            if (!documents.length) return null;
+            return (
+              <section key={category.id}>
+                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground/65">
+                  {category.title}
+                </p>
+                <div className="space-y-1">
+                  {documents.map((entry) => (
+                    <div key={entry.id}>
+                      <button
+                        type="button"
+                        aria-expanded={
+                          selected.id === entry.id ? true : undefined
+                        }
+                        aria-current={
+                          selected.id === entry.id ? 'page' : undefined
+                        }
+                        onClick={() => selectDocument(entry.id)}
+                        className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${selected.id === entry.id ? 'bg-primary/12 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                      >
+                        {entry.title}
+                      </button>
+                      {selected.id === entry.id && headings.length > 0 && !query && (
+                        <div className="ml-3 mt-1 space-y-0.5 border-l border-border pl-2">
+                          {headings.map((heading) => (
+                            <button
+                              type="button"
+                              key={heading.id}
+                              aria-current={
+                                selectedHeading === heading.id
+                                  ? 'location'
+                                  : undefined
+                              }
+                              onClick={() => selectHeading(heading.id)}
+                              className={`block w-full rounded-md py-1.5 pr-2 text-left text-xs leading-4 hover:bg-muted hover:text-foreground ${heading.level === 3 ? 'pl-5' : 'pl-2'} ${selectedHeading === heading.id ? 'bg-muted font-semibold text-primary' : 'text-muted-foreground'}`}
+                            >
+                              {heading.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </nav>
       </aside>
-      <div className="min-w-0">
-        <MarkdownDocument markdown={selected.markdown} />
+      <div id="documentation-content" className="min-w-0 scroll-mt-24">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+          <span>{selected.path}</span>
+          <span>{documentation.length} canonical documents</span>
+        </div>
+        <MarkdownDocument markdown={selected.markdown} onLink={followLink} />
       </div>
     </section>
   );

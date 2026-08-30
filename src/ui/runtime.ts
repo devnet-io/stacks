@@ -82,7 +82,17 @@ export async function registerUiRuntime(
     startedAt: new Date().toISOString(),
   };
   await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(file, `${JSON.stringify(record, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      await writeFile(file, `${JSON.stringify(record, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+      break;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      const windowsReleaseRace = process.platform === "win32" && (code === "EPERM" || code === "EACCES");
+      if (!windowsReleaseRace || attempt === 99) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
   return async () => {
     await unlink(file).catch((error: NodeJS.ErrnoException) => {
       if (error.code !== "ENOENT") throw error;

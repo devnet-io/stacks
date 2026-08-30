@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -45,6 +45,22 @@ test("registered UI runtimes require their token and stop gracefully", async () 
   } finally {
     await api?.close().catch(() => undefined);
     await unregister?.().catch(() => undefined);
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+});
+
+test("runtime registration can replace a stale record for a reused process ID", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-ui-stale-runtime-"));
+  const directories = { config: path.join(root, "config"), state: path.join(root, "state") };
+  const token = createUiRuntimeToken();
+  try {
+    await registerUiRuntime("http://127.0.0.1:3210", createUiRuntimeToken(), directories);
+    const secondCleanup = await registerUiRuntime("http://127.0.0.1:3211", token, directories);
+    const record = JSON.parse(await readFile(path.join(directories.state, "runtime", "ui", `${process.pid}.json`), "utf8")) as { origin: string; token: string };
+    assert.equal(record.origin, "http://127.0.0.1:3211");
+    assert.equal(record.token, token);
+    await secondCleanup();
+  } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });

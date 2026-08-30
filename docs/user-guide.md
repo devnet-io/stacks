@@ -34,7 +34,7 @@ The first command shows the normal workflow, `help commands` lists the complete 
 | Command | Purpose |
 | --- | --- |
 | `stacks stack export <stack> --to <file.json>` | Export stable identity and graph data without machine-local paths. |
-| `stacks stack register <file.json>` | Register an exported definition while preserving its immutable ID. |
+| `stacks stack register <file.json>` | Import an exported portable definition into this machine's catalog while preserving its immutable ID. |
 | `stacks lock --stack <stack>` | Write a revision snapshot for the current component bindings. |
 
 After registering on another machine, bind every component before using status or context:
@@ -44,6 +44,8 @@ stacks stack register my-stack.json
 stacks component bind my-team/my-stack app --path /path/on/this-machine/app
 ```
 
+Here “register” is catalog terminology. It does not add a Git repository, publish the Stack, or discover local component directories. The imported definition deliberately starts with no machine bindings.
+
 ## Local UI
 
 ```bash
@@ -52,7 +54,9 @@ stacks ui
 
 Stacks serves the static Vite application and `/api/v0.1/*` from the same Node process. The default address is `http://localhost:3210/`. If port 3210 is unavailable, Stacks tries successive ports and prints the selected address. Passing `--port` requests an exact port and reports a conflict instead of silently changing it. Re-running `npm run install:local` gracefully stops registered UI processes before replacing the installed snapshot; restart with `stacks ui` afterward.
 
-The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity shows append-only work sessions and provenance-labeled usage, Manage creates Stacks and configures components and bindings, Tools & agents contains runtime connection instructions, and Documentation renders the canonical Markdown from this repository. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
+The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity shows append-only work sessions and provenance-labeled usage, Manage creates Stacks and configures components and bindings, Tools & agents contains runtime connection instructions, and Documentation renders every canonical Markdown file under `docs/`. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
+
+Documentation is grouped by purpose. Selecting a document reveals its second- and third-level headings as nested navigation. The current section, document, and heading are encoded in the URL as `view`, `document`, and `heading`, so bookmarks and shared local links reopen the same location. Links between canonical Markdown documents remain inside the documentation interface.
 
 Read-only endpoints:
 

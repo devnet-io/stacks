@@ -45,6 +45,11 @@ async function wait(delayMs: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
+function isTransientCatalogLockError(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException).code;
+  return code === "EEXIST" || (process.platform === "win32" && (code === "EACCES" || code === "EPERM"));
+}
+
 async function withCatalogMutation<T>(directories: PlatformDirectories, mutate: () => Promise<T>): Promise<T> {
   await mkdir(directories.config, { recursive: true });
   const lockPath = catalogLockFile(directories);
@@ -55,7 +60,7 @@ async function withCatalogMutation<T>(directories: PlatformDirectories, mutate: 
       await handle.writeFile(`${JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() })}\n`, "utf8");
       break;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (!isTransientCatalogLockError(error)) throw error;
       if (attempt === 199) throw new Error(`Timed out waiting for the Stacks catalog mutation lock at ${lockPath}.`);
       await wait(25);
     }
