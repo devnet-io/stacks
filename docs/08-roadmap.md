@@ -105,6 +105,10 @@ Do not begin a milestone because it is architecturally interesting. Begin it whe
 
 This is the agreed delivery order after the first global catalog, UI, and MCP slices were exercised:
 
+### Immediate local MVP gate
+
+Before expanding into component descriptors, remote transports, collections, or ingestion, the copied installation must support one reliable loop: create a Stack, attach existing component directories, inspect and manage it in the global UI, activate a component's `AGENTS.md`, restart/connect an agent client, discover membership through MCP, resolve context, and record work. `npm run check` must verify the packed CLI, MCP tool/resource contract, and web runtime. Friction in this loop takes priority over later milestones.
+
 1. Finish global CLI migration. Global commands use the machine catalog; single-Stack commands require `--stack`; directory manifests are reached only through explicit legacy `--root` or `init` behavior.
 2. Establish one `StacksApplication` use-case boundary and move CLI, MCP, and HTTP orchestration behind it. Keep an in-process implementation as the default.
 3. Complete write-operation parity for Stack/component management through the application boundary, versioned HTTP API, CLI, MCP, and full UI editing slices. Membership discovery and local add/bind parity are complete; capability and guidance editing remains.

@@ -36,6 +36,8 @@ Connect Codex once for all registered Stacks:
 codex mcp add stacks -- stacks mcp
 ```
 
+Fully quit and reopen Codex after registration, and after installing a Stacks upgrade that changes MCP tools. Use `stacks doctor` to inspect the installed MCP contract.
+
 The MCP adapter uses stdio: Codex launches it when needed, so it has no port or long-running daemon. It supplies agent instructions during initialization and exposes complete CLI/MCP reference resources. Stack-specific MCP tools require a `namespace/name` selector.
 
 ## Where data lives
@@ -87,6 +89,6 @@ The checked-in root manifest and `examples/foundation-stack` remain directory-ba
 
 ## Develop and verify
 
-`npm run install:local` is idempotent: it builds a complete package, packs it, and installs that snapshot into npm's machine-level package storage. The installed CLI and built web UI do not link back to this checkout, so the clone may be moved or deleted afterward. Rerun the command when you want to install newer source changes. `npm run docs:check` audits documentation lifecycle coverage and relative links. `npm run check` includes that audit, then installs and starts a temporary packed copy to prove the runtime contract. `npm run check:docker` repeats the gate in clean Node 22 Linux userspace.
+`npm run install:local` is idempotent: it builds a complete package, packs it, and installs that snapshot into npm's machine-level package storage. The installed CLI and built web UI do not link back to this checkout, so the clone may be moved or deleted afterward. Rerun the command when you want to install newer source changes. `npm run docs:check` audits documentation lifecycle coverage and relative links. `npm run check` includes that audit, initializes the packed MCP server and verifies its complete tool/resource contract, then starts the temporary packed web runtime. `npm run check:docker` repeats the gate in clean Node 22 Linux userspace.
 
 Start with [Getting started](docs/getting-started.md), then see the [user guide](docs/user-guide.md), complete [CLI command reference](docs/cli-reference.md), complete [MCP server reference](docs/mcp-reference.md), [current architecture](docs/architecture.md), and [project status](docs/project-status.md).

@@ -12,6 +12,8 @@ Registered operations identify a Stack with `namespace/name`; automation should 
 
 The local adapter is one global stdio command: `stacks mcp`. An MCP client launches the subprocess on demand. Messages use stdin/stdout, so stdout must contain protocol frames only and no local port or token is involved.
 
+Agent clients load callable MCP tools at a host boundary they control. After registering Stacks or installing a version that changes the MCP contract, fully restart the client; opening only a new task may not refresh the host registry. `stacks doctor` reports the installed server contract, while the client's MCP settings report what it actually loaded.
+
 The server sends concise operating instructions during MCP initialization. Clients may also call the read-only `instructions_get` tool or read `stacks://instructions`. Full runtime references are available as `stacks://reference/mcp` and `stacks://reference/cli`; these resources are packaged with the installed server.
 
 Resources are:

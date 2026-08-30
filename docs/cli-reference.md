@@ -356,15 +356,18 @@ stacks usage report --stack acme/customer-portal
 
 ### `stacks doctor`
 
-Checks the Node runtime, installed CLI entrypoint, Stack definition, component bindings, and MCP setup. It is for installation and adapter troubleshooting; routine Stack health uses `status`.
+Without a Stack selector, reports the installed runtime and complete MCP tool/resource contract. Add a selector for Stack definition, component binding, CLI entrypoint, and integration checks. It is for installation and adapter troubleshooting; routine Stack health uses `status`.
 
 ```text
-stacks doctor (--stack <namespace/name> | --root <directory>) [--json]
+stacks doctor [--stack <namespace/name> | --root <directory>] [--json]
 ```
 
 ```bash
+stacks doctor
 stacks doctor --stack acme/customer-portal
 ```
+
+Stacks can report what its installed server advertises, but it cannot inspect the callable-tool registry already loaded inside an agent client. Fully restart Codex after registering Stacks or installing a version that changes MCP tools.
 
 ### `stacks validate`
 

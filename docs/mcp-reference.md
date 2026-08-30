@@ -10,7 +10,9 @@ The local server is one machine-level stdio adapter:
 codex mcp add stacks -- stacks mcp
 ```
 
-The client launches `stacks mcp` when needed. Local MCP has no URL, port, token, or long-running daemon. stdout is reserved for protocol messages; diagnostics go to stderr.
+Fully quit and reopen Codex after registering Stacks. Also restart Codex after installing a Stacks version that changes MCP tools; creating another task inside the same desktop process may retain its previously loaded tool registry. Run `stacks doctor` to inspect the installed Stacks MCP contract, then use Codex's MCP settings or `/mcp` view to confirm that the client loaded it.
+
+The client launches `stacks mcp` when needed. Local MCP has no URL, port, token, or long-running daemon. stdout is reserved for protocol messages; diagnostics go to stderr. Listing or reading MCP resources through a generic resource bridge does not by itself prove that the client loaded the server's callable tools.
 
 MCP registration makes the tools available, but repository-level instructions are what reliably tell a newly started agent to consult them. Run `stacks agent install --path .` inside an opted-in component repository. Stacks manages only its delimited `AGENTS.md` block; `stacks agent check --path .` detects an absent or stale block, and `stacks agent remove --path .` removes only that block.
 
@@ -300,4 +302,4 @@ Side effects: none; read-only and idempotent.
 
 ## Intentionally absent from MCP
 
-Component registration, binding, Git clone/fetch, lock writing, UI startup, and troubleshooting remain CLI operations. They mutate machine catalog or filesystem state, start a process, or are human operational concerns. Use `stacks://reference/cli` and invoke them only with appropriate user intent; never substitute an undisclosed shell action for a missing MCP tool.
+Git clone/fetch, lock writing, UI startup, repository activation-file management, and installation troubleshooting remain CLI operations. They modify repositories or machine state, start a process, or are human operational concerns. Existing-directory component registration and binding are available through `component_add` and `component_bind`. Use `stacks://reference/cli` for the remaining CLI-only operations and invoke them only with appropriate user intent; never substitute an undisclosed shell action for a missing MCP tool.

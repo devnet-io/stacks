@@ -66,6 +66,9 @@ test("publishes complete MCP instructions, tools, resources, and examples", () =
     assert.match(reference, new RegExp("### `" + tool + "`", "u"));
   }
   for (const uri of ["stacks://instructions", "stacks://reference/mcp", "stacks://reference/cli", "stacks://catalog"]) assert.match(reference, new RegExp(uri.replaceAll("/", "\\/"), "u"));
+  const absent = reference.split("## Intentionally absent from MCP")[1] ?? "";
+  assert.doesNotMatch(absent, /Component registration, binding/u);
+  assert.match(reference, /Fully quit and reopen Codex/u);
   assert.match(reference, /Side effects/u);
   assert.match(reference, /```json/u);
 });

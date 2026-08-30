@@ -30,6 +30,7 @@ export function CliMcp({ stack }: { stack?: string }) {
         <TabsContent value="codex" className="space-y-5">
           <p className="text-sm leading-6 text-muted-foreground">Run this once. Codex starts the stdio adapter when it needs it; there is no MCP URL, token, or background service for local use.</p>
           <Command title="Add the Stacks MCP server" value={data.mcp.local.codexAddCommand} />
+          <Alert><TriangleAlert /><AlertTitle>Restart Codex after setup or an MCP upgrade</AlertTitle><AlertDescription>Codex loads callable MCP tools when its host starts. Fully quit and reopen Codex after registering Stacks, or after installing a Stacks version that changes MCP tools. Starting another task in the same app process may retain the old tool registry.</AlertDescription></Alert>
           <div className="rounded-xl border border-border p-4">
             <p className="text-sm font-semibold">Activate Stacks in a repository</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">Run this inside a component repository. Stacks adds or refreshes only its delimited block in AGENTS.md and preserves every other instruction.</p>

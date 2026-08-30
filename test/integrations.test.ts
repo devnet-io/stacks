@@ -28,6 +28,7 @@ test("integration guidance is Stack-scoped, executable, and secret-safe", async 
     assert.deepEqual(result.mcp.local.args, ["mcp"]);
     assert.equal(result.mcp.local.codexAddCommand, "codex mcp add stacks -- stacks mcp");
     assert.equal(result.mcp.local.authentication, "none");
+    assert.equal(result.mcp.local.clientRestartRequiredAfterRegistrationOrUpgrade, true);
     assert.match(result.mcp.local.codexToml, /command = "stacks"/u);
     assert.equal(result.agentInstructions.installCommand, "stacks agent install --path .");
     assert.equal(result.agentInstructions.checkCommand, "stacks agent check --path .");

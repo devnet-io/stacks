@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { STACKS_MCP_RESOURCES, STACKS_MCP_TOOL_NAMES } from "../src/mcp/catalog.ts";
 
 test("stdio MCP exposes instructions and documented tools/resources without stdout diagnostics", async () => {
   const child = spawn(process.execPath, ["--experimental-strip-types", path.resolve("src/cli.ts"), "mcp"], {
@@ -27,14 +28,14 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     const listed = await response(2);
     const tools = (listed.result as { tools: Array<{ name: string }> }).tools;
     const toolNames = tools.map((tool) => tool.name).sort();
-    assert.deepEqual(toolNames, ["component_add", "component_bind", "component_get", "component_list", "context_resolve", "instructions_get", "stack_get", "stack_list", "stack_memberships", "stack_status", "turn_complete", "usage_record", "usage_report", "work_complete", "work_start"]);
+    assert.deepEqual(toolNames, [...STACKS_MCP_TOOL_NAMES].sort());
     const reference = await readFile(path.resolve("docs/mcp-reference.md"), "utf8");
     for (const name of toolNames) assert.match(reference, new RegExp("### `" + name + "`", "u"));
 
     send({ jsonrpc: "2.0", id: 3, method: "resources/list", params: {} });
     const listedResources = await response(3);
     const resources = (listedResources.result as { resources: Array<{ uri: string }> }).resources;
-    assert.deepEqual(resources.map((resource) => resource.uri).sort(), ["stacks://catalog", "stacks://instructions", "stacks://reference/cli", "stacks://reference/mcp"]);
+    assert.deepEqual(resources.map((resource) => resource.uri).sort(), STACKS_MCP_RESOURCES.map((resource) => resource.uri).sort());
 
     send({ jsonrpc: "2.0", id: 4, method: "resources/read", params: { uri: "stacks://reference/mcp" } });
     const readReference = await response(4);

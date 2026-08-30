@@ -44,7 +44,7 @@ Returns component nodes, capability/dependency edges, and unresolved requirement
 
 ### `GET /api/v0.1/integrations`
 
-Returns runtime diagnostics, generated CLI/MCP setup, and the safe `AGENTS.md` activation install/check/remove commands for the selected Stack. Secret values are never returned. The response follows `schemas/http-integrations.schema.json`.
+Returns runtime diagnostics, generated CLI/MCP setup, and the safe `AGENTS.md` activation install/check/remove commands for the selected Stack. The local MCP object sets `clientRestartRequiredAfterRegistrationOrUpgrade: true` because the agent client owns its loaded callable-tool registry. Secret values are never returned. The response follows `schemas/http-integrations.schema.json`.
 
 ## Create a Stack
 

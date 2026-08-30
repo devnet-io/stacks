@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { spawn } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 function npmInvocation(args) {
   const npmCli = process.env.npm_execpath;
@@ -51,6 +52,45 @@ async function waitForMarker(port) {
   throw new Error("The packaged web runtime did not become ready.");
 }
 
+async function verifyMcp(packageRoot) {
+  const cliPath = path.join(packageRoot, "dist", "cli.js");
+  const catalog = await import(pathToFileURL(path.join(packageRoot, "dist", "mcp", "catalog.js")).href);
+  const child = spawn(process.execPath, [cliPath, "mcp"], { cwd: packageRoot, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  const send = (message) => child.stdin.write(`${JSON.stringify(message)}\n`);
+  const response = async (id) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const messages = stdout.split("\n").filter(Boolean).map((line) => JSON.parse(line));
+      const match = messages.find((message) => message.id === id);
+      if (match) return match;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error(`Packaged MCP timed out for response ${id}. stdout=${stdout} stderr=${stderr}`);
+  };
+  try {
+    send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "stacks-package-verification", version: "1" } } });
+    const initialized = await response(1);
+    assert.equal(initialized.result.serverInfo.name, "stacks");
+    send({ jsonrpc: "2.0", method: "notifications/initialized", params: {} });
+    send({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
+    const tools = (await response(2)).result.tools.map((tool) => tool.name).sort();
+    assert.deepEqual(tools, [...catalog.STACKS_MCP_TOOL_NAMES].sort());
+    send({ jsonrpc: "2.0", id: 3, method: "resources/list", params: {} });
+    const resources = (await response(3)).result.resources.map((resource) => resource.uri).sort();
+    assert.deepEqual(resources, catalog.STACKS_MCP_RESOURCES.map((resource) => resource.uri).sort());
+    assert.match(stderr, /^Stacks MCP server is listening/u);
+  } finally {
+    child.stdin.end();
+    child.kill();
+  }
+}
+
 const temporary = await mkdtemp(path.join(os.tmpdir(), "stacks-package-verification-"));
 let web;
 try {
@@ -75,6 +115,7 @@ try {
   assert.match(cli.stdout, /^Stacks - portable/u);
   const version = await run(process.execPath, [path.join(packageRoot, "dist", "cli.js"), "--version"]);
   assert.equal(version.stdout.trim(), JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8")).version);
+  await verifyMcp(packageRoot);
 
   const port = await availablePort();
   web = spawn(process.execPath, [path.join(packageRoot, "dist", "cli.js"), "ui", "--port", String(port), "--no-open"], {
@@ -90,7 +131,7 @@ try {
   await waitForMarker(port);
   const health = await (await fetch(`http://127.0.0.1:${port}/api/v0.1/health`)).json();
   assert.equal(health.status, "ok");
-  process.stdout.write("Verified copied CLI and packaged web runtime.\n");
+  process.stdout.write("Verified copied CLI, packaged MCP contract, and web runtime.\n");
 } finally {
   if (web && web.exitCode === null) {
     const exited = new Promise((resolve) => web.once("exit", resolve));

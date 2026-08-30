@@ -37,6 +37,7 @@ export interface StackIntegrations {
       args: string[];
       codexAddCommand: string;
       codexToml: string;
+      clientRestartRequiredAfterRegistrationOrUpgrade: true;
     };
     hosted: {
       status: "not-configured" | "configured";
@@ -133,7 +134,7 @@ export async function buildStackIntegrations(stack: LoadedStack, hostedConfig: H
     },
     mcp: {
       serverName: name,
-      local: { transport: "stdio", authentication: "none", command: "stacks", args, codexAddCommand, codexToml },
+      local: { transport: "stdio", authentication: "none", command: "stacks", args, codexAddCommand, codexToml, clientRestartRequiredAfterRegistrationOrUpgrade: true },
       hosted: {
         status: hostedConfigured ? "configured" : "not-configured",
         ...(hosted.url === undefined ? {} : { url: hosted.url }),

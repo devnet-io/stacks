@@ -6,6 +6,7 @@ import { createLocalStacksApplication, type StackReference } from "./application
 import type { CostKind, EventActor, UsageData } from "./core/types.ts";
 import { STACKS_VERSION } from "./version.ts";
 import { manageAgentsMd, type AgentsMdOperation } from "./agent/agents-md.ts";
+import { STACKS_MCP_RESOURCES, STACKS_MCP_TOOL_NAMES } from "./mcp/catalog.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -127,7 +128,7 @@ function help(topic?: string): void {
     lock: `Write stack.lock.json with the current component revisions.\n\n  stacks lock --stack <namespace/name> [--json]\n`,
     init: `Create a legacy directory-based Stack manifest. New Stacks should normally use stacks stack create.\n\n  stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]\n`,
     validate: `Validate a standalone or legacy Stack definition. Registered Stacks are validated whenever they are loaded, including by stacks status.\n\n  stacks validate [--stack <namespace/name> | --root <dir>] [--json]\n`,
-    doctor: `Troubleshoot the installed CLI, runtime, component bindings, and MCP setup. This is not required during normal use; use stacks status for Stack health.\n\n  stacks doctor --stack <namespace/name> [--json]\n`,
+    doctor: `Troubleshoot the installed runtime and MCP contract. Add --stack only when component diagnostics are also needed. This is not required during normal use; use stacks status for Stack health.\n\n  stacks doctor [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
   };
   if (topic && topics[topic]) {
     process.stdout.write(`Stacks · ${topic}\n\n${topics[topic]}`);
@@ -354,6 +355,40 @@ async function commandMcp(parsed: ParsedArgs): Promise<void> {
 }
 
 async function commandDoctor(parsed: ParsedArgs): Promise<void> {
+  const hasSelection = Boolean(stringOption(parsed, "stack") || stringOption(parsed, "root"));
+  if (!hasSelection) {
+    const nodeMajor = Number(process.versions.node.split(".")[0]);
+    const result = {
+      schemaVersion: "0.1",
+      cli: { version: STACKS_VERSION, command: "stacks" },
+      mcp: {
+        serverName: "stacks",
+        transport: "stdio",
+        command: "stacks",
+        args: ["mcp"],
+        tools: [...STACKS_MCP_TOOL_NAMES],
+        resources: STACKS_MCP_RESOURCES.map((resource) => resource.uri),
+        codexAddCommand: "codex mcp add stacks -- stacks mcp",
+        clientRestartRequiredAfterRegistrationOrUpgrade: true,
+      },
+      checks: [
+        { id: "runtime", label: "Node.js runtime", status: nodeMajor >= 22 ? "pass" : "fail", detail: `Node.js ${process.versions.node}; Stacks requires 22.6 or newer.` },
+        { id: "mcp-contract", label: "MCP contract", status: "pass", detail: `${STACKS_MCP_TOOL_NAMES.length} tools and ${STACKS_MCP_RESOURCES.length} resources are built into Stacks ${STACKS_VERSION}.` },
+      ],
+      notes: [
+        { id: "mcp-client-refresh", detail: "Stacks cannot inspect an agent client's already-loaded tool registry. Fully restart Codex after MCP registration or a Stacks upgrade that changes MCP tools." },
+      ],
+    } as const;
+    if (booleanOption(parsed, "json")) printJson(result);
+    else {
+      process.stdout.write(`Stacks ${result.cli.version}\n`);
+      for (const check of result.checks) process.stdout.write(`${check.status === "pass" ? "PASS" : "FAIL"} ${check.label}: ${check.detail}\n`);
+      for (const note of result.notes) process.stdout.write(`NOTE ${note.detail}\n`);
+      process.stdout.write(`\nCodex MCP: ${result.mcp.codexAddCommand}\n`);
+    }
+    if (result.checks.some((check) => check.status === "fail")) process.exitCode = 2;
+    return;
+  }
   const result = await application.getIntegrations(stackReference(parsed));
   if (booleanOption(parsed, "json")) printJson(result);
   else {

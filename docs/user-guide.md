@@ -62,6 +62,8 @@ Contracts are stored in `schemas/http-overview.schema.json`, `schemas/http-graph
 codex mcp add stacks -- stacks mcp
 ```
 
+Fully quit and reopen Codex after registration, and after installing any Stacks upgrade that changes MCP tools. A new task in the same desktop process may retain the old callable-tool registry. `stacks doctor` reports the contract built into the installed package; Codex's MCP settings or `/mcp` view reports what the client actually loaded.
+
 `stacks mcp` uses stdio. The agent client launches it when needed and communicates through stdin/stdout, so local use has no URL, token, daemon, or port. Protocol diagnostics go to stderr.
 
 `stacks agent print|check|install|remove` manages repository activation separately from the global MCP connection. Install and remove touch only the delimited Stacks block, preserve all other `AGENTS.md` content, refuse malformed markers and symlinks, and never hard-code one Stack selection.
@@ -100,7 +102,8 @@ Pass `--json` when automation consumes a supported command. stdout contains one 
 | Command | When to use it |
 | --- | --- |
 | `stacks validate (--stack <stack> | --root <dir>)` | Validate a registered or legacy definition. Registered Stacks are already validated whenever loaded, including by `status`. |
-| `stacks doctor --stack <stack>` | Troubleshoot the installed runtime, CLI entrypoint, bindings, and MCP setup. It is not part of routine Stack health checks. |
+| `stacks doctor` | Inspect the installed runtime and complete MCP tool/resource contract without selecting a Stack. |
+| `stacks doctor --stack <stack>` | Add definition, component-binding, and Stack-specific integration diagnostics. It is not part of routine Stack health checks. |
 | `stacks init --namespace <namespace> --name <name> [--root <dir>]` | Create a legacy directory-based manifest. New Stacks should use `stack create`. |
 
 Explicit `--root /path/to/stack` remains supported for checked-in examples and migration. In that mode Stacks searches for `stack.json`, `stack.yaml`, or `stack.yml`, and relative component paths resolve under the manifest directory. Stacks never enters this mode merely because the current directory contains—or does not contain—a manifest.

@@ -185,3 +185,13 @@ test("CLI reports the root package version", () => {
   assert.equal(execution.status, 0, execution.stderr);
   assert.equal(execution.stdout.trim(), STACKS_VERSION);
 });
+
+test("global doctor reports the installed MCP contract without requiring a Stack", () => {
+  const result = runJson(["doctor"]);
+  assert.equal(result.schemaVersion, "0.1");
+  assert.equal(object(result.cli).version, STACKS_VERSION);
+  assert.ok((object(result.mcp).tools as string[]).includes("stack_memberships"));
+  assert.ok((object(result.mcp).tools as string[]).includes("component_add"));
+  assert.ok((object(result.mcp).resources as string[]).includes("stacks://reference/mcp"));
+  assert.equal(object(result.mcp).clientRestartRequiredAfterRegistrationOrUpgrade, true);
+});

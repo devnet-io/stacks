@@ -25,8 +25,8 @@
       "properties": {
         "local": {
           "type": "object",
-          "required": ["transport", "authentication", "command", "args", "codexAddCommand", "codexToml"],
-          "properties": { "transport": { "const": "stdio" }, "authentication": { "const": "none" } }
+          "required": ["transport", "authentication", "command", "args", "codexAddCommand", "codexToml", "clientRestartRequiredAfterRegistrationOrUpgrade"],
+          "properties": { "transport": { "const": "stdio" }, "authentication": { "const": "none" }, "clientRestartRequiredAfterRegistrationOrUpgrade": { "const": true } }
         },
         "hosted": { "type": "object", "required": ["status"] }
       }
