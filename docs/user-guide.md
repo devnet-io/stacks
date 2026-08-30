@@ -18,8 +18,11 @@ The first command shows the normal workflow, `help commands` lists the complete 
 | --- | --- |
 | `stacks stack create <namespace/name>` | Create a registered Stack in the machine catalog. |
 | `stacks stack list` | List registered Stacks. |
+| `stacks locate [directory]` | Find every Stack/component binding containing a directory. |
+| `stacks component list <stack>` | List component declarations and bindings. |
+| `stacks component get <stack> <id>` | Inspect one complete component declaration and binding. |
 | `stacks component add <stack> <id> --path <dir>` | Add a component and bind its explicit path. Add `--git <url>` to clone when the path is missing. |
-| `stacks component bind <stack> <id> --path <dir>` | Bind an imported component to its directory on this machine. |
+| `stacks component bind <stack> <id> --path <dir>` | Change an existing component's directory binding on this machine. |
 | `stacks status [--stack <stack>]` | Inspect all registered Stacks, or one selected Stack, without changing repositories. Loading also validates each definition. |
 | `stacks context <target> --stack <stack> [--task <text>]` | Resolve bounded, provenance-rich context for a target component. |
 | `stacks sync --stack <stack> [--dry-run] [--update]` | Clone missing Git components or fetch existing remotes with `--update`. |
@@ -27,24 +30,7 @@ The first command shows the normal workflow, `help commands` lists the complete 
 | `stacks --version` | Print the installed product version. |
 | `stacks mcp` | Run the global stdio MCP adapter for an agent client. |
 
-`component add --path` is mandatory. Without `--git`, the directory must already exist. With `--git`, a missing directory is cloned and an existing directory is inspected. `sync --update` fetches only; Stacks never merges, rebases, resets, cleans, moves, or discards dirty repositories.
-
-## Portable definitions
-
-| Command | Purpose |
-| --- | --- |
-| `stacks stack export <stack> --to <file.json>` | Export stable identity and graph data without machine-local paths. |
-| `stacks stack register <file.json>` | Import an exported portable definition into this machine's catalog while preserving its immutable ID. |
-| `stacks lock --stack <stack>` | Write a revision snapshot for the current component bindings. |
-
-After registering on another machine, bind every component before using status or context:
-
-```bash
-stacks stack register my-stack.json
-stacks component bind my-team/my-stack app --path /path/on/this-machine/app
-```
-
-Here “register” is catalog terminology. It does not add a Git repository, publish the Stack, or discover local component directories. The imported definition deliberately starts with no machine bindings.
+`component add --path` is mandatory. Without `--git`, the directory must already exist. With `--git`, a missing directory is cloned and an existing directory is inspected. Kind is an optional extensible label that defaults to `component`; capabilities describe what a component actually provides and consumes. `sync --update` fetches only; Stacks never merges, rebases, resets, cleans, moves, or discards dirty repositories.
 
 ## Local UI
 
@@ -77,7 +63,7 @@ codex mcp add stacks -- stacks mcp
 
 `stacks mcp` uses stdio. The agent client launches it when needed and communicates through stdin/stdout, so local use has no URL, token, daemon, or port. Protocol diagnostics go to stderr.
 
-`stack_list` is unscoped. `stack_get`, `stack_status`, `context_resolve`, lifecycle tools, and usage tools require `stack: "namespace/name"`. Synchronization is intentionally not exposed through MCP.
+`stack_memberships` accepts a workspace path and returns every matching Stack/component binding; `stack_list` remains the fallback when there is no match. `component_list`, `component_get`, `component_add`, and `component_bind` provide structured local component management. Selected-Stack, context, lifecycle, and usage tools require `stack: "namespace/name"`. Git cloning and synchronization are intentionally not exposed through MCP.
 
 ## Work and usage events
 
@@ -104,7 +90,7 @@ Usage amounts require `--cost-kind reported|estimated|allocated`.
 
 ## Structured output
 
-Pass `--json` when automation consumes a supported command. stdout contains one versioned JSON document; diagnostics and failures use stderr. Current management outputs use `schemaVersion: "0.1"`. Existing JSON contracts remain stable even when human help is reorganized.
+Pass `--json` when automation consumes a supported command. stdout contains one versioned JSON document; diagnostics and failures use stderr. Current management outputs use `schemaVersion: "0.1"`. Before a compatibility milestone is declared, unused contracts may be simplified or removed, but Stacks must detect durable data safely and never silently corrupt or discard it.
 
 ## Advanced and compatibility commands
 

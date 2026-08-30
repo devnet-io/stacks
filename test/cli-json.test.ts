@@ -35,6 +35,13 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     assert.equal(added.stack, "tests/global-cli");
     assert.equal(added.path, path.resolve(component));
 
+    const components = runJson(["component", "list", "tests/global-cli"], 0, env);
+    assert.equal(object(object((components.components as unknown[])[0]).component).id, "app");
+    const inspected = runJson(["component", "get", "tests/global-cli", "app"], 0, env);
+    assert.equal(object(inspected.component).kind, "product");
+    const located = runJson(["locate", component], 0, env);
+    assert.equal(object((located.memberships as unknown[])[0]).relativePath, ".");
+
     const listed = runJson(["stack", "list"], 0, env);
     assert.equal((listed.stacks as unknown[]).length, 1);
     const validated = runJson(["validate", "--stack", "tests/global-cli"], 0, env);
@@ -162,6 +169,7 @@ test("CLI help keeps routine commands concise and explains advanced commands", (
   const all = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "help", "commands"], { encoding: "utf8", windowsHide: true });
   assert.equal(all.status, 0, all.stderr);
   assert.match(all.stdout, /doctor\s+Troubleshoot runtime/u);
+  assert.doesNotMatch(all.stdout, /register|export/u);
 
   const status = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "help", "status"], { encoding: "utf8", windowsHide: true });
   assert.equal(status.status, 0, status.stderr);

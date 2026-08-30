@@ -14,13 +14,13 @@ The client launches `stacks mcp` when needed. Local MCP has no URL, port, token,
 
 During initialization, the server supplies concise operating instructions. The same guidance is available through `instructions_get` and `stacks://instructions`. Read `stacks://reference/mcp` for this complete reference and `stacks://reference/cli` when a required mutation is intentionally CLI-only.
 
-Every Stack-specific tool takes `stack` in `namespace/name` form. Use `stack_list` instead of inferring a Stack from the current directory; one directory may be bound to multiple Stacks.
+Every Stack-specific tool takes `stack` in `namespace/name` form. Use `stack_memberships` to discover which Stack components contain the current workspace. One directory may be bound to multiple Stacks, so multiple results require explicit selection rather than inference.
 
 ## Recommended agent sequence
 
 1. Read the server instructions or call `instructions_get`.
-2. Call `stack_list` and select the intended Stack explicitly.
-3. Call `stack_status` and identify the target component.
+2. Call `stack_memberships` with the workspace directory. If there is no match, call `stack_list`; if there are multiple matches, select explicitly.
+3. Call `component_get` and `stack_status` for the target component.
 4. Call `work_start` before material work and retain the returned `sessionId`.
 5. Call `context_resolve` for the target and task before reading cross-component guidance.
 6. Append `turn_complete` after meaningful increments or blockers.
@@ -79,6 +79,18 @@ Side effects: none; read-only and idempotent.
 {}
 ```
 
+### `stack_memberships`
+
+Finds every component binding that contains a directory. `path` is optional and defaults to the MCP process working directory; agents should pass their workspace path explicitly when available.
+
+```json
+{ "path": "/work/customer-portal/src" }
+```
+
+Output includes the canonical queried path and a `memberships` array. Each membership contains Stack identity, component identity/name/kind, the component root, and the path relative to that root. Zero or multiple matches are valid results.
+
+Side effects: none; read-only and idempotent. It does not inspect repository names, guess a Stack, or write markers.
+
 ### `stack_get`
 
 Returns one effective registered Stack definition plus machine-local component bindings.
@@ -92,6 +104,52 @@ Input:
 Output: `manifest` and `bindings`. Bindings contain local absolute paths and are not portable definition data.
 
 Side effects: none; read-only and idempotent.
+
+### `component_list`
+
+Lists every component declaration and explicit machine binding for one Stack.
+
+```json
+{ "stack": "acme/customer-portal" }
+```
+
+Side effects: none; read-only and idempotent.
+
+### `component_get`
+
+Returns one complete component declaration and its explicit binding.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "shared-ui" }
+```
+
+Side effects: none; read-only and idempotent.
+
+### `component_add`
+
+Adds an existing local directory to a Stack. Required input: `stack`, `componentId`, and `path`. Optional input: `name` and `kind`; kind defaults to the extensible label `component`.
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "componentId": "shared-ui",
+  "path": "/work/shared-ui",
+  "name": "Shared UI",
+  "kind": "library"
+}
+```
+
+Side effects: writes the Stack definition and machine-local binding, then inspects the directory. It does not clone, move, or modify the component repository. Non-idempotent: do not retry an uncertain call without checking `component_get`.
+
+### `component_bind`
+
+Changes the explicit local directory for an existing component.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "shared-ui", "path": "/work/shared-ui" }
+```
+
+Side effects: writes the machine-local binding and inspects the directory. For a missing Git destination it reports that cloning would be required but does not perform the clone. It does not move or modify the repository. Idempotent for the same Stack, component, and path.
 
 ### `stack_status`
 

@@ -68,8 +68,9 @@ Knowledge and engineering standards are ordinary components, usually with `kind:
 ```text
 stacks stack create <namespace/name> [--json]
 stacks stack list [--json]
-stacks stack register <definition.json> [--json]
-stacks stack export <namespace/name> --to <definition.json> [--json]
+stacks locate [directory] [--json]
+stacks component list <namespace/name> [--json]
+stacks component get <namespace/name> <id> [--json]
 stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]
 stacks component bind <namespace/name> <id> --path <dir> [--json]
 stacks status --stack <namespace/name> [--json]
@@ -79,9 +80,7 @@ stacks ui
 stacks mcp
 ```
 
-Run `stacks help commands` for the complete command surface, including portable definition, event, usage, troubleshooting, and legacy commands. Registered Stacks are validated whenever they are loaded; `doctor` is reserved for explicit installation or adapter troubleshooting.
-
-`stack register` is the import half of the low-level `stack export`/`stack register` portability pair. It copies an exported definition into the local machine catalog while preserving Stack identity; it does not register a Git repository or carry machine-local component paths.
+Run `stacks help commands` for the complete command surface, including event, usage, troubleshooting, and legacy commands. Registered Stacks are validated whenever they are loaded; `doctor` is reserved for explicit installation or adapter troubleshooting.
 
 The checked-in root manifest and `examples/foundation-stack` remain directory-based fixtures for compatibility and dogfooding. Legacy `--root` commands still work, but new user Stacks should use the global catalog.
 

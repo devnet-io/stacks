@@ -27,7 +27,7 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     const listed = await response(2);
     const tools = (listed.result as { tools: Array<{ name: string }> }).tools;
     const toolNames = tools.map((tool) => tool.name).sort();
-    assert.deepEqual(toolNames, ["context_resolve", "instructions_get", "stack_get", "stack_list", "stack_status", "turn_complete", "usage_record", "usage_report", "work_complete", "work_start"]);
+    assert.deepEqual(toolNames, ["component_add", "component_bind", "component_get", "component_list", "context_resolve", "instructions_get", "stack_get", "stack_list", "stack_memberships", "stack_status", "turn_complete", "usage_record", "usage_report", "work_complete", "work_start"]);
     const reference = await readFile(path.resolve("docs/mcp-reference.md"), "utf8");
     for (const name of toolNames) assert.match(reference, new RegExp("### `" + name + "`", "u"));
 

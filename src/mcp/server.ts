@@ -3,6 +3,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 import { createLocalStacksApplication, type StacksApplication } from "../application/stacks-application.ts";
 import type { CostKind, UsageData } from "../core/types.ts";
+import { STACKS_VERSION } from "../version.ts";
 import { readMcpReference, STACKS_MCP_INSTRUCTIONS, STACKS_MCP_RESOURCES } from "./instructions.ts";
 
 function result(value: Record<string, unknown>) {
@@ -12,7 +13,7 @@ function result(value: Record<string, unknown>) {
 const selector = z.string().min(1).describe("Registered Stack selector in namespace/name form");
 
 export function buildMcpServer(application: StacksApplication = createLocalStacksApplication()): McpServer {
-  const server = new McpServer({ name: "stacks", version: "0.0.0-alpha.1" }, { instructions: STACKS_MCP_INSTRUCTIONS });
+  const server = new McpServer({ name: "stacks", version: STACKS_VERSION }, { instructions: STACKS_MCP_INSTRUCTIONS });
 
   server.registerResource("stacks-instructions", "stacks://instructions", {
     title: "Stacks agent instructions", description: "Concise operating instructions and canonical reference links.", mimeType: "text/markdown",
@@ -40,10 +41,39 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async () => result({ schemaVersion: "0.1", stacks: await application.listStacks() }));
 
+  server.registerTool("stack_memberships", {
+    title: "Find Stack memberships", description: "Find every registered Stack component whose explicit binding contains a directory. Returns multiple matches instead of guessing.",
+    inputSchema: z.object({ path: z.string().min(1).optional().describe("Directory to locate; defaults to the MCP process working directory") }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ path }) => result(await application.findMemberships(path ?? process.cwd()) as unknown as Record<string, unknown>));
+
   server.registerTool("stack_get", {
     title: "Get Stack", description: "Return one registered Stack definition and component bindings.", inputSchema: z.object({ stack: selector }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector }) => result(await application.getStack({ stack: stackSelector }) as unknown as Record<string, unknown>));
+
+  server.registerTool("component_list", {
+    title: "List components", description: "List component definitions and explicit machine bindings for one Stack.", inputSchema: z.object({ stack: selector }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector }) => result(await application.listComponents(stackSelector) as unknown as Record<string, unknown>));
+
+  server.registerTool("component_get", {
+    title: "Get component", description: "Return one component definition and its explicit machine binding.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1) }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId }) => result(await application.getComponent(stackSelector, componentId) as unknown as Record<string, unknown>));
+
+  server.registerTool("component_add", {
+    title: "Add local component", description: "Add an existing local directory as a Stack component. This does not clone, move, or modify the component repository.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1), name: z.string().min(1).optional(), kind: z.string().min(1).optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, componentId, path, name, kind }) => result(await application.addComponent({ stack: stackSelector, id: componentId, path, ...(name ? { name } : {}), ...(kind ? { kind } : {}) }) as unknown as Record<string, unknown>));
+
+  server.registerTool("component_bind", {
+    title: "Bind component directory", description: "Set the explicit local directory for an existing component. This does not move or modify the repository.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1) }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, path }) => result(await application.bindComponent(stackSelector, componentId, path, { materialize: false }) as unknown as Record<string, unknown>));
 
   server.registerTool("stack_status", {
     title: "Inspect Stack status", description: "Inspect explicit component paths and Git state without modifying them.", inputSchema: z.object({ stack: selector }),

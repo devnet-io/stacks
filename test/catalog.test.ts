@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { addRegisteredComponent, bindRegisteredComponent, createRegisteredStack, exportStackDefinition, listRegisteredStacks, loadRegisteredStack, platformDirectories, registerStackDefinition } from "../src/core/catalog.ts";
+import { addRegisteredComponent, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, platformDirectories } from "../src/core/catalog.ts";
 import { componentRoot, stateDirectory } from "../src/core/paths.ts";
 
 test("platform directories are lowercase and follow native conventions", () => {
@@ -42,22 +42,22 @@ test("global catalog stores readable definitions and explicit component bindings
   }
 });
 
-test("portable definitions preserve identity and receive new machine bindings", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-portable-"));
-  const first = { config: path.join(root, "first-config"), state: path.join(root, "first-state") };
-  const second = { config: path.join(root, "second-config"), state: path.join(root, "second-state") };
-  const component = path.join(root, "component");
-  const exported = path.join(root, "exports", "portable.json");
-  await mkdir(component, { recursive: true });
+test("directory membership discovery returns every matching Stack without guessing", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-memberships-"));
+  const directories = { config: path.join(root, "config"), state: path.join(root, "state") };
+  const shared = path.join(root, "shared");
+  const nested = path.join(shared, "src", "feature");
+  await mkdir(nested, { recursive: true });
   try {
-    const original = await createRegisteredStack("tests/portable", first);
-    await addRegisteredComponent("tests/portable", { id: "app", path: component, kind: "product" }, first);
-    await exportStackDefinition("tests/portable", exported, first);
-    const imported = await registerStackDefinition(exported, second);
-    assert.equal(imported.manifest.metadata.id, original.manifest.metadata.id);
-    assert.equal(imported.bindings?.app, undefined);
-    const rebound = await bindRegisteredComponent("tests/portable", "app", component, second);
-    assert.equal(rebound.bindings?.app, path.resolve(component));
+    await createRegisteredStack("tests/first", directories);
+    await createRegisteredStack("tests/second", directories);
+    await addRegisteredComponent("tests/first", { id: "shared", path: shared }, directories);
+    await addRegisteredComponent("tests/second", { id: "other-name", path: shared, kind: "library" }, directories);
+    const memberships = await findRegisteredComponentMemberships(nested, directories);
+    assert.deepEqual(memberships.map((item) => `${item.stack.namespace}/${item.stack.name}:${item.component.id}`), ["tests/first:shared", "tests/second:other-name"]);
+    assert.ok(memberships.every((item) => item.relativePath === path.join("src", "feature")));
+    assert.equal(memberships[0]?.component.kind, "component");
+    assert.deepEqual(await findRegisteredComponentMemberships(root, directories), []);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

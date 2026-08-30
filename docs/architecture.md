@@ -2,6 +2,8 @@
 
 This document describes implemented behavior in this checkout. Hosted direction belongs in [RFCs](rfcs/README.md).
 
+No compatibility milestone has been declared. Unused command and adapter surfaces may therefore be removed instead of retained as legacy workflow. Durable definitions, bindings, and events remain protected: incompatible stored data must be migrated explicitly or rejected with a clear error, never silently rewritten, corrupted, or discarded.
+
 ## Repository shape
 
 The npm workspace contains a TypeScript core, CLI, stdio MCP adapter, loopback HTTP adapter, and React local UI. `apps/cloud` is only a reserved future boundary.
@@ -30,6 +32,8 @@ The `workspace`, relative `path` source, `stacks init`, and `--root` surfaces re
 ## Component and context model
 
 Components are ordinary graph nodes. Software, standards, design systems, infrastructure references, and documentation may all be components; `kind` describes intent but does not create a second storage hierarchy. Components provide capabilities, consume capabilities, depend on other components, and export bounded context resources.
+
+Directory membership is derived from explicit machine bindings. A queried path matches a component when it is the bound root or lies beneath it. Discovery returns every match because one directory may participate in multiple Stacks; it never relies on repository names or ownership markers. New components persist the neutral `component` kind when no optional kind is supplied, while capabilities remain the functional contract.
 
 Context resolution is deterministic and provenance-rich. It verifies file-backed paths against the owning component root and reports missing or ambiguous providers. The current resolver plans context; explicit byte/token enforcement remains unfinished.
 

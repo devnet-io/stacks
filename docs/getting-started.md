@@ -71,7 +71,7 @@ Connect Codex once:
 codex mcp add stacks -- stacks mcp
 ```
 
-This is a stdio MCP adapter. Codex launches it as a subprocess when needed and communicates over stdin/stdout, so there is no MCP URL, token, fixed port, or daemon for local use. The server supplies operating instructions during initialization; agents can also call `instructions_get` or read `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli`. Tools such as `stack_status` and `context_resolve` take a Stack selector.
+This is a stdio MCP adapter. Codex launches it as a subprocess when needed and communicates over stdin/stdout, so there is no MCP URL, token, fixed port, or daemon for local use. The server supplies operating instructions during initialization; agents can also call `instructions_get` or read `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli`. Start with `stack_memberships` for the current workspace. If it finds one match, use that Stack and component; if it finds multiple, choose explicitly. Tools such as `component_get`, `stack_status`, and `context_resolve` then operate on that selection.
 
 For direct CLI use:
 
@@ -83,14 +83,12 @@ stacks context app --stack your-name/my-stack --task "Describe the change I am a
 
 The CLI and Manage UI create Stacks and attach components. Capability exports, requirements, guidance, and richer metadata are still edited in the readable definition file shown by Overview. The UI does not yet provide those richer definition forms. Directory-based `stack.json` examples remain available as compatibility fixtures, but they are not the recommended setup for a new Stack.
 
-To version or move a definition, export it, commit or transfer that JSON, register it on another machine, then bind each component to that machine's directory. In this command, “register” means import the portable definition into that machine's catalog; it is not Git repository registration or publishing:
+To see whether the current directory is part of one or more Stacks:
 
 ```bash
-stacks stack export your-name/my-stack --to my-stack.json
-stacks stack register my-stack.json
-stacks component bind your-name/my-stack app --path /path/on/this/machine/app
+stacks locate
 ```
 
-The immutable Stack ID survives this process; absolute component paths do not travel in the definition.
+Stacks returns every matching Stack and component instead of guessing. Cross-machine synchronization will be introduced with the planned Git-backed Collections workflow rather than an interim manual import/export interface.
 
 Run `stacks help` for the short command list, `stacks help commands` for every command, or `stacks help <command>` for focused usage.

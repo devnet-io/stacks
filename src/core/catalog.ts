@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { access, mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { access, mkdir, open, readFile, realpath, rename, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { assertValidManifest } from "./validation.ts";
@@ -9,6 +9,12 @@ export interface PlatformDirectories { config: string; state: string }
 export interface CatalogEntry { id: string; namespace: string; name: string; definitionPath: string; bindingsPath: string }
 export interface StackCatalog { schemaVersion: "0.1"; stacks: CatalogEntry[] }
 export interface ComponentBindings { schemaVersion: "0.1"; stackId: string; components: Record<string, { path: string }> }
+export interface ComponentMembership {
+  stack: { id: string; namespace: string; name: string };
+  component: { id: string; name: string; kind: string };
+  root: string;
+  relativePath: string;
+}
 
 export function platformDirectories(
   platform = process.platform,
@@ -130,32 +136,6 @@ function assertCatalogDefinition(manifest: StackManifest, name: string): void {
   if (manifest.components.some((component) => component.source.type === "path")) throw new Error(`Registered Stack ${name} cannot use legacy relative path components.`);
 }
 
-export async function registerStackDefinition(file: string, directories = platformDirectories()): Promise<LoadedStack> {
-  const source = path.resolve(file);
-  const parsed = JSON.parse(await readFile(source, "utf8")) as unknown;
-  assertValidManifest(parsed);
-  const value = `${parsed.metadata.namespace}/${parsed.metadata.name}`;
-  assertCatalogDefinition(parsed, value);
-  await withCatalogMutation(directories, async () => {
-    const catalog = await readCatalog(directories);
-    if (catalog.stacks.some((entry) => selector(entry) === value || entry.id === parsed.metadata.id)) throw new Error(`Stack ${value} or identity ${parsed.metadata.id} is already registered.`);
-    const definitionPath = path.join(directories.config, "definitions", `${parsed.metadata.id}.json`);
-    const bindingsPath = path.join(directories.config, "bindings", `${parsed.metadata.id}.json`);
-    const entry: CatalogEntry = { id: parsed.metadata.id, namespace: parsed.metadata.namespace, name: parsed.metadata.name, definitionPath, bindingsPath };
-    await writeJsonAtomic(definitionPath, parsed);
-    await writeJsonAtomic(bindingsPath, { schemaVersion: "0.1", stackId: parsed.metadata.id, components: {} } satisfies ComponentBindings);
-    await writeJsonAtomic(catalogFile(directories), { ...catalog, stacks: [...catalog.stacks, entry] });
-  });
-  return loadRegisteredStack(value, directories);
-}
-
-export async function exportStackDefinition(value: string, destination: string, directories = platformDirectories()): Promise<string> {
-  const stack = await loadRegisteredStack(value, directories);
-  const target = path.resolve(destination);
-  await writeJsonAtomic(target, stack.manifest);
-  return target;
-}
-
 export async function loadRegisteredStack(value: string, directories = platformDirectories()): Promise<LoadedStack> {
   const entry = (await readCatalog(directories)).stacks.find((candidate) => selector(candidate) === value || candidate.id === value);
   if (!entry) throw new Error(`Unknown registered Stack: ${value}. Run stacks stack list.`);
@@ -168,6 +148,50 @@ export async function loadRegisteredStack(value: string, directories = platformD
     bindings: Object.fromEntries(Object.entries(bindings.components).map(([id, binding]) => [id, binding.path])),
     stateRoot: path.join(directories.state, "stacks", entry.id), registered: true,
   };
+}
+
+async function canonicalDirectory(value: string): Promise<string> {
+  const resolved = path.resolve(value);
+  try { return await realpath(resolved); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return resolved;
+    throw error;
+  }
+}
+
+function containsPath(root: string, candidate: string): string | undefined {
+  const relative = path.relative(root, candidate);
+  if (relative === "") return ".";
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return undefined;
+  return relative;
+}
+
+export async function findRegisteredComponentMemberships(
+  directory: string,
+  directories = platformDirectories(),
+): Promise<ComponentMembership[]> {
+  const target = await canonicalDirectory(directory);
+  const catalog = await listRegisteredStacks(directories);
+  const matches: ComponentMembership[] = [];
+  for (const entry of catalog) {
+    const stack = await loadRegisteredStack(entry.id, directories);
+    for (const component of stack.manifest.components) {
+      const binding = stack.bindings?.[component.id];
+      if (!binding) continue;
+      const root = await canonicalDirectory(binding);
+      const relativePath = containsPath(root, target);
+      if (relativePath === undefined) continue;
+      matches.push({
+        stack: { id: entry.id, namespace: entry.namespace, name: entry.name },
+        component: { id: component.id, name: component.name ?? component.id, kind: component.kind ?? "component" },
+        root,
+        relativePath,
+      });
+    }
+  }
+  return matches.toSorted((left, right) =>
+    `${left.stack.namespace}/${left.stack.name}:${left.component.id}`.localeCompare(`${right.stack.namespace}/${right.stack.name}:${right.component.id}`),
+  );
 }
 
 export async function addRegisteredComponent(
@@ -189,7 +213,7 @@ export async function addRegisteredComponent(
     const component: StackComponent = {
       id: input.id,
       ...(input.name === undefined ? {} : { name: input.name }),
-      ...(input.kind === undefined ? {} : { kind: input.kind }),
+      kind: input.kind ?? "component",
       source: input.git ? { type: "git", url: input.git } : { type: "local" },
     };
     const manifest = { ...stack.manifest, components: [...stack.manifest.components, component] };

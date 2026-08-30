@@ -138,7 +138,7 @@ function CreateStackForm({
       <CardHeader>
         <CardTitle>Create a Stack</CardTitle>
         <CardDescription>
-          Create a portable definition in the machine catalog. This does not
+          Create a readable definition in the machine catalog. This does not
           create or move project directories.
         </CardDescription>
       </CardHeader>
@@ -188,7 +188,7 @@ function AddComponentForm({
 }) {
   const [id, setId] = useState('');
   const [name, setName] = useState('');
-  const [kind, setKind] = useState('');
+  const [kind, setKind] = useState('component');
   const [path, setPath] = useState('');
   const [git, setGit] = useState('');
   const operation = useOperation();
@@ -206,7 +206,7 @@ function AddComponentForm({
       });
       setId('');
       setName('');
-      setKind('');
+      setKind('component');
       setPath('');
       setGit('');
       await onChanged().catch(() => undefined);
@@ -262,7 +262,7 @@ function AddComponentForm({
             <Field label="Kind" htmlFor="component-kind">
               <Input
                 id="component-kind"
-                placeholder="product"
+                placeholder="component"
                 value={kind}
                 onChange={(event) => setKind(event.target.value)}
               />

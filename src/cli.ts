@@ -111,8 +111,9 @@ function printJson(value: unknown): void {
 
 function help(topic?: string): void {
   const topics: Record<string, string> = {
-    stack: `Manage registered Stacks. "register" imports a portable definition into this machine's catalog; it does not add a Git repository or import machine paths.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n  stacks stack register <definition.json> [--json]\n  stacks stack export <namespace/name> --to <definition.json> [--json]\n`,
-    component: `Attach component definitions to registered Stacks. Paths are always explicit.\n\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n`,
+    stack: `Create and list Stacks in this machine's catalog.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n`,
+    component: `View components or attach them to registered Stacks. Paths are always explicit. Kind is optional and defaults to component.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n`,
+    locate: `Find every Stack component whose explicit binding contains a directory. Multiple matches are returned instead of guessing.\n\n  stacks locate [directory] [--json]\n`,
     status: `Inspect registered Stack component paths and Git state without changing repositories. With no selector, inspect every registered Stack. Loading a Stack also validates its definition.\n\n  stacks status [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
     sync: `Clone missing Git components to their explicit paths. Add --update to fetch existing repositories; Stacks never resets, cleans, merges, or rebases.\n\n  stacks sync --stack <namespace/name> [--dry-run] [--update] [--json]\n`,
     context: `Resolve bounded, provenance-rich context for one target component.\n\n  stacks context <target> --stack <namespace/name> [--task <text>] [--json]\n`,
@@ -120,7 +121,7 @@ function help(topic?: string): void {
     mcp: `Run the machine-level MCP adapter over stdio. Agent clients start this command when needed; do not run it as a daemon.\n\n  stacks mcp\n`,
     checkin: `Append agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn --stack <namespace/name> --session <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
     usage: `Append usage data or report recorded usage. Monetary values require reported, estimated, or allocated provenance.\n\n  stacks usage record --stack <namespace/name> --session <id> --provider <name> --model <name> [token/cost options] [--json]\n  stacks usage report --stack <namespace/name> [--json]\n`,
-    commands: `All commands\n\n  stack create|list|register|export   Create, list, import, or export catalog definitions\n  component add|bind                 Attach component definitions and paths\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn|complete        Append work lifecycle events\n  usage record|report                Record and report usage\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
+    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind        View or attach components and paths\n  locate                             Find Stack membership for a directory\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn|complete        Append work lifecycle events\n  usage record|report                Record and report usage\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
     lock: `Write stack.lock.json with the current component revisions.\n\n  stacks lock --stack <namespace/name> [--json]\n`,
     init: `Create a legacy directory-based Stack manifest. New Stacks should normally use stacks stack create.\n\n  stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]\n`,
     validate: `Validate a standalone or legacy Stack definition. Registered Stacks are validated whenever they are loaded, including by stacks status.\n\n  stacks validate [--stack <namespace/name> | --root <dir>] [--json]\n`,
@@ -134,6 +135,7 @@ function help(topic?: string): void {
   process.stdout.write(`Common commands\n\n`);
   process.stdout.write(`  stacks stack create <namespace/name>       Create a Stack\n`);
   process.stdout.write(`  stacks component add ...                  Add a component\n`);
+  process.stdout.write(`  stacks locate [directory]                 Find Stack membership\n`);
   process.stdout.write(`  stacks status --stack <namespace/name>    Inspect Stack health\n`);
   process.stdout.write(`  stacks context <target> --stack <name>    Resolve agent context\n`);
   process.stdout.write(`  stacks ui                                 Open the local UI\n`);
@@ -379,31 +381,29 @@ async function commandStack(parsed: ParsedArgs): Promise<void> {
     else for (const stack of stacks) process.stdout.write(`${stack.namespace}/${stack.name}\n`);
     return;
   }
-  if (operation === "register") {
-    const file = parsed.positionals[2];
-    if (!file) throw new Error("Usage: stacks stack register <definition.json>.");
-    const registered = await application.registerStack(file);
-    const identity = registered.manifest.metadata;
-    const output = { schemaVersion: "0.1", stack: { id: identity.id, namespace: identity.namespace, name: identity.name }, definitionPath: registered.definitionPath };
-    if (booleanOption(parsed, "json")) printJson(output); else process.stdout.write(`Registered ${identity.namespace}/${identity.name}\n`);
-    return;
-  }
-  if (operation === "export") {
-    const selector = parsed.positionals[2];
-    if (!selector) throw new Error("Usage: stacks stack export <namespace/name> --to <definition.json>.");
-    const destination = await application.exportStack(selector, requiredOption(parsed, "to"));
-    const output = { schemaVersion: "0.1", stack: selector, definitionPath: destination };
-    if (booleanOption(parsed, "json")) printJson(output); else process.stdout.write(`Exported ${selector} to ${destination}\n`);
-    return;
-  }
-  throw new Error("Usage: stacks stack create|list|register|export ...");
+  throw new Error("Usage: stacks stack create|list ...");
 }
 
 async function commandComponent(parsed: ParsedArgs): Promise<void> {
   const operation = parsed.positionals[1];
   const selector = parsed.positionals[2];
   const id = parsed.positionals[3];
-  if (!selector || !id || !operation) throw new Error("Usage: stacks component add|bind <namespace/name> <id> --path <dir> ...");
+  if (!selector || !operation) throw new Error("Usage: stacks component list|get|add|bind <namespace/name> ...");
+  if (operation === "list") {
+    const output = await application.listComponents(selector);
+    if (booleanOption(parsed, "json")) printJson(output);
+    else if (!output.components.length) process.stdout.write(`No components in ${selector}.\n`);
+    else for (const item of output.components) process.stdout.write(`${item.component.id}\t${item.component.kind ?? "component"}\t${item.binding ?? "unbound"}\n`);
+    return;
+  }
+  if (operation === "get") {
+    if (!id) throw new Error("Usage: stacks component get <namespace/name> <id> [--json].");
+    const output = await application.getComponent(selector, id);
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`${output.component.id} (${output.component.kind ?? "component"})\nStack: ${output.stack.namespace}/${output.stack.name}\nPath: ${output.binding ?? "unbound"}\n`);
+    return;
+  }
+  if (!id) throw new Error("Usage: stacks component add|bind <namespace/name> <id> --path <dir> ...");
   const localPath = requiredOption(parsed, "path");
   if (operation === "bind") {
     const changed = await application.bindComponent(selector, id, localPath);
@@ -421,6 +421,21 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
   const output = { schemaVersion: "0.1", stack: selector, component: id, path: changed.bindings[id], sync: changed.sync };
   if (booleanOption(parsed, "json")) printJson(output);
   else process.stdout.write(`Added ${id} to ${selector} at ${changed.bindings[id]}\n${changed.sync.message}\n`);
+}
+
+async function commandLocate(parsed: ParsedArgs): Promise<void> {
+  const output = await application.findMemberships(parsed.positionals[1] ?? process.cwd());
+  if (booleanOption(parsed, "json")) {
+    printJson(output);
+    return;
+  }
+  if (!output.memberships.length) {
+    process.stdout.write(`No Stack component binding contains ${output.path}.\n`);
+    return;
+  }
+  for (const membership of output.memberships) {
+    process.stdout.write(`${membership.stack.namespace}/${membership.stack.name}\t${membership.component.id}\t${membership.root}\t${membership.relativePath}\n`);
+  }
 }
 
 async function commandUi(parsed: ParsedArgs): Promise<void> {
@@ -455,6 +470,9 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
       return;
     case "component":
       await commandComponent(parsed);
+      return;
+    case "locate":
+      await commandLocate(parsed);
       return;
     case "validate":
       await commandValidate(parsed);

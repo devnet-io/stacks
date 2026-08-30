@@ -71,7 +71,7 @@ Returns `201` with the immutable identity. It creates catalog state only; it doe
 }
 ```
 
-`stack`, `id`, and `path` are required. `git`, `name`, and `kind` are optional. Without `git`, the directory must already exist. With `git`, a missing explicit path may be cloned. Returns `201` with Stack identity, component binding, and synchronization result.
+`stack`, `id`, and `path` are required. `git`, `name`, and `kind` are optional; omitted kind persists as `component`. Without `git`, the directory must already exist. With `git`, a missing explicit path may be cloned. Returns `201` with Stack identity, component binding, and synchronization result.
 
 ## Change a component binding
 

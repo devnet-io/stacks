@@ -25,7 +25,12 @@ Current tools are:
 
 - `instructions_get`
 - `stack_list`
+- `stack_memberships`
 - `stack_get`
+- `component_list`
+- `component_get`
+- `component_add`
+- `component_bind`
 - `stack_status`
 - `context_resolve`
 - `work_start`
@@ -34,13 +39,13 @@ Current tools are:
 - `usage_record`
 - `usage_report`
 
-Every Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
+`stack_memberships` maps an explicit workspace path to zero, one, or multiple bound Stack components. It never guesses when a directory is shared. Every subsequent Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
 
-Repository synchronization is absent from MCP because it is a filesystem/network mutation better initiated explicitly through the CLI.
+MCP may add an existing local component and change its binding, but Git cloning and repository synchronization remain absent because those filesystem/network mutations are better initiated explicitly through the CLI.
 
 ## Skills and clients
 
-The bundled Skill tells agents to prefer server instructions and runtime reference resources, then list or select a registered Stack, resolve bounded target context, preserve component-local instructions, and append lifecycle events. It supplements rather than overwrites `AGENTS.md` in component repositories and does not duplicate the full interface manuals.
+The bundled Skill tells agents to prefer server instructions and runtime reference resources, discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, resolve bounded context, preserve component-local instructions, and append lifecycle events. It supplements rather than overwrites `AGENTS.md` in component repositories and does not duplicate the full interface manuals.
 
 Not every client exposes tokens, model identity, tool calls, or stable sessions. Adapters record partial facts and never fabricate values. Cost remains `reported`, `estimated`, or `allocated`.
 

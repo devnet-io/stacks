@@ -39,6 +39,7 @@ Read `docs/00-input-synthesis.md` and the current-state documentation named belo
 ## Engineering expectations
 
 - Use TypeScript with strict compiler options.
+- Until a compatibility milestone is explicitly declared, do not preserve unused commands, APIs, schemas, or workflows merely for backward compatibility. Prefer removing confusing surface area. Still detect existing durable data safely: never silently corrupt, overwrite, or discard it, and add an explicit migration or refusal when a change could do so.
 - Keep filesystem and Git operations behind interfaces or focused modules.
 - Never invoke a shell with interpolated user input; use argument arrays.
 - Resolve and verify file-backed resource paths before reading them.

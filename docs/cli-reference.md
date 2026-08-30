@@ -62,35 +62,31 @@ stacks stack list [--json]
 stacks stack list --json
 ```
 
-### `stacks stack register`
-
-Imports a portable JSON definition into this machine's Stack catalog. “Register” means “make this definition known to the local catalog”; it does **not** register a Git repository, publish anything, contact GitHub, or import another machine's component paths.
-
-```text
-stacks stack register <definition.json> [--json]
-```
-
-```bash
-stacks stack register ./customer-portal.stack.json
-```
-
-The normal source is `stacks stack export` on another installation or a definition file retrieved from version control. Registration copies and validates the definition, preserves its immutable Stack ID and readable `namespace/name`, creates an empty machine-local bindings record, and rejects an ID or selector already present in the catalog. Bind every imported component on the new machine with `component bind`.
-
-This is the low-level manual portability primitive. The planned Git-backed Collections workflow will eventually provide a higher-level way to synchronize groups of definitions; it will build on rather than change Stack identity.
-
-### `stacks stack export`
-
-Writes the portable definition without machine-local bindings.
-
-```text
-stacks stack export <namespace/name> --to <definition.json> [--json]
-```
-
-```bash
-stacks stack export acme/customer-portal --to ./customer-portal.stack.json
-```
-
 ## Components
+
+### `stacks component list`
+
+Lists every component in one Stack with its kind and explicit local binding.
+
+```text
+stacks component list <namespace/name> [--json]
+```
+
+```bash
+stacks component list acme/customer-portal --json
+```
+
+### `stacks component get`
+
+Returns one complete component declaration plus its machine-local binding.
+
+```text
+stacks component get <namespace/name> <id> [--json]
+```
+
+```bash
+stacks component get acme/customer-portal shared-ui --json
+```
 
 ### `stacks component add`
 
@@ -106,11 +102,11 @@ stacks component add acme/customer-portal app --path /work/customer-portal --kin
 stacks component add acme/customer-portal standards --path /work/engineering-standards --git https://github.com/acme/engineering-standards.git --kind knowledge
 ```
 
-`--path` is always required. Without `--git`, the directory must exist. Stacks never adds a membership marker or Git submodule.
+`--path` is always required. Without `--git`, the directory must exist. `--kind` is optional and defaults to the extensible label `component`; capabilities describe functional behavior. Stacks never adds a membership marker or Git submodule.
 
 ### `stacks component bind`
 
-Binds an existing component definition to its explicit directory on this machine. This is normally used after `stack register`.
+Binds an existing component definition to a different explicit directory on this machine.
 
 ```text
 stacks component bind <namespace/name> <id> --path <directory> [--json]
@@ -123,6 +119,21 @@ stacks component bind acme/customer-portal app --path /work/customer-portal
 For a Git component, a missing bound destination may be cloned. Existing repositories are inspected conservatively.
 
 ## Inspection and context
+
+### `stacks locate`
+
+Finds every registered component whose explicit binding contains the supplied directory. It defaults to the current directory and returns all matches because the same directory may belong to multiple Stacks.
+
+```text
+stacks locate [directory] [--json]
+```
+
+```bash
+stacks locate
+stacks locate /work/customer-portal/src --json
+```
+
+This command is read-only. A zero-match result is successful discovery with an empty `memberships` array; it does not guess from repository names or write membership markers.
 
 ### `stacks status`
 

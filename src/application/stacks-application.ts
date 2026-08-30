@@ -1,5 +1,6 @@
+import path from "node:path";
 import type { EventActor, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
-import { addRegisteredComponent, bindRegisteredComponent, createRegisteredStack, exportStackDefinition, listRegisteredStacks, loadRegisteredStack, registerStackDefinition, type PlatformDirectories } from "../core/catalog.ts";
+import { addRegisteredComponent, bindRegisteredComponent, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
 import { completeTurn, completeWork, recordUsage, startWork } from "../core/events.ts";
 import { syncComponent } from "../core/git.ts";
@@ -28,6 +29,25 @@ export interface CatalogStatusOutput {
   stacks: StatusOutput[];
 }
 
+export interface ComponentOutput {
+  schemaVersion: "0.1";
+  stack: StackIdentity;
+  component: StackManifest["components"][number];
+  binding?: string;
+}
+
+export interface ComponentListOutput {
+  schemaVersion: "0.1";
+  stack: StackIdentity;
+  components: Array<{ component: StackManifest["components"][number]; binding?: string }>;
+}
+
+export interface MembershipOutput {
+  schemaVersion: "0.1";
+  path: string;
+  memberships: ComponentMembership[];
+}
+
 export interface AddComponentInput {
   stack: string;
   id: string;
@@ -44,10 +64,11 @@ export interface ComponentMutationOutput extends StackDefinitionOutput {
 export interface StacksApplication {
   listStacks(): Promise<StackIdentity[]>;
   createStack(selector: string): Promise<StackIdentity>;
-  registerStack(file: string): Promise<StackDefinitionOutput>;
-  exportStack(selector: string, destination: string): Promise<string>;
+  findMemberships(directory: string): Promise<MembershipOutput>;
+  listComponents(stack: string): Promise<ComponentListOutput>;
+  getComponent(stack: string, componentId: string): Promise<ComponentOutput>;
   addComponent(input: AddComponentInput): Promise<ComponentMutationOutput>;
-  bindComponent(stack: string, componentId: string, localPath: string): Promise<ComponentMutationOutput>;
+  bindComponent(stack: string, componentId: string, localPath: string, options?: { materialize?: boolean }): Promise<ComponentMutationOutput>;
   getStack(reference: StackReference): Promise<StackDefinitionOutput>;
   initializeLegacyStack(root: string, namespace: string, name: string): Promise<InitOutput>;
   validateStack(reference: StackReference): Promise<ValidateOutput>;
@@ -97,12 +118,24 @@ export class LocalStacksApplication implements StacksApplication {
     return stackIdentity((await createRegisteredStack(selector, this.options.catalogDirectories)).manifest);
   }
 
-  async registerStack(file: string): Promise<StackDefinitionOutput> {
-    return definition(await registerStackDefinition(file, this.options.catalogDirectories));
+  async findMemberships(directory: string): Promise<MembershipOutput> {
+    return { schemaVersion: "0.1", path: path.resolve(directory), memberships: await findRegisteredComponentMemberships(directory, this.options.catalogDirectories) };
   }
 
-  exportStack(selector: string, destination: string): Promise<string> {
-    return exportStackDefinition(selector, destination, this.options.catalogDirectories);
+  async listComponents(stack: string): Promise<ComponentListOutput> {
+    const loaded = await loadRegisteredStack(stack, this.options.catalogDirectories);
+    return {
+      schemaVersion: "0.1",
+      stack: stackIdentity(loaded.manifest),
+      components: loaded.manifest.components.map((component) => ({ component, ...(loaded.bindings?.[component.id] ? { binding: loaded.bindings[component.id] } : {}) })),
+    };
+  }
+
+  async getComponent(stack: string, componentId: string): Promise<ComponentOutput> {
+    const loaded = await loadRegisteredStack(stack, this.options.catalogDirectories);
+    const component = loaded.manifest.components.find((candidate) => candidate.id === componentId);
+    if (!component) throw new Error(`Unknown component ${componentId} in ${loaded.manifest.metadata.namespace}/${loaded.manifest.metadata.name}.`);
+    return { schemaVersion: "0.1", stack: stackIdentity(loaded.manifest), component, ...(loaded.bindings?.[componentId] ? { binding: loaded.bindings[componentId] } : {}) };
   }
 
   async addComponent(input: AddComponentInput): Promise<ComponentMutationOutput> {
@@ -112,10 +145,10 @@ export class LocalStacksApplication implements StacksApplication {
     return { ...definition(loaded), sync: await syncComponent(loaded, added) };
   }
 
-  async bindComponent(stack: string, componentId: string, localPath: string): Promise<ComponentMutationOutput> {
+  async bindComponent(stack: string, componentId: string, localPath: string, options: { materialize?: boolean } = {}): Promise<ComponentMutationOutput> {
     const loaded = await bindRegisteredComponent(stack, componentId, localPath, this.options.catalogDirectories);
     const component = loaded.manifest.components.find((candidate) => candidate.id === componentId)!;
-    return { ...definition(loaded), sync: await syncComponent(loaded, component) };
+    return { ...definition(loaded), sync: await syncComponent(loaded, component, options.materialize === false ? { dryRun: true } : {}) };
   }
 
   async getStack(reference: StackReference): Promise<StackDefinitionOutput> {

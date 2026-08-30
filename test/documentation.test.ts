@@ -11,6 +11,13 @@ test("keeps product, current architecture, RFCs, and delivery evidence distinct"
   assert.match(doc("project-status.md"), /Do not infer completion/u);
 });
 
+test("does not retain unused pre-milestone interfaces at the expense of a clear product", () => {
+  const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
+  assert.match(agents, /Until a compatibility milestone is explicitly declared/u);
+  assert.match(doc("architecture.md"), /No compatibility milestone has been declared/u);
+  assert.match(doc("architecture.md"), /never silently rewritten, corrupted, or discarded/u);
+});
+
 test("documents canonical Markdown as the web documentation source", () => {
   assert.match(doc("README.md"), /Markdown files remain the source of truth/u);
   assert.match(doc("user-guide.md"), /do not maintain a second copy/u);
@@ -40,8 +47,8 @@ test("documents the implemented Graph and supplementary Docker quality gate", ()
 test("documents every CLI operation with focused reference sections", () => {
   const reference = doc("cli-reference.md");
   const operations = [
-    "help", "--version", "stack create", "stack list", "stack register", "stack export",
-    "component add", "component bind", "status", "context", "sync", "lock", "ui", "mcp",
+    "help", "--version", "stack create", "stack list", "component list", "component get",
+    "component add", "component bind", "locate", "status", "context", "sync", "lock", "ui", "mcp",
     "checkin start", "checkin turn", "checkin complete", "usage record", "usage report",
     "doctor", "validate", "init",
   ];
@@ -52,7 +59,7 @@ test("documents every CLI operation with focused reference sections", () => {
 
 test("publishes complete MCP instructions, tools, resources, and examples", () => {
   const reference = doc("mcp-reference.md");
-  for (const tool of ["instructions_get", "stack_list", "stack_get", "stack_status", "context_resolve", "work_start", "turn_complete", "work_complete", "usage_record", "usage_report"]) {
+  for (const tool of ["instructions_get", "stack_list", "stack_memberships", "stack_get", "component_list", "component_get", "component_add", "component_bind", "stack_status", "context_resolve", "work_start", "turn_complete", "work_complete", "usage_record", "usage_report"]) {
     assert.match(reference, new RegExp("### `" + tool + "`", "u"));
   }
   for (const uri of ["stacks://instructions", "stacks://reference/mcp", "stacks://reference/cli", "stacks://catalog"]) assert.match(reference, new RegExp(uri.replaceAll("/", "\\/"), "u"));
