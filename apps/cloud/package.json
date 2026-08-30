@@ -1,0 +1,7 @@
+{
+  "name": "@stacks-dev/cloud",
+  "version": "0.0.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "Reserved hosted adapter boundary for Stacks. No cloud runtime is implemented yet."
+}

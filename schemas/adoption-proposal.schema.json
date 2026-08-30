@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/adoption-proposal.schema.json",
+  "title": "Stacks adoption proposal (draft)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "source",
+    "createdAt",
+    "observations",
+    "targets",
+    "status"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1-draft"
+    },
+    "id": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "id",
+        "origin",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "license": {
+          "type": "string"
+        },
+        "trustNotes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "evidence",
+          "confidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "risks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "componentId",
+          "observationIds",
+          "disposition",
+          "proposal",
+          "validation"
+        ],
+        "properties": {
+          "componentId": {
+            "type": "string"
+          },
+          "observationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disposition": {
+            "enum": [
+              "adopt",
+              "adapt",
+              "reject",
+              "defer"
+            ]
+          },
+          "proposal": {
+            "type": "string"
+          },
+          "applicableGuidance": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "validation": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resultingArtifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "review",
+        "approved",
+        "rejected",
+        "applied",
+        "partially-applied"
+      ]
+    }
+  }
+}

@@ -1,0 +1,261 @@
+{
+  "apiVersion": "stacks.dev/v0alpha1",
+  "kind": "Stack",
+  "metadata": {
+    "id": "bff4f0b7-207a-45bd-a66d-18cd20b89bd5",
+    "namespace": "stacks-dev",
+    "name": "foundation",
+    "description": "A layered example: standards -> UI primitives -> application patterns -> product, with Cloudflare references."
+  },
+  "workspace": {
+    "directory": ".stack-workspace",
+    "stateDirectory": ".stacks"
+  },
+  "context": {
+    "always": [
+      {
+        "path": "STACK_GUIDE.md",
+        "description": "Purpose and cross-component rules for this Stack.",
+        "strength": "required",
+        "priority": 1200
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "standards",
+      "name": "Development standards",
+      "kind": "knowledge",
+      "description": "Canonical engineering preferences and agent-loop rules.",
+      "source": {
+        "type": "path",
+        "path": "components/standards"
+      },
+      "access": "read-write",
+      "provides": [
+        {
+          "capability": "practice.software-development",
+          "context": [
+            {
+              "path": "standards/engineering.md",
+              "strength": "required",
+              "priority": 1100
+            },
+            {
+              "path": "standards/testing.md",
+              "strength": "preferred",
+              "priority": 700
+            }
+          ]
+        },
+        {
+          "capability": "practice.agent-loop",
+          "context": [
+            {
+              "path": "standards/agent-loop.md",
+              "strength": "required",
+              "priority": 1150
+            }
+          ]
+        }
+      ],
+      "guidance": [
+        {
+          "path": "README.md",
+          "description": "Index of standards.",
+          "strength": "reference",
+          "priority": 250
+        }
+      ]
+    },
+    {
+      "id": "ui-primitives",
+      "name": "React UI primitives",
+      "kind": "library",
+      "source": {
+        "type": "path",
+        "path": "components/ui-primitives"
+      },
+      "access": "read-write",
+      "consumes": [
+        {
+          "capability": "practice.software-development",
+          "from": "standards"
+        },
+        {
+          "capability": "practice.agent-loop",
+          "from": "standards"
+        }
+      ],
+      "provides": [
+        {
+          "capability": "ui.react.primitives",
+          "description": "Buttons, fields, dialogs, tables, and other primitive controls.",
+          "context": [
+            {
+              "path": "README.md",
+              "strength": "required",
+              "priority": 900
+            },
+            {
+              "path": "docs/api.md",
+              "strength": "reference",
+              "priority": 500
+            }
+          ]
+        }
+      ],
+      "guidance": [
+        {
+          "path": "docs/conventions.md",
+          "description": "Rules for extending and consuming the primitive library.",
+          "strength": "preferred",
+          "priority": 800,
+          "appliesTo": [
+            "ui.react.primitives"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui-patterns",
+      "name": "React application patterns",
+      "kind": "library",
+      "source": {
+        "type": "path",
+        "path": "components/ui-patterns"
+      },
+      "access": "read-write",
+      "consumes": [
+        {
+          "capability": "ui.react.primitives",
+          "from": "ui-primitives"
+        },
+        {
+          "capability": "practice.software-development",
+          "from": "standards"
+        }
+      ],
+      "provides": [
+        {
+          "capability": "ui.react.application-patterns",
+          "description": "Higher-level reusable patterns such as data pages and editing flows.",
+          "context": [
+            {
+              "path": "README.md",
+              "strength": "required",
+              "priority": 950
+            },
+            {
+              "path": "docs/paginated-data-page.md",
+              "strength": "reference",
+              "priority": 650
+            },
+            {
+              "path": "docs/editing-form.md",
+              "strength": "reference",
+              "priority": 650
+            }
+          ]
+        }
+      ],
+      "guidance": [
+        {
+          "path": "docs/composition-rules.md",
+          "strength": "preferred",
+          "priority": 780,
+          "appliesTo": [
+            "ui.react.application-patterns"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloudflare-reference",
+      "name": "Cloudflare implementation references",
+      "kind": "reference",
+      "source": {
+        "type": "path",
+        "path": "components/cloudflare-reference"
+      },
+      "access": "read-write",
+      "consumes": [
+        {
+          "capability": "practice.software-development",
+          "from": "standards"
+        }
+      ],
+      "provides": [
+        {
+          "capability": "platform.cloudflare.worker-patterns",
+          "context": [
+            {
+              "path": "docs/worker-service.md",
+              "strength": "reference",
+              "priority": 620
+            },
+            {
+              "path": "examples/worker.ts",
+              "strength": "reference",
+              "priority": 520
+            }
+          ]
+        },
+        {
+          "capability": "platform.cloudflare.d1-patterns",
+          "context": [
+            {
+              "path": "docs/d1.md",
+              "strength": "reference",
+              "priority": 620
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "product",
+      "name": "Example product",
+      "kind": "product",
+      "source": {
+        "type": "path",
+        "path": "components/product"
+      },
+      "access": "read-write",
+      "consumes": [
+        {
+          "capability": "practice.software-development",
+          "from": "standards"
+        },
+        {
+          "capability": "practice.agent-loop",
+          "from": "standards"
+        },
+        {
+          "capability": "ui.react.application-patterns",
+          "from": "ui-patterns"
+        },
+        {
+          "capability": "platform.cloudflare.worker-patterns",
+          "from": "cloudflare-reference"
+        },
+        {
+          "capability": "platform.cloudflare.d1-patterns",
+          "from": "cloudflare-reference"
+        }
+      ],
+      "guidance": [
+        {
+          "path": "docs/product-constraints.md",
+          "strength": "required",
+          "priority": 1050
+        },
+        {
+          "path": "README.md",
+          "strength": "reference",
+          "priority": 300
+        }
+      ]
+    }
+  ]
+}

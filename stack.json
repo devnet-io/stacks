@@ -1,0 +1,186 @@
+`1weqa` {
+  "apiVersion": "stacks.dev/v0alpha1",
+  "kind": "Stack",
+  "metadata": {
+    "id": "5db1d5fc-9896-43d8-8648-69f95d67c11b",
+    "namespace": "stacks-dev",
+    "name": "stacks-development",
+    "description": "The Stacks implementation repository declared as its own Stack for dogfooding and Codex development.",
+    "version": "0.0.0-alpha.1"
+  },
+  "workspace": {
+    "directory": ".stack-workspace",
+    "stateDirectory": ".stacks"
+  },
+  "context": {
+    "always": [
+      {
+        "path": "AGENTS.md",
+        "description": "Non-negotiable product and engineering rules for agents working on Stacks.",
+        "strength": "required",
+        "priority": 1300
+      },
+      {
+        "path": "CODEX_START_HERE.md",
+        "description": "Current implementation handoff and Milestone 1 acceptance criteria.",
+        "strength": "required",
+        "priority": 1250
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "stacks-core",
+      "name": "Stacks core, CLI, and MCP adapter",
+      "kind": "tool",
+      "description": "The local composition, context, repository-materialization, and event protocol implementation.",
+      "source": {
+        "type": "path",
+        "path": "."
+      },
+      "access": "read-write",
+      "consumes": [
+        {
+          "capability": "example.stack.foundation",
+          "from": "foundation-example"
+        },
+        {
+          "capability": "adapter.agent-skill.stacks",
+          "from": "stacks-agent-skill"
+        }
+      ],
+      "provides": [
+        {
+          "capability": "tool.stacks.core",
+          "description": "Declare and materialize Stacks, resolve agent context, and record local activity.",
+          "context": [
+            {
+              "path": "README.md",
+              "strength": "required",
+              "priority": 1000
+            },
+            {
+              "path": "docs/02-domain-model.md",
+              "strength": "reference",
+              "priority": 700
+            },
+            {
+              "path": "docs/07-agent-interfaces.md",
+              "strength": "reference",
+              "priority": 650
+            }
+          ]
+        }
+      ],
+      "guidance": [
+        {
+          "path": "docs/00-input-synthesis.md",
+          "description": "Traceability from the originating discussion to the product model.",
+          "strength": "required",
+          "priority": 1150
+        },
+        {
+          "path": "docs/01-vision-and-boundaries.md",
+          "strength": "required",
+          "priority": 1100
+        },
+        {
+          "path": "docs/03-storage-and-layout.md",
+          "strength": "preferred",
+          "priority": 820
+        },
+        {
+          "path": "docs/04-context-resolution.md",
+          "strength": "preferred",
+          "priority": 820
+        },
+        {
+          "path": "docs/05-events-usage-and-analytics.md",
+          "strength": "preferred",
+          "priority": 800
+        },
+        {
+          "path": "docs/06-ingestion-and-evolution.md",
+          "strength": "preferred",
+          "priority": 780
+        },
+        {
+          "path": "docs/08-roadmap.md",
+          "strength": "required",
+          "priority": 1050
+        },
+        {
+          "path": "docs/09-open-questions.md",
+          "strength": "reference",
+          "priority": 500
+        }
+      ]
+    },
+    {
+      "id": "stacks-agent-skill",
+      "name": "Stacks workspace agent Skill",
+      "kind": "knowledge",
+      "description": "Agent-facing operating protocol for using a declared Stack safely.",
+      "source": {
+        "type": "path",
+        "path": "integrations/skills/stacks-workspace"
+      },
+      "access": "read-write",
+      "provides": [
+        {
+          "capability": "adapter.agent-skill.stacks",
+          "context": [
+            {
+              "path": "SKILL.md",
+              "strength": "required",
+              "priority": 900
+            },
+            {
+              "path": "references/protocol.md",
+              "strength": "reference",
+              "priority": 650
+            },
+            {
+              "path": "references/ingestion.md",
+              "strength": "reference",
+              "priority": 600
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foundation-example",
+      "name": "Foundational layered Stack example",
+      "kind": "reference",
+      "description": "A concrete standards-to-primitives-to-patterns-to-product Stack used to exercise the design.",
+      "source": {
+        "type": "path",
+        "path": "examples/foundation-stack"
+      },
+      "access": "read-write",
+      "provides": [
+        {
+          "capability": "example.stack.foundation",
+          "context": [
+            {
+              "path": "README.md",
+              "strength": "required",
+              "priority": 850
+            },
+            {
+              "path": "STACK_GUIDE.md",
+              "strength": "reference",
+              "priority": 700
+            },
+            {
+              "path": "stack.json",
+              "strength": "reference",
+              "priority": 650
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

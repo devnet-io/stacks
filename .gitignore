@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+
+# Local Stacks runtime state and materialized external repositories.
+.stacks/
+.stack-workspace/
+
+# Machine-specific overrides.
+stack.local.json
+stack.local.yaml
+stack.local.yml
+
+# Editor / OS noise.
+.DS_Store
+.idea/
+*.iml
+.vscode/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Stacks Workspace"
+  short_description: "Operate safely inside a declared local Stack"
+  default_prompt: "Inspect this Stack, resolve the target context, and perform the requested work with appropriate Stacks check-ins."

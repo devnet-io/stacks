@@ -1,0 +1,42 @@
+{
+  "name": "@stacks-dev/stacks",
+  "version": "0.0.0-alpha.1",
+  "private": true,
+  "description": "A portable composition, knowledge, context, and activity layer for human and agent-assisted development.",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "bin": {
+    "stacks": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "dev": "node --experimental-strip-types src/cli.ts",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run build:core && npm run build:web",
+    "build:core": "tsc -p tsconfig.build.json",
+    "build:web": "npm run build -w @stacks-dev/web",
+    "dev:web": "npm run dev -w @stacks-dev/web",
+    "check": "npm run test && npm run typecheck && npm run build",
+    "demo:self:validate": "node --experimental-strip-types src/cli.ts validate --root .",
+    "demo:self:context": "node --experimental-strip-types src/cli.ts context stacks-core --task \"Complete Milestone 1\" --root .",
+    "demo:self": "npm run demo:self:validate && npm run demo:self:context",
+    "demo:validate": "node --experimental-strip-types src/cli.ts validate --root examples/foundation-stack",
+    "demo:context": "node --experimental-strip-types src/cli.ts context product --root examples/foundation-stack",
+    "demo:status": "node --experimental-strip-types src/cli.ts status --root examples/foundation-stack"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "yaml": "^2.8.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^7.0.2"
+  }
+}
