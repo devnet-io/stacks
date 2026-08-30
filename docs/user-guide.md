@@ -51,13 +51,25 @@ Configure an MCP host to launch that command for the Stack. A hosted Streamable 
 
 ## View the local web workspace
 
-During repository development:
+Start the complete local control plane for the Stack containing the current directory:
 
 ```bash
 npm run dev:web
 ```
 
-The first UI slice renders the Stacks documentation library. Live component management, context inspection, activity, and an installed `stacks ui` launcher remain in progress.
+Equivalently, run the CLI directly and select a Stack root:
+
+```bash
+node --experimental-strip-types src/cli.ts ui --root /path/to/stack
+```
+
+The command starts a read-only local API on `127.0.0.1:3210` and the web client on `localhost:3000`, then prints the exact URL. Use `--api-port` and `--port` to change those ports. `--api-only` is available for frontend development. Both servers remain bound to loopback; requests cannot select a different Stack root.
+
+The Overview section shows live component readiness, dirty/missing/issue counts, revisions, access mode, and resolved workspace paths. Refresh is read-only. It includes loading, disconnected, stale-refresh, empty Stack, and populated states. The Documentation section continues to render canonical repository Markdown. Graph, Activity, CLI & MCP, and Hosted Adapter remain visibly unavailable rather than exposing partial behavior.
+
+### Local HTTP contract
+
+`GET /api/v0.1/overview` returns the contract in `schemas/http-overview.schema.json`. `GET /api/v0.1/health` reports API availability. Other methods are rejected, responses are not cached, and browser access is granted only to loopback HTTP origins. The API is scoped when the process starts; query parameters cannot redirect it to arbitrary filesystem paths.
 
 ## Documentation contract
 

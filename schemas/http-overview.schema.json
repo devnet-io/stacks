@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-overview.schema.json",
+  "title": "Stacks local overview response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stack", "workspace", "summary", "components"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "namespace", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "namespace": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "manifestPath", "componentDirectory", "stateDirectory"],
+      "properties": {
+        "root": { "type": "string" },
+        "manifestPath": { "type": "string" },
+        "componentDirectory": { "type": "string" },
+        "stateDirectory": { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["components", "ready", "dirty", "missing", "issues"],
+      "properties": {
+        "components": { "type": "integer", "minimum": 0 },
+        "ready": { "type": "integer", "minimum": 0 },
+        "dirty": { "type": "integer", "minimum": 0 },
+        "missing": { "type": "integer", "minimum": 0 },
+        "issues": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "sourceType", "root", "exists", "access", "issues", "health"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "type": "string" },
+          "sourceType": { "enum": ["path", "git"] },
+          "root": { "type": "string" },
+          "exists": { "type": "boolean" },
+          "access": { "enum": ["read-only", "read-write"] },
+          "git": {
+            "type": "object",
+            "properties": {
+              "isRepository": { "type": "boolean" },
+              "branch": { "type": "string" },
+              "commit": { "type": "string" },
+              "dirty": { "type": "boolean" },
+              "remoteUrl": { "type": "string" },
+              "error": { "type": "string" }
+            }
+          },
+          "issues": { "type": "array", "items": { "type": "string" } },
+          "health": { "enum": ["ready", "dirty", "missing", "issue"] }
+        }
+      }
+    }
+  }
+}

@@ -62,6 +62,8 @@ npm run demo:context
 
 Then give Codex [`CODEX_START_HERE.md`](CODEX_START_HERE.md) as its initial brief. Codex also reads [`AGENTS.md`](AGENTS.md) automatically when operating in the repository.
 
+`npm run dev:web` now starts both the Stack-scoped loopback API and the local admin UI. Open the printed `Stacks UI` URL; the Overview section reads live manifest, filesystem, and Git status without changing component repositories.
+
 The CLI can run directly on Node 22+ without a build for commands that do not require optional integrations:
 
 ```bash
@@ -169,6 +171,7 @@ stacks checkin turn --session <id> --summary <text> [...]
 stacks checkin complete --session <id> --summary <text> [...]
 stacks usage record --session <id> --provider <name> --model <name> [...]
 stacks usage report [--root <dir>] [--json]
+stacks ui [--root <dir>] [--port <number>] [--api-port <number>] [--api-only]
 stacks mcp [--root <dir>]
 ```
 

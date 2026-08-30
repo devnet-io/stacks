@@ -5,7 +5,7 @@ This document records the current checkout's validation surface and remaining Mi
 ## Exercised locally
 
 - Installed the root npm workspace and generated the unified lockfile.
-- Ran 14 Node tests covering versioned CLI JSON contracts, context, documentation truth, events, the foundation example, Git safety, initialization, and validation.
+- Ran 16 Node tests covering versioned CLI JSON contracts, the local Overview HTTP API and launcher, context, documentation truth, events, the foundation example, Git safety, initialization, and validation.
 - Ran strict TypeScript checking successfully.
 - Built the core package successfully.
 - Built the local web workspace successfully with the canonical Markdown documentation library.
@@ -24,7 +24,7 @@ This document records the current checkout's validation surface and remaining Mi
 - Canonical context-plan DTOs still contain local absolute paths.
 - MCP lacks a real client/server transport test.
 - Git coverage does not yet prove the initialized workspace clone remains ignored and cannot become a submodule.
-- The local UI renders canonical repository documentation but is not connected to live Stack services and has no installed `stacks ui` launcher.
+- The Overview section is complete against the checked-in web workspace; packaging that web artifact for registry installation remains incomplete.
 
 ## Handoff rule
 

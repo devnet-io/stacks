@@ -113,7 +113,14 @@ function help(): void {
   process.stdout.write(`  stacks checkin complete --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`);
   process.stdout.write(`  stacks usage record --session <id> --provider <name> --model <name> [token/cost options] [--json]\n`);
   process.stdout.write(`  stacks usage report [--root <dir>] [--json]\n`);
+  process.stdout.write(`  stacks ui [--root <dir>] [--port <number>] [--api-port <number>] [--api-only]\n`);
   process.stdout.write(`  stacks mcp [--root <dir>]\n`);
+}
+
+function portOption(parsed: ParsedArgs, name: string, fallback: number): number {
+  const value = numericOption(parsed, name) ?? fallback;
+  if (!Number.isInteger(value) || value < 0 || value > 65535) throw new Error(`--${name} must be an integer from 0 to 65535.`);
+  return value;
 }
 
 async function commandInit(parsed: ParsedArgs): Promise<void> {
@@ -307,6 +314,16 @@ async function commandMcp(parsed: ParsedArgs): Promise<void> {
   module.startMcpServer(rootOption(parsed));
 }
 
+async function commandUi(parsed: ParsedArgs): Promise<void> {
+  const module = await import("./ui/launcher.ts");
+  await module.launchLocalUi({
+    root: rootOption(parsed),
+    webPort: portOption(parsed, "port", 3000),
+    apiPort: portOption(parsed, "api-port", 3210),
+    apiOnly: booleanOption(parsed, "api-only"),
+  });
+}
+
 export async function main(args = process.argv.slice(2)): Promise<void> {
   const parsed = parseArguments(args);
   const command = parsed.positionals[0] ?? "help";
@@ -342,6 +359,9 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
       return;
     case "mcp":
       await commandMcp(parsed);
+      return;
+    case "ui":
+      await commandUi(parsed);
       return;
     default:
       throw new Error(`Unknown command: ${command}. Run stacks help.`);

@@ -13,14 +13,15 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | npm workspace | Root workspaces include local web and reserved cloud applications. |
 | Stable Stack identity | Manifests require immutable ID, namespace, and name; events and plans use the immutable ID. |
 | Documentation truth model | Product, current architecture, user guide, RFC, and status sources are distinct. |
-| Local documentation UI | `apps/web` renders the canonical Markdown library and a representative Stack overview. |
+| Local documentation UI | `apps/web` renders the canonical Markdown library. |
+| Admin Overview vertical slice | Shared overview DTO, versioned loopback HTTP endpoint, `stacks ui` launcher, live component/workspace UI states, and HTTP integration tests are implemented. |
 | Versioned CLI JSON contracts | A subprocess integration test covers init, validate, status, dry-run sync, lock, context, check-in, usage recording, and reporting. |
 | Cross-platform CI | The same install and check gate passes on GitHub-hosted Windows, macOS, and Linux runners. |
 
 ## In progress
 
 - Extraction of portable application contracts from Node filesystem adapters.
-- Installed `stacks ui` local server and live API integration.
+- Self-contained packaging of the web artifact for registry installation.
 - Cross-process event append coordination and MCP transport testing.
 
 ## Proposed
@@ -31,4 +32,4 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 
 ## Current validation
 
-`npm run check` passes locally: 14 Node tests, strict TypeScript checking, core compilation, and the Vinext web build. The self-hosting and foundation validate/context/status demos also pass. The web development server returned HTTP 200 for the documentation route. GitHub Actions run `33284842320` passed the same gate on Windows, macOS, and Linux.
+The current gate runs 16 Node tests plus strict TypeScript checking, core compilation, and the Vinext web build. The self-hosting and foundation validate/context/status demos also pass. The live Overview route and loopback API are exercised locally. GitHub Actions applies the same gate on Windows, macOS, and Linux; run evidence is retained with each pushed commit.

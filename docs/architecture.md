@@ -8,6 +8,9 @@ The repository is an npm workspace. The root package currently contains the Type
 
 ```text
 src/core/                 current domain and local Node operations
+src/application/          versioned adapter-neutral response builders
+src/http/                 loopback-only local HTTP adapter
+src/ui/                   local UI process launcher
 src/cli.ts                CLI adapter
 src/mcp/                  per-Stack stdio MCP adapter
 apps/web/                 React documentation UI
@@ -28,7 +31,7 @@ Every current manifest has an immutable `metadata.id` and readable `metadata.nam
 
 - The CLI implements `init`, `validate`, `status`, `sync`, `lock`, `context`, check-ins, usage reporting, and stdio MCP startup.
 - The MCP adapter is bound to one Stack root when started.
-- The web workspace currently renders repository documentation and a representative overview of the self-hosting Stack. It is not yet connected to live Stack application services, and `stacks ui` is not implemented.
+- `stacks ui` starts a Stack-scoped loopback HTTP API and the checked-in web client. The Overview section consumes the shared versioned overview contract and shows live read-only component/workspace status. The Documentation section renders canonical Markdown. Other admin sections are not implemented.
 
 ## Portability
 
@@ -42,4 +45,4 @@ Versioned transport DTO builders live under `src/application/`. The CLI uses the
 - JSONL appends have no cross-process locking strategy.
 - Context plans expose local absolute paths and have not yet been split into portable resource references plus local evidence.
 - MCP lacks an end-to-end client/server transport test.
-- The local web UI is a source-development workspace rather than an installed CLI command.
+- The UI launcher currently locates the checked-in web workspace; npm publication and a self-contained packaged web artifact are not implemented.

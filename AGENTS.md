@@ -58,6 +58,10 @@ Read `CODEX_START_HERE.md` and `docs/00-input-synthesis.md` before making archit
 5. Run `npm run check` before considering a milestone complete.
 6. Update `CODEX_START_HERE.md` only when the handoff state materially changes.
 
+## Admin UI vertical slices
+
+Treat each admin UI section as a complete vertical product slice. A section is not complete when it is only a mockup or only a backend primitive. Finish its shared application contract, local adapter/API, loading/empty/error/success states, responsive and accessible UI, focused tests, current-state documentation, and cross-platform verification together. Keep unfinished sections visibly labeled rather than wiring partial behavior behind active controls.
+
 ## Code review rules
 
 Flag any change that:
