@@ -51,12 +51,13 @@ stacks ui
 
 Stacks serves the static Vite application and `/api/v0.1/*` from the same Node process. The default address is `http://localhost:3210/`. If port 3210 is unavailable, Stacks tries successive ports and prints the selected address. Passing `--port` requests an exact port and reports a conflict instead of silently changing it.
 
-The UI is machine-level and includes a Stack selector. Overview shows component health, Graph shows provider and dependency relationships, Manage creates Stacks and configures components and bindings, Tools & agents contains runtime connection instructions, and Documentation renders the canonical Markdown from this repository. Installation instructions live in Documentation rather than the operational tabs.
+The UI is machine-level and includes a Stack selector. Overview shows component health, Graph shows provider and dependency relationships, Activity shows append-only work sessions and provenance-labeled usage, Manage creates Stacks and configures components and bindings, Tools & agents contains runtime connection instructions, and Documentation renders the canonical Markdown from this repository. Installation instructions live in Documentation rather than the operational tabs.
 
 Read-only endpoints:
 
 - `GET /api/v0.1/stacks`
 - `GET /api/v0.1/overview?stack=namespace/name`
+- `GET /api/v0.1/activity?stack=namespace/name`
 - `GET /api/v0.1/graph?stack=namespace/name`
 - `GET /api/v0.1/integrations?stack=namespace/name`
 - `GET /api/v0.1/health`
@@ -74,6 +75,8 @@ codex mcp add stacks -- stacks mcp
 `stack_list` is unscoped. `stack_get`, `stack_status`, `context_resolve`, lifecycle tools, and usage tools require `stack: "namespace/name"`. Synchronization is intentionally not exposed through MCP.
 
 ## Work and usage events
+
+The Activity section presents these records without exposing the raw JSONL file. Its session and recent-event lists are each bounded to 100 records, while aggregate counts cover the complete readable event history. Independent local writers serialize appends with a per-Stack lock; earlier events are never rewritten.
 
 | Command | Purpose |
 | --- | --- |

@@ -26,10 +26,7 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | Human and agent interface references | The web documentation library includes exhaustive CLI and MCP references. MCP initialization instructions, `instructions_get`, and packaged `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli` resources expose the same operational truth to agents. |
 | Application use-case boundary | CLI, stdio MCP, and loopback HTTP orchestration use the `StacksApplication` interface with an in-process local implementation. Global `status` reads the catalog; other commands enter directory compatibility mode only through explicit `--root`. ADR 0007 records optional REST-client and Streamable HTTP MCP direction. |
 | Admin Manage vertical slice | The loopback API and UI create registered Stacks, add components at explicit paths, and change machine-local bindings. Mutations require JSON, enforce browser origin restrictions, report conflict/input states, and use cross-process catalog writer serialization with reader-safe commit ordering. |
-
-## In progress
-
-- Cross-process event append coordination.
+| Admin Activity vertical slice | Per-Stack cross-process writer serialization protects append-only JSONL events. A bounded application DTO, versioned HTTP endpoint/schema, session and provenance-preserving usage aggregation, responsive loading/empty/error/success UI, and concurrency/integration tests are implemented. |
 
 ## Proposed
 
@@ -38,4 +35,4 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 
 ## Current validation
 
-The gate runs the Node test suite plus strict TypeScript checking, core compilation, the static Vite build, and an isolated copied-package UI/API startup. Catalog tests cover platform paths, readable definitions, shared component directories, and global bindings. Overview, Graph, and Tools & agents use tested loopback contracts. GitHub Actions applies the gate on Windows, macOS, and Linux; Docker adds a clean Linux run.
+The gate runs the Node test suite plus strict TypeScript checking, core compilation, the static Vite build, and an isolated copied-package UI/API startup. Catalog tests cover platform paths, readable definitions, shared component directories, and global bindings. Overview, Graph, Activity, and Tools & agents use tested loopback contracts. GitHub Actions applies the gate on Windows, macOS, and Linux; Docker adds a clean Linux run.

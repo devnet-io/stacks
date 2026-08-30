@@ -57,7 +57,7 @@ test("publishes complete MCP instructions, tools, resources, and examples", () =
 test("documents every implemented local HTTP route and mutation boundary", () => {
   const reference = doc("http-reference.md");
   for (const route of [
-    "GET /api/v0.1/health", "GET /api/v0.1/stacks", "GET /api/v0.1/overview",
+    "GET /api/v0.1/health", "GET /api/v0.1/stacks", "GET /api/v0.1/overview", "GET /api/v0.1/activity",
     "GET /api/v0.1/graph", "GET /api/v0.1/integrations", "POST /api/v0.1/stacks",
     "POST /api/v0.1/components", "PUT /api/v0.1/component-binding",
   ]) assert.match(reference, new RegExp("### `" + route.replaceAll("/", "\\/") + "`", "u"));

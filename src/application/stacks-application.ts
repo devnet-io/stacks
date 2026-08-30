@@ -11,6 +11,7 @@ import { buildUsageReport } from "../core/usage.ts";
 import { buildStackGraph, type StackGraph } from "./graph.ts";
 import { buildStackIntegrations, type HostedMcpConfiguration, type StackIntegrations } from "./integrations.ts";
 import { buildStackOverview, type StackOverview } from "./overview.ts";
+import { buildStackActivity, type StackActivity } from "./activity.ts";
 import { initOutput, lockOutput, stackIdentity, statusOutput, syncOutput, validateOutput, type InitOutput, type LockOutput, type StackIdentity, type StatusOutput, type SyncOutput, type ValidateOutput } from "./contracts.ts";
 
 export type StackReference = { stack: string; root?: never } | { root: string; stack?: never };
@@ -61,6 +62,7 @@ export interface StacksApplication {
   recordUsage(reference: StackReference, input: { sessionId: string; componentId?: string; workId?: string; actor?: EventActor; usage: UsageData }): Promise<StackEvent>;
   getUsageReport(reference: StackReference): Promise<UsageReport>;
   getOverview(reference: StackReference): Promise<StackOverview>;
+  getActivity(reference: StackReference): Promise<StackActivity>;
   getGraph(reference: StackReference): Promise<StackGraph>;
   getIntegrations(reference: StackReference): Promise<StackIntegrations>;
 }
@@ -180,6 +182,10 @@ export class LocalStacksApplication implements StacksApplication {
 
   async getOverview(reference: StackReference): Promise<StackOverview> {
     return buildStackOverview(await this.load(reference));
+  }
+
+  async getActivity(reference: StackReference): Promise<StackActivity> {
+    return buildStackActivity(await this.load(reference));
   }
 
   async getGraph(reference: StackReference): Promise<StackGraph> {

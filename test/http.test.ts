@@ -7,6 +7,9 @@ import test from "node:test";
 import type { StackOverview } from "../src/application/overview.ts";
 import type { StackIntegrations } from "../src/application/integrations.ts";
 import type { StackGraph } from "../src/application/graph.ts";
+import type { StackActivity } from "../src/application/activity.ts";
+import { startWork } from "../src/core/events.ts";
+import { loadStack } from "../src/core/manifest.ts";
 import { startLocalApi } from "../src/http/server.ts";
 import { addRegisteredComponent, createRegisteredStack } from "../src/core/catalog.ts";
 import { browserOpenCommand, existingStacksWeb, findPackageRoot } from "../src/ui/launcher.ts";
@@ -79,6 +82,9 @@ test("local overview API is Stack-scoped, versioned, read-only, and browser-acce
     ],
   }, null, 2)}\n`, "utf8");
 
+  const loaded = await loadStack(root);
+  await startWork(loaded, { componentId: "ready", summary: "Test the Activity API" });
+
   const api = await startLocalApi({ root, port: 0, staticRoot, hostedMcp: { url: "https://mcp.example.test", bearerTokenEnvVar: "STACKS_MCP_TOKEN" } });
   try {
     const response = await fetch(`${api.origin}/api/v0.1/overview?root=ignored`, {
@@ -119,6 +125,13 @@ test("local overview API is Stack-scoped, versioned, read-only, and browser-acce
     const graph = await graphResponse.json() as StackGraph;
     assert.equal(graph.stack.id, "http-test-id");
     assert.deepEqual(graph.summary, { components: 2, edges: 0, capabilities: 0, unresolved: 0 });
+
+    const activityResponse = await fetch(`${api.origin}/api/v0.1/activity?root=ignored`);
+    assert.equal(activityResponse.status, 200);
+    const activity = await activityResponse.json() as StackActivity;
+    assert.equal(activity.stack.id, "http-test-id");
+    assert.equal(activity.summary.activeSessions, 1);
+    assert.equal(activity.recentEvents[0]?.summary, "Test the Activity API");
 
     const unknown = await fetch(`${api.origin}/api/v0.1/not-real`);
     assert.equal(unknown.status, 404);

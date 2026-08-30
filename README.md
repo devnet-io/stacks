@@ -28,7 +28,7 @@ On PowerShell or Command Prompt, use normal Windows paths without Unix-style sin
 stacks component add your-name/my-stack app --path C:\Users\you\projects\app --kind product
 ```
 
-`stacks ui` opens one local management interface for the machine catalog. Use the Stack selector to switch between registered Stacks; Manage can create Stacks, add components, and change local bindings. The UI includes the same getting-started and reference documentation as this repository.
+`stacks ui` opens one local management interface for the machine catalog. Use the Stack selector to switch between registered Stacks; Activity shows agent work and usage, while Manage can create Stacks, add components, and change local bindings. The UI includes the same getting-started and reference documentation as this repository.
 
 Connect Codex once for all registered Stacks:
 

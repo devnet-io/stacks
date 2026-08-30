@@ -1,6 +1,7 @@
 import type { StackOverview } from '../../../src/application/overview.ts';
 import type { StackIntegrations } from '../../../src/application/integrations.ts';
 import type { StackGraph } from '../../../src/application/graph.ts';
+import type { StackActivity } from '../../../src/application/activity.ts';
 import type { SyncResult } from '../../../src/core/types.ts';
 
 export function localApiOrigin(): string {
@@ -125,6 +126,30 @@ export async function fetchOverview(
   ) {
     throw new Error('The local API returned an unsupported overview contract.');
   }
+  return body;
+}
+
+export async function fetchActivity(
+  stack?: string,
+  signal?: AbortSignal,
+): Promise<StackActivity> {
+  const response = await fetch(endpoint('/api/v0.1/activity', stack), {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const body = (await response.json()) as StackActivity | { error?: string };
+  if (!response.ok)
+    throw new Error(
+      'error' in body && body.error
+        ? body.error
+        : `Local API returned ${response.status}.`,
+    );
+  if (
+    !('schemaVersion' in body) ||
+    body.schemaVersion !== '0.1' ||
+    !('recentEvents' in body)
+  )
+    throw new Error('The local API returned an unsupported activity contract.');
   return body;
 }
 

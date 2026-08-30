@@ -60,7 +60,7 @@ stacks ui
 
 Loading a registered Stack validates its definition, so routine use does not require a separate validation command. `status` reports component paths and Git state without changing repositories.
 
-The UI is global. It normally opens at `http://localhost:3210/`; if that port belongs to another application, Stacks selects the next free port and prints the URL. The packaged UI and local API share that one address, so there is no API URL to configure. Choose a Stack in the selector, then use Overview, Graph, Manage, Tools & agents, or Documentation. Manage can create Stacks, add components, and change bindings. No background service is required outside the time you use the UI.
+The UI is global. It normally opens at `http://localhost:3210/`; if that port belongs to another application, Stacks selects the next free port and prints the URL. The packaged UI and local API share that one address, so there is no API URL to configure. Choose a Stack in the selector, then use Overview, Graph, Activity, Manage, Tools & agents, or Documentation. Activity shows agent check-ins, work sessions, token usage, and provenance-labeled costs. Manage can create Stacks, add components, and change bindings. No background service is required outside the time you use the UI.
 
 ## 5. Connect an agent
 

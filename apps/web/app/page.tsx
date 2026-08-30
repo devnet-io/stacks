@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Activity,
   Boxes,
   Network,
   Search,
@@ -13,6 +14,7 @@ import { StackOverview } from '@/components/stack-overview';
 import { CliMcp } from '@/components/cli-mcp';
 import { StackGraph } from '@/components/stack-graph';
 import { StackManagement } from '@/components/stack-management';
+import { StackActivity } from '@/components/stack-activity';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { documentation } from '@/lib/documentation';
@@ -25,6 +27,7 @@ import {
 type Section =
   | 'overview'
   | 'graph'
+  | 'activity'
   | 'management'
   | 'documentation'
   | 'integrations';
@@ -32,6 +35,7 @@ type Section =
 const navigation = [
   { name: 'Overview', icon: Boxes, section: 'overview' },
   { name: 'Graph', icon: Network, section: 'graph' },
+  { name: 'Activity', icon: Activity, section: 'activity' },
   { name: 'Manage', icon: Settings2, section: 'management' },
   { name: 'Tools & agents', icon: TerminalSquare, section: 'integrations' },
   { name: 'Documentation', icon: BookOpen, section: 'documentation' },
@@ -169,6 +173,8 @@ export default function Home() {
                 ? 'Overview'
                 : section === 'graph'
                   ? 'Graph'
+                  : section === 'activity'
+                    ? 'Activity'
                   : section === 'management'
                     ? 'Manage'
                     : section === 'documentation'
@@ -212,6 +218,8 @@ export default function Home() {
             <StackOverview stack={selectedStack} onLoaded={onOverviewLoaded} />
           ) : section === 'graph' ? (
             <StackGraph stack={selectedStack} />
+          ) : section === 'activity' ? (
+            <StackActivity stack={selectedStack} />
           ) : (
             <CliMcp stack={selectedStack} />
           )}

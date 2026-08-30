@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { loadStack } from "../src/core/manifest.ts";
-import { completeTurn, completeWork, readEvents, recordUsage, startWork } from "../src/core/events.ts";
+import { completeTurn, completeWork, eventsLockPath, readEvents, recordUsage, startWork } from "../src/core/events.ts";
+import { access } from "node:fs/promises";
 import { buildUsageReport } from "../src/core/usage.ts";
 
 async function makeStack(): Promise<string> {
@@ -74,6 +75,24 @@ test("records a complete check-in and usage lifecycle", async () => {
     assert.equal(report.rows[0]!.amounts.USD, 0.25);
     assert.equal(report.rows[0]!.costKinds.reported, 1);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+});
+
+test("serializes concurrent event writers without losing or corrupting records", async () => {
+  const root = await makeStack();
+  try {
+    const stack = await loadStack(root);
+    await Promise.all(Array.from({ length: 40 }, (_, index) => startWork(stack, {
+      componentId: "app",
+      summary: `Concurrent session ${index}`,
+    })));
+    const read = await readEvents(stack);
+    assert.equal(read.events.length, 40);
+    assert.equal(new Set(read.events.map((event) => event.id)).size, 40);
+    assert.deepEqual(read.warnings, []);
+    await assert.rejects(access(eventsLockPath(stack)), { code: "ENOENT" });
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });

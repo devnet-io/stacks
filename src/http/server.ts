@@ -206,6 +206,10 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         send(response, 200, await application.getOverview(await selected()) as unknown as Record<string, unknown>);
         return;
       }
+      if (url.pathname === "/api/v0.1/activity") {
+        send(response, 200, await application.getActivity(await selected()) as unknown as Record<string, unknown>);
+        return;
+      }
       if (url.pathname === "/api/v0.1/integrations") {
         send(response, 200, await application.getIntegrations(await selected()) as unknown as Record<string, unknown>);
         return;

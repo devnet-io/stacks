@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, open, readFile } from "node:fs/promises";
+import { mkdir, open, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { EventActor, LoadedStack, StackEvent, UsageData } from "./types.ts";
 import { stateDirectory } from "./paths.ts";
@@ -12,6 +12,42 @@ export interface ReadEventsResult {
 
 export function eventsPath(stack: LoadedStack): string {
   return path.join(stateDirectory(stack), "events.jsonl");
+}
+
+export function eventsLockPath(stack: LoadedStack): string {
+  return path.join(stateDirectory(stack), "events.lock");
+}
+
+async function wait(milliseconds: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function withEventAppendLock<T>(stack: LoadedStack, operation: () => Promise<T>): Promise<T> {
+  const lock = eventsLockPath(stack);
+  await mkdir(path.dirname(lock), { recursive: true });
+  let handle;
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    try {
+      handle = await open(lock, "wx");
+      break;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      const windowsReleaseRace = process.platform === "win32" && (code === "EPERM" || code === "EACCES");
+      if (code !== "EEXIST" && !windowsReleaseRace) throw error;
+      await wait(25);
+    }
+  }
+  if (!handle) throw new Error(`Timed out waiting for the Stack event writer lock at ${lock}.`);
+  try {
+    await handle.writeFile(`${JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() })}\n`, "utf8");
+    await handle.sync();
+    return await operation();
+  } finally {
+    await handle.close();
+    await unlink(lock).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
 }
 
 export async function appendEvent<TData extends Record<string, unknown>>(
@@ -34,14 +70,15 @@ export async function appendEvent<TData extends Record<string, unknown>>(
     data: event.data,
   };
   const file = eventsPath(stack);
-  await mkdir(path.dirname(file), { recursive: true });
-  const handle = await open(file, "a");
-  try {
-    await handle.appendFile(`${JSON.stringify(full)}\n`, "utf8");
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
+  await withEventAppendLock(stack, async () => {
+    const handle = await open(file, "a");
+    try {
+      await handle.appendFile(`${JSON.stringify(full)}\n`, "utf8");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  });
   return full;
 }
 

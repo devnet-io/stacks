@@ -30,6 +30,10 @@ These routes accept `?stack=namespace%2Fname`. Without it, the first catalog ent
 
 Returns Stack identity, storage mode, component health summary, explicit paths, and Git status.
 
+### `GET /api/v0.1/activity`
+
+Returns the append-only event summary, token totals, cost totals grouped by currency and provenance, at most 100 work sessions, and at most the 100 newest sanitized events. Aggregate counts cover the complete readable history. Monetary totals are never combined across `reported`, `estimated`, and `allocated` values. The response follows `schemas/http-activity.schema.json`.
+
 ### `GET /api/v0.1/graph`
 
 Returns component nodes, capability/dependency edges, and unresolved requirements.
@@ -81,4 +85,4 @@ Changes only the machine-local binding. Stacks never moves the repository. A non
 
 ## Not yet exposed
 
-Portable definition register/export, bulk synchronization, context, lifecycle events, and usage currently remain CLI/MCP operations. HTTP parity for those operations will be added through `StacksApplication` before the remote endpoint mode ships.
+Portable definition register/export, bulk synchronization, context, lifecycle writes, and usage writes currently remain CLI/MCP operations. The HTTP API exposes their read-only Activity projection. Write parity will be added through `StacksApplication` before the remote endpoint mode ships.
