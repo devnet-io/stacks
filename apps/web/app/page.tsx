@@ -23,6 +23,7 @@ import {
   documentationCategories,
   documentationEntry,
   documentationHeadings,
+  documentationLifecycleLabels,
   resolveDocumentationLink,
 } from '@/lib/documentation';
 import {
@@ -418,9 +419,23 @@ function DocumentationLibrary() {
       </aside>
       <div id="documentation-content" className="min-w-0 scroll-mt-24">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
-          <span>{selected.path}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <Badge variant={selected.lifecycle === 'current' ? 'secondary' : 'outline'}>
+              {documentationLifecycleLabels[selected.lifecycle]}
+            </Badge>
+            {selected.path}
+          </span>
           <span>{documentation.length} canonical documents</span>
         </div>
+        {selected.lifecycle !== 'current' && (
+          <div className="mb-4 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+            {selected.lifecycle === 'proposed'
+              ? 'This document describes a proposal or open question, not implemented product behavior.'
+              : selected.lifecycle === 'decision'
+                ? 'This record explains an accepted decision. Current architecture documentation remains authoritative for implemented behavior.'
+                : 'This document is retained as historical design input. Current product, architecture, and interface documentation take precedence.'}
+          </div>
+        )}
         <MarkdownDocument markdown={selected.markdown} onLink={followLink} />
       </div>
     </section>

@@ -19,6 +19,7 @@ The first command shows the normal workflow, `help commands` lists the complete 
 | `stacks stack create <namespace/name>` | Create a registered Stack in the machine catalog. |
 | `stacks stack list` | List registered Stacks. |
 | `stacks locate [directory]` | Find every Stack/component binding containing a directory. |
+| `stacks agent install --path .` | Add or refresh the bounded Stacks activation block in `AGENTS.md`. |
 | `stacks component list <stack>` | List component declarations and bindings. |
 | `stacks component get <stack> <id>` | Inspect one complete component declaration and binding. |
 | `stacks component add <stack> <id> --path <dir>` | Add a component and bind its explicit path. Add `--git <url>` to clone when the path is missing. |
@@ -62,6 +63,8 @@ codex mcp add stacks -- stacks mcp
 ```
 
 `stacks mcp` uses stdio. The agent client launches it when needed and communicates through stdin/stdout, so local use has no URL, token, daemon, or port. Protocol diagnostics go to stderr.
+
+`stacks agent print|check|install|remove` manages repository activation separately from the global MCP connection. Install and remove touch only the delimited Stacks block, preserve all other `AGENTS.md` content, refuse malformed markers and symlinks, and never hard-code one Stack selection.
 
 `stack_memberships` accepts a workspace path and returns every matching Stack/component binding; `stack_list` remains the fallback when there is no match. `component_list`, `component_get`, `component_add`, and `component_bind` provide structured local component management. Selected-Stack, context, lifecycle, and usage tools require `stack: "namespace/name"`. Git cloning and synchronization are intentionally not exposed through MCP.
 

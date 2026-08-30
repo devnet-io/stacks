@@ -2,6 +2,8 @@
 
 Stacks documentation is organized by the kind of truth it records. Do not combine these categories in an unlabeled document.
 
+Every Markdown document is registered once in `catalog.json` with a stable ID, navigation category, lifecycle (`current`, `proposed`, `decision`, or `archive`), and order. The repository quality gate fails when a document is uncataloged, a catalog entry is missing, IDs or paths repeat, lifecycle metadata is invalid, or a relative Markdown link is broken. The web UI consumes the same catalog and visibly warns when a reader is viewing proposed, decision-record, or archived material.
+
 | Category | Source | Meaning |
 | --- | --- | --- |
 | Start here | [Getting started](getting-started.md) | Plain-language installation and first-Stack workflow for a developer new to Stacks. |
@@ -18,4 +20,6 @@ Stacks documentation is organized by the kind of truth it records. Do not combin
 
 When code, commands, schemas, runtime behavior, or operational assumptions change, update the corresponding current-state document and project status in the same change. When work implements an RFC, update current documentation before marking the RFC implemented. Preserve superseded RFCs as rationale rather than rewriting history.
 
-The local web workspace auto-discovers and renders every `docs/**/*.md` file in one grouped library. Markdown files remain the source of truth; frontend components must not duplicate canonical documentation prose. Each document and its second- or third-level headings have stable query-parameter deep links. Repository-relative Markdown links stay inside the library when their target is another canonical document.
+Run `npm run docs:check` for the focused structural audit. The full test suite additionally compares implemented CLI, MCP, and HTTP surfaces with their current references. These checks prevent structural and interface drift; reviewers still own semantic relevance and should move superseded design material to `archive` rather than leaving it labeled current.
+
+The local web workspace auto-discovers and renders every `docs/**/*.md` file in one grouped library, using `catalog.json` for lifecycle and navigation metadata. Markdown files remain the prose source of truth; frontend components must not duplicate canonical documentation prose. Each document and its second- or third-level headings have stable query-parameter deep links. Repository-relative Markdown links stay inside the library when their target is another canonical document.

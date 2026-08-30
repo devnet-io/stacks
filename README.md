@@ -69,6 +69,7 @@ Knowledge and engineering standards are ordinary components, usually with `kind:
 stacks stack create <namespace/name> [--json]
 stacks stack list [--json]
 stacks locate [directory] [--json]
+stacks agent install --path .
 stacks component list <namespace/name> [--json]
 stacks component get <namespace/name> <id> [--json]
 stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]
@@ -86,6 +87,6 @@ The checked-in root manifest and `examples/foundation-stack` remain directory-ba
 
 ## Develop and verify
 
-`npm run install:local` is idempotent: it builds a complete package, packs it, and installs that snapshot into npm's machine-level package storage. The installed CLI and built web UI do not link back to this checkout, so the clone may be moved or deleted afterward. Rerun the command when you want to install newer source changes. `npm run check` also installs and starts a temporary packed copy to prove this contract. `npm run check:docker` repeats the gate in clean Node 22 Linux userspace.
+`npm run install:local` is idempotent: it builds a complete package, packs it, and installs that snapshot into npm's machine-level package storage. The installed CLI and built web UI do not link back to this checkout, so the clone may be moved or deleted afterward. Rerun the command when you want to install newer source changes. `npm run docs:check` audits documentation lifecycle coverage and relative links. `npm run check` includes that audit, then installs and starts a temporary packed copy to prove the runtime contract. `npm run check:docker` repeats the gate in clean Node 22 Linux userspace.
 
 Start with [Getting started](docs/getting-started.md), then see the [user guide](docs/user-guide.md), complete [CLI command reference](docs/cli-reference.md), complete [MCP server reference](docs/mcp-reference.md), [current architecture](docs/architecture.md), and [project status](docs/project-status.md).

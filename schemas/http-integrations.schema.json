@@ -4,7 +4,7 @@
   "title": "Stacks CLI and MCP integration response",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "stack", "cli", "mcp", "checks"],
+  "required": ["schemaVersion", "stack", "cli", "mcp", "agentInstructions", "checks"],
   "properties": {
     "schemaVersion": { "const": "0.1" },
     "stack": {
@@ -29,6 +29,17 @@
           "properties": { "transport": { "const": "stdio" }, "authentication": { "const": "none" } }
         },
         "hosted": { "type": "object", "required": ["status"] }
+      }
+    },
+    "agentInstructions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "installCommand", "checkCommand", "removeCommand"],
+      "properties": {
+        "file": { "const": "AGENTS.md" },
+        "installCommand": { "type": "string" },
+        "checkCommand": { "type": "string" },
+        "removeCommand": { "type": "string" }
       }
     },
     "checks": { "type": "array", "items": { "type": "object", "required": ["id", "label", "status", "detail"] } }

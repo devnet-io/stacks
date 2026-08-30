@@ -135,6 +135,47 @@ stacks locate /work/customer-portal/src --json
 
 This command is read-only. A zero-match result is successful discovery with an empty `memberships` array; it does not guess from repository names or write membership markers.
 
+## Agent activation
+
+### `stacks agent print`
+
+Prints the current managed Stacks activation block without reading or writing a repository.
+
+```text
+stacks agent print [--path <directory>] [--json]
+```
+
+### `stacks agent check`
+
+Reports whether the repository `AGENTS.md` contains the current managed block. Status is `current`, `stale`, or `absent`; stale or absent exits with code `2`.
+
+```text
+stacks agent check [--path <directory>] [--json]
+```
+
+### `stacks agent install`
+
+Adds or refreshes only the content between the Stacks markers in `AGENTS.md`. It preserves existing instructions and line endings, creates `AGENTS.md` when absent, refuses malformed or repeated markers, refuses a symlinked `AGENTS.md`, and writes replacements atomically.
+
+```text
+stacks agent install [--path <directory>] [--json]
+```
+
+```bash
+cd /work/customer-portal
+stacks agent install --path .
+```
+
+The block tells an agent to discover membership, resolve ambiguity, inspect the selected component, and resolve bounded context. It does not hard-code a Stack because one repository may participate in multiple Stacks.
+
+### `stacks agent remove`
+
+Removes only the delimited Stacks block. It never deletes `AGENTS.md` or changes repository-owned instructions outside the block.
+
+```text
+stacks agent remove [--path <directory>] [--json]
+```
+
 ### `stacks status`
 
 With no selector, loads every registered Stack and reports component paths, existence, Git revision, remote, dirty state, and issues. `--stack` narrows the result to one registered Stack. Explicit `--root` inspects one legacy directory manifest. It never changes component repositories.

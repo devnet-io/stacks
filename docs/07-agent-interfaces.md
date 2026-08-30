@@ -45,7 +45,7 @@ MCP may add an existing local component and change its binding, but Git cloning 
 
 ## Skills and clients
 
-The bundled Skill tells agents to prefer server instructions and runtime reference resources, discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, resolve bounded context, preserve component-local instructions, and append lifecycle events. It supplements rather than overwrites `AGENTS.md` in component repositories and does not duplicate the full interface manuals.
+The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, resolve bounded context, preserve component-local instructions, and append lifecycle events. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
 
 Not every client exposes tokens, model identity, tool calls, or stable sessions. Adapters record partial facts and never fabricate values. Cost remains `reported`, `estimated`, or `allocated`.
 

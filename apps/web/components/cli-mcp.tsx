@@ -27,7 +27,18 @@ export function CliMcp({ stack }: { stack?: string }) {
     {error && <Alert variant="destructive"><AlertCircle /><AlertTitle>Refresh failed</AlertTitle><AlertDescription>{error} Showing the last successful result.</AlertDescription></Alert>}
     <Card><CardHeader className="border-b"><CardTitle>Agent connections</CardTitle><CardDescription>Connect tools to the machine-level Stacks adapter. Stack-specific requests identify <span className="font-mono">{data.stack.namespace}/{data.stack.name}</span>.</CardDescription></CardHeader><CardContent>
       <Tabs defaultValue="codex" className="gap-5"><TabsList aria-label="Agent connection type"><TabsTrigger value="codex">Codex</TabsTrigger><TabsTrigger value="hosted">Hosted MCP</TabsTrigger></TabsList>
-        <TabsContent value="codex" className="space-y-5"><p className="text-sm leading-6 text-muted-foreground">Run this once. Codex starts the stdio adapter when it needs it; there is no MCP URL, token, or background service for local use.</p><Command title="Add the Stacks MCP server" value={data.mcp.local.codexAddCommand} /><details className="rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">Manual configuration</summary><div className="mt-4"><Command title="Codex configuration" value={data.mcp.local.codexToml} multiline /></div></details><p className="text-xs leading-5 text-muted-foreground"><a className="inline-flex items-center gap-1 text-primary hover:underline" href={data.mcp.officialCodexDocumentation} target="_blank" rel="noreferrer">Codex MCP documentation <ExternalLink className="size-3" /></a></p></TabsContent>
+        <TabsContent value="codex" className="space-y-5">
+          <p className="text-sm leading-6 text-muted-foreground">Run this once. Codex starts the stdio adapter when it needs it; there is no MCP URL, token, or background service for local use.</p>
+          <Command title="Add the Stacks MCP server" value={data.mcp.local.codexAddCommand} />
+          <div className="rounded-xl border border-border p-4">
+            <p className="text-sm font-semibold">Activate Stacks in a repository</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Run this inside a component repository. Stacks adds or refreshes only its delimited block in AGENTS.md and preserves every other instruction.</p>
+            <div className="mt-4"><Command title="Install repository activation" value={data.agentInstructions.installCommand} /></div>
+            <p className="mt-3 font-mono text-xs text-muted-foreground">Check: {data.agentInstructions.checkCommand}</p>
+          </div>
+          <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">Manual configuration</summary><div className="mt-4"><Command title="Codex configuration" value={data.mcp.local.codexToml} multiline /></div></details>
+          <p className="text-xs leading-5 text-muted-foreground"><a className="inline-flex items-center gap-1 text-primary hover:underline" href={data.mcp.officialCodexDocumentation} target="_blank" rel="noreferrer">Codex MCP documentation <ExternalLink className="size-3" /></a></p>
+        </TabsContent>
         <TabsContent value="hosted" className="space-y-5">{data.mcp.hosted.status === 'configured' ? <><Alert><CheckCircle2 /><AlertTitle>Hosted MCP configured</AlertTitle><AlertDescription>Authorized remote tools can use this endpoint. Secret values are not displayed.</AlertDescription></Alert><Detail label="MCP URL" value={data.mcp.hosted.url ?? '—'} /><Detail label="Token environment variable" value={data.mcp.hosted.bearerTokenEnvVar ?? 'None'} /></> : <Alert><TriangleAlert /><AlertTitle>Not configured</AlertTitle><AlertDescription>This installation currently exposes only the local stdio adapter.</AlertDescription></Alert>}</TabsContent>
       </Tabs>
     </CardContent></Card>

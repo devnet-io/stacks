@@ -6,7 +6,7 @@ No compatibility milestone has been declared. Unused command and adapter surface
 
 ## Repository shape
 
-The npm workspace contains a TypeScript core, CLI, stdio MCP adapter, loopback HTTP adapter, and React local UI. `apps/cloud` is only a reserved future boundary.
+The npm workspace contains a TypeScript core, CLI, stdio MCP adapter, loopback HTTP adapter, repository-agent-instruction adapter, and React local UI. `apps/cloud` is only a reserved future boundary.
 
 ```text
 src/core/          domain, catalog, filesystem, Git, context, and events
@@ -15,6 +15,7 @@ src/http/          loopback local API
 src/ui/            UI launcher
 src/cli.ts         human and automation CLI
 src/mcp/           global stdio MCP adapter
+src/agent/         bounded repository instruction adapters
 apps/web/          local management and documentation UI
 apps/cloud/        placeholder only
 ```
@@ -35,6 +36,8 @@ Components are ordinary graph nodes. Software, standards, design systems, infras
 
 Directory membership is derived from explicit machine bindings. A queried path matches a component when it is the bound root or lies beneath it. Discovery returns every match because one directory may participate in multiple Stacks; it never relies on repository names or ownership markers. New components persist the neutral `component` kind when no optional kind is supplied, while capabilities remain the functional contract.
 
+Repository activation is opt-in. `stacks agent install` manages only a uniquely marked block inside a regular, non-symlinked `AGENTS.md`, preserves all other content and line endings, writes atomically, and refuses malformed markers. The managed instructions perform membership discovery at runtime instead of embedding a Stack identity. Print and check are read-only; remove deletes only the managed block.
+
 Context resolution is deterministic and provenance-rich. It verifies file-backed paths against the owning component root and reports missing or ambiguous providers. The current resolver plans context; explicit byte/token enforcement remains unfinished.
 
 ## Adapters
@@ -47,7 +50,7 @@ Context resolution is deterministic and provenance-rich. It verifies file-backed
 
 An HTTP implementation of `StacksApplication`, global CLI endpoint selection, and Streamable HTTP MCP are accepted direction in ADR 0007 but are not implemented. The intended remote service shares one origin and authentication boundary for the web UI, REST application API, and MCP. Local CLI and stdio MCP remain the defaults.
 
-The loopback API exposes read-only Overview, Graph, Activity, Integrations, catalog, and health routes plus JSON-only mutations for Stack creation, component addition, and component rebinding. Browser mutations reject non-loopback origins. Catalog writers acquire a cross-process lock; new Stack files are committed before the catalog entry, and new component bindings are committed before the component definition, so lock-free readers do not observe partial reachable state. Overview reports live status, Graph renders the declarative provider/dependency relationships, Activity presents bounded recent events plus full-history session and usage aggregates, Manage exposes the implemented catalog mutations, and Tools & agents presents agent connection settings. Documentation auto-discovers every repository Markdown file under `docs/`, groups documents by truth type, exposes nested heading navigation and stable `view`, `document`, and `heading` query-parameter deep links, and intercepts repository-relative document links without maintaining a second prose copy.
+The loopback API exposes read-only Overview, Graph, Activity, Integrations, catalog, and health routes plus JSON-only mutations for Stack creation, component addition, and component rebinding. Browser mutations reject non-loopback origins. Catalog writers acquire a cross-process lock; new Stack files are committed before the catalog entry, and new component bindings are committed before the component definition, so lock-free readers do not observe partial reachable state. Overview reports live status, Graph renders the declarative provider/dependency relationships, Activity presents bounded recent events plus full-history session and usage aggregates, Manage exposes the implemented catalog mutations, and Tools & agents presents MCP plus repository-activation settings. Documentation auto-discovers every repository Markdown file under `docs/`, reads navigation and lifecycle metadata from `docs/catalog.json`, exposes non-current warnings, nested heading navigation, and stable `view`, `document`, and `heading` query-parameter deep links, and intercepts repository-relative document links without maintaining a second prose copy. `npm run docs:check` requires every Markdown file to have unique lifecycle metadata and rejects missing files or broken relative Markdown links.
 
 The root npm package version is the shared product version for CLI output, UI display, health responses, and integration metadata. Running UI processes register PID/origin/version plus a random control token under the platform state directory. `install:local` uses the authenticated loopback shutdown endpoint to retire registered processes before replacing the copied package. Version-aware UI reuse prevents a newly installed CLI from attaching to an older healthy server.
 

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "0.1",
+  "documents": [
+    { "path": "docs/getting-started.md", "id": "getting-started", "category": "use", "lifecycle": "current", "order": 10, "summary": "Install Stacks, create a Stack, add repositories, and open the UI." },
+    { "path": "docs/product.md", "id": "product", "category": "use", "lifecycle": "current", "order": 20, "summary": "The product definition, commitments, and boundaries." },
+    { "path": "docs/user-guide.md", "id": "user-guide", "category": "use", "lifecycle": "current", "order": 30, "summary": "Common Stack, context, UI, and agent workflows." },
+    { "path": "docs/cli-reference.md", "id": "cli-reference", "category": "use", "lifecycle": "current", "order": 40, "summary": "Every CLI command, option, side effect, output, and example." },
+    { "path": "docs/mcp-reference.md", "id": "mcp-reference", "category": "use", "lifecycle": "current", "order": 50, "summary": "Every MCP tool and resource, with inputs, outputs, and examples." },
+    { "path": "docs/http-reference.md", "id": "http-reference", "category": "use", "lifecycle": "current", "order": 60, "summary": "Current loopback endpoints, contracts, and safety boundaries." },
+    { "path": "docs/deployment.md", "id": "deployment", "category": "use", "lifecycle": "current", "order": 70, "summary": "Current installation, runtime replacement, and release contract." },
+
+    { "path": "docs/README.md", "id": "documentation-policy", "category": "current", "lifecycle": "current", "order": 10, "summary": "Documentation lifecycle, authority, and quality-gate policy." },
+    { "path": "docs/architecture.md", "id": "architecture", "category": "current", "lifecycle": "current", "order": 20, "summary": "Implemented repository architecture and current limitations." },
+    { "path": "docs/07-agent-interfaces.md", "id": "agent-interfaces", "category": "current", "lifecycle": "current", "order": 30 },
+    { "path": "docs/08-roadmap.md", "id": "roadmap", "category": "current", "lifecycle": "current", "order": 40, "summary": "Milestones and the agreed active implementation sequence." },
+    { "path": "docs/project-status.md", "id": "project-status", "category": "current", "lifecycle": "current", "order": 50, "summary": "Evidence-backed implemented, proposed, and validation state." },
+    { "path": "docs/09-open-questions.md", "id": "open-questions", "category": "current", "lifecycle": "proposed", "order": 60 },
+    { "path": "docs/10-validation-and-handoff.md", "id": "validation-and-handoff", "category": "archive", "lifecycle": "archive", "order": 90 },
+
+    { "path": "docs/adr/README.md", "id": "adr-index", "category": "decisions", "lifecycle": "current", "order": 0, "summary": "Index of accepted architecture decisions and their relationship to current architecture." },
+    { "path": "docs/adr/0001-files-are-canonical.md", "id": "adr-0001", "category": "decisions", "lifecycle": "decision", "order": 1 },
+    { "path": "docs/adr/0002-components-are-independent-clones.md", "id": "adr-0002", "category": "decisions", "lifecycle": "decision", "order": 2 },
+    { "path": "docs/adr/0003-capabilities-drive-context.md", "id": "adr-0003", "category": "decisions", "lifecycle": "decision", "order": 3 },
+    { "path": "docs/adr/0004-ingestion-proposes-before-mutating.md", "id": "adr-0004", "category": "decisions", "lifecycle": "decision", "order": 4 },
+    { "path": "docs/adr/0005-stable-stack-identity-and-namespace.md", "id": "adr-0005", "category": "decisions", "lifecycle": "decision", "order": 5 },
+    { "path": "docs/adr/0006-global-catalog-and-explicit-bindings.md", "id": "adr-0006", "category": "decisions", "lifecycle": "decision", "order": 6 },
+    { "path": "docs/adr/0007-application-boundary-and-optional-http-client.md", "id": "adr-0007", "category": "decisions", "lifecycle": "decision", "order": 7 },
+    { "path": "docs/adr/0008-cross-process-event-appends.md", "id": "adr-0008", "category": "decisions", "lifecycle": "decision", "order": 8 },
+    { "path": "docs/rfcs/README.md", "id": "rfc-index", "category": "decisions", "lifecycle": "proposed", "order": 200 },
+    { "path": "docs/rfcs/0001-portable-runtime-and-hosted-adapters.md", "id": "rfc-portable-runtime", "category": "decisions", "lifecycle": "proposed", "order": 210 },
+
+    { "path": "docs/00-input-synthesis.md", "id": "input-synthesis", "category": "archive", "lifecycle": "archive", "order": 10 },
+    { "path": "docs/01-vision-and-boundaries.md", "id": "vision-and-boundaries", "category": "archive", "lifecycle": "archive", "order": 20 },
+    { "path": "docs/02-domain-model.md", "id": "domain-model", "category": "archive", "lifecycle": "archive", "order": 30 },
+    { "path": "docs/03-storage-and-layout.md", "id": "storage-and-layout", "category": "archive", "lifecycle": "archive", "order": 40 },
+    { "path": "docs/04-context-resolution.md", "id": "context-resolution-design", "category": "archive", "lifecycle": "archive", "order": 50 },
+    { "path": "docs/05-events-usage-and-analytics.md", "id": "events-usage-design", "category": "archive", "lifecycle": "archive", "order": 60 },
+    { "path": "docs/06-ingestion-and-evolution.md", "id": "ingestion-and-evolution", "category": "archive", "lifecycle": "archive", "order": 70 },
+    { "path": "docs/research-notes.md", "id": "research-notes", "category": "archive", "lifecycle": "archive", "order": 80 }
+  ]
+}

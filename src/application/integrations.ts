@@ -45,6 +45,12 @@ export interface StackIntegrations {
     };
     officialCodexDocumentation: string;
   };
+  agentInstructions: {
+    file: "AGENTS.md";
+    installCommand: "stacks agent install --path .";
+    checkCommand: "stacks agent check --path .";
+    removeCommand: "stacks agent remove --path .";
+  };
   checks: Array<{ id: string; label: string; status: DiagnosticStatus; detail: string }>;
 }
 
@@ -134,6 +140,12 @@ export async function buildStackIntegrations(stack: LoadedStack, hostedConfig: H
         ...(hosted.bearerTokenEnvVar === undefined ? {} : { bearerTokenEnvVar: hosted.bearerTokenEnvVar }),
       },
       officialCodexDocumentation: "https://learn.chatgpt.com/docs/extend/mcp",
+    },
+    agentInstructions: {
+      file: "AGENTS.md",
+      installCommand: "stacks agent install --path .",
+      checkCommand: "stacks agent check --path .",
+      removeCommand: "stacks agent remove --path .",
     },
     checks: [
       { id: "runtime", label: "Node.js runtime", status: nodeMajor >= 22 ? "pass" : "fail", detail: `Node.js ${process.versions.node}; Stacks requires 22.6 or newer.` },

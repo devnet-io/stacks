@@ -17,6 +17,7 @@ Read `docs/00-input-synthesis.md` and the current-state documentation named belo
 - `docs/rfcs/` contains proposed or accepted-but-not-yet-implemented direction. RFC acceptance is not implementation evidence.
 - `docs/project-status.md` is the evidence-backed delivery ledger.
 - Update current documentation and project status in the same change as code, schemas, commands, or operations. Documentation is part of the implementation, not follow-up work.
+- Register every `docs/**/*.md` file in `docs/catalog.json` with an honest lifecycle. Never leave superseded material labeled current; use proposed, decision, or archive and keep the catalog/UI classification as the single metadata source.
 - The web documentation library renders canonical Markdown. Never duplicate canonical documentation prose in frontend components.
 
 ## Non-negotiable product rules

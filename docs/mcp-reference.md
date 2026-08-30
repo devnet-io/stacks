@@ -12,6 +12,8 @@ codex mcp add stacks -- stacks mcp
 
 The client launches `stacks mcp` when needed. Local MCP has no URL, port, token, or long-running daemon. stdout is reserved for protocol messages; diagnostics go to stderr.
 
+MCP registration makes the tools available, but repository-level instructions are what reliably tell a newly started agent to consult them. Run `stacks agent install --path .` inside an opted-in component repository. Stacks manages only its delimited `AGENTS.md` block; `stacks agent check --path .` detects an absent or stale block, and `stacks agent remove --path .` removes only that block.
+
 During initialization, the server supplies concise operating instructions. The same guidance is available through `instructions_get` and `stacks://instructions`. Read `stacks://reference/mcp` for this complete reference and `stacks://reference/cli` when a required mutation is intentionally CLI-only.
 
 Every Stack-specific tool takes `stack` in `namespace/name` form. Use `stack_memberships` to discover which Stack components contain the current workspace. One directory may be bound to multiple Stacks, so multiple results require explicit selection rather than inference.

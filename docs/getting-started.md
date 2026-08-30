@@ -73,6 +73,14 @@ codex mcp add stacks -- stacks mcp
 
 This is a stdio MCP adapter. Codex launches it as a subprocess when needed and communicates over stdin/stdout, so there is no MCP URL, token, fixed port, or daemon for local use. The server supplies operating instructions during initialization; agents can also call `instructions_get` or read `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli`. Start with `stack_memberships` for the current workspace. If it finds one match, use that Stack and component; if it finds multiple, choose explicitly. Tools such as `component_get`, `stack_status`, and `context_resolve` then operate on that selection.
 
+For reliable repository-level activation, run this once inside each component where you want agents to consult Stacks automatically:
+
+```bash
+stacks agent install --path .
+```
+
+This adds only a delimited Stacks block to `AGENTS.md`; existing instructions remain owned by the repository. Use `stacks agent check --path .` to detect a missing or stale block and `stacks agent remove --path .` to remove only that block.
+
 For direct CLI use:
 
 ```bash

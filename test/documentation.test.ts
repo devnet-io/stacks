@@ -19,11 +19,14 @@ test("does not retain unused pre-milestone interfaces at the expense of a clear 
 });
 
 test("documents canonical Markdown as the web documentation source", () => {
-  assert.match(doc("README.md"), /Markdown files remain the source of truth/u);
+  assert.match(doc("README.md"), /Markdown files remain the prose source of truth/u);
   assert.match(doc("user-guide.md"), /do not maintain a second copy/u);
   const catalog = readFileSync(new URL("../apps/web/lib/documentation.ts", import.meta.url), "utf8");
+  const lifecycleCatalog = readFileSync(new URL("../docs/catalog.json", import.meta.url), "utf8");
   const page = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
   assert.match(catalog, /import\.meta\.glob\('\.\.\/\.\.\/\.\.\/docs\/\*\*\/\*\.md'/u);
+  assert.match(catalog, /catalogJson/u);
+  for (const lifecycle of ["current", "proposed", "decision", "archive"]) assert.match(lifecycleCatalog, new RegExp(`"lifecycle": "${lifecycle}"`, "u"));
   for (const category of ["Use Stacks", "Current system & delivery", "Decisions & proposals", "Design archive"]) assert.match(catalog, new RegExp(category, "u"));
   for (const parameter of ["view", "document", "heading"]) assert.match(page, new RegExp(`searchParams\\.(?:get|set)\\('${parameter}'`, "u"));
   assert.match(page, /documentationHeadings/u);
@@ -48,7 +51,7 @@ test("documents every CLI operation with focused reference sections", () => {
   const reference = doc("cli-reference.md");
   const operations = [
     "help", "--version", "stack create", "stack list", "component list", "component get",
-    "component add", "component bind", "locate", "status", "context", "sync", "lock", "ui", "mcp",
+    "component add", "component bind", "locate", "agent print", "agent check", "agent install", "agent remove", "status", "context", "sync", "lock", "ui", "mcp",
     "checkin start", "checkin turn", "checkin complete", "usage record", "usage report",
     "doctor", "validate", "init",
   ];

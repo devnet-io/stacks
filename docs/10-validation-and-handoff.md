@@ -1,11 +1,12 @@
 # Validation and handoff
 
-This document records the current checkout's validation surface and remaining Milestone 1 gaps. It is current-state documentation, not the original archive report.
+This document is a retained Milestone 1 validation and handoff snapshot. It is not current delivery evidence; use [Project status](project-status.md), [Current architecture](architecture.md), and the live quality gate instead.
 
 ## Exercised locally
 
 - Installed the root npm workspace and generated the unified lockfile.
-- The Node suite covers global catalog paths and bindings, CLI product/version contracts and linked-entrypoint resolution, exhaustive CLI/MCP documentation drift, MCP initialization instructions and reference resources, local Overview, Graph, Activity, integration/runtime HTTP APIs, global stdio MCP transport, context, documentation truth, events, examples, Git safety, initialization, and validation.
+- The documentation audit requires lifecycle metadata for every Markdown source and rejects missing sources, duplicate paths or IDs, invalid classifications, and broken relative Markdown links. The UI consumes the same lifecycle catalog.
+- The Node suite covers global catalog paths and bindings, safe `AGENTS.md` activation, CLI product/version contracts and linked-entrypoint resolution, exhaustive CLI/MCP documentation drift, MCP initialization instructions and reference resources, local Overview, Graph, Activity, integration/runtime HTTP APIs, global stdio MCP transport, context, documentation truth, events, examples, Git safety, initialization, and validation.
 - Ran strict TypeScript checking successfully.
 - Built the core package successfully.
 - Built the static Vite web workspace successfully with the canonical Markdown documentation library.

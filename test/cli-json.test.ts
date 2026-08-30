@@ -41,6 +41,10 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     assert.equal(object(inspected.component).kind, "product");
     const located = runJson(["locate", component], 0, env);
     assert.equal(object((located.memberships as unknown[])[0]).relativePath, ".");
+    assert.equal(runJson(["agent", "check", "--path", component], 2, env).status, "absent");
+    assert.equal(runJson(["agent", "install", "--path", component], 0, env).status, "current");
+    assert.equal(runJson(["agent", "check", "--path", component], 0, env).status, "current");
+    assert.equal(runJson(["agent", "remove", "--path", component], 0, env).status, "absent");
 
     const listed = runJson(["stack", "list"], 0, env);
     assert.equal((listed.stacks as unknown[]).length, 1);

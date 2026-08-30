@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createLocalStacksApplication, type StackReference } from "./application/stacks-application.ts";
 import type { CostKind, EventActor, UsageData } from "./core/types.ts";
 import { STACKS_VERSION } from "./version.ts";
+import { manageAgentsMd, type AgentsMdOperation } from "./agent/agents-md.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -114,6 +115,7 @@ function help(topic?: string): void {
     stack: `Create and list Stacks in this machine's catalog.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n`,
     component: `View components or attach them to registered Stacks. Paths are always explicit. Kind is optional and defaults to component.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n`,
     locate: `Find every Stack component whose explicit binding contains a directory. Multiple matches are returned instead of guessing.\n\n  stacks locate [directory] [--json]\n`,
+    agent: `Manage only the delimited Stacks activation block in a repository AGENTS.md. Existing instructions are preserved; malformed markers are refused.\n\n  stacks agent print [--path <directory>] [--json]\n  stacks agent check [--path <directory>] [--json]\n  stacks agent install [--path <directory>] [--json]\n  stacks agent remove [--path <directory>] [--json]\n`,
     status: `Inspect registered Stack component paths and Git state without changing repositories. With no selector, inspect every registered Stack. Loading a Stack also validates its definition.\n\n  stacks status [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
     sync: `Clone missing Git components to their explicit paths. Add --update to fetch existing repositories; Stacks never resets, cleans, merges, or rebases.\n\n  stacks sync --stack <namespace/name> [--dry-run] [--update] [--json]\n`,
     context: `Resolve bounded, provenance-rich context for one target component.\n\n  stacks context <target> --stack <namespace/name> [--task <text>] [--json]\n`,
@@ -121,7 +123,7 @@ function help(topic?: string): void {
     mcp: `Run the machine-level MCP adapter over stdio. Agent clients start this command when needed; do not run it as a daemon.\n\n  stacks mcp\n`,
     checkin: `Append agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn --stack <namespace/name> --session <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
     usage: `Append usage data or report recorded usage. Monetary values require reported, estimated, or allocated provenance.\n\n  stacks usage record --stack <namespace/name> --session <id> --provider <name> --model <name> [token/cost options] [--json]\n  stacks usage report --stack <namespace/name> [--json]\n`,
-    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind        View or attach components and paths\n  locate                             Find Stack membership for a directory\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn|complete        Append work lifecycle events\n  usage record|report                Record and report usage\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
+    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind        View or attach components and paths\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn|complete        Append work lifecycle events\n  usage record|report                Record and report usage\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
     lock: `Write stack.lock.json with the current component revisions.\n\n  stacks lock --stack <namespace/name> [--json]\n`,
     init: `Create a legacy directory-based Stack manifest. New Stacks should normally use stacks stack create.\n\n  stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]\n`,
     validate: `Validate a standalone or legacy Stack definition. Registered Stacks are validated whenever they are loaded, including by stacks status.\n\n  stacks validate [--stack <namespace/name> | --root <dir>] [--json]\n`,
@@ -438,6 +440,22 @@ async function commandLocate(parsed: ParsedArgs): Promise<void> {
   }
 }
 
+async function commandAgent(parsed: ParsedArgs): Promise<void> {
+  const operation = parsed.positionals[1] as AgentsMdOperation | undefined;
+  if (!operation || !["print", "check", "install", "remove"].includes(operation)) {
+    throw new Error("Usage: stacks agent print|check|install|remove [--path <directory>] [--json].");
+  }
+  const output = await manageAgentsMd(stringOption(parsed, "path") ?? process.cwd(), operation);
+  if (booleanOption(parsed, "json")) {
+    printJson(output);
+  } else if (operation === "print") {
+    process.stdout.write(`${output.content ?? ""}\n`);
+  } else {
+    process.stdout.write(`${operation === "check" ? "Agent activation" : operation === "install" ? "Installed agent activation" : "Removed agent activation"}: ${output.status} at ${output.path}${output.changed ? " (changed)" : ""}\n`);
+  }
+  if (operation === "check" && output.status !== "current") process.exitCode = 2;
+}
+
 async function commandUi(parsed: ParsedArgs): Promise<void> {
   const module = await import("./ui/launcher.ts");
   const webPort = optionalPortOption(parsed, "port");
@@ -473,6 +491,9 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
       return;
     case "locate":
       await commandLocate(parsed);
+      return;
+    case "agent":
+      await commandAgent(parsed);
       return;
     case "validate":
       await commandValidate(parsed);
