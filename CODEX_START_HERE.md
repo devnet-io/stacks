@@ -34,6 +34,7 @@ The repository contains a narrow vertical slice:
 - tests for the core semantics;
 - an optional agent Skill.
 - an npm workspace with a first local documentation UI and a reserved, non-implemented hosted adapter boundary.
+- versioned, end-to-end-tested CLI JSON contracts and a passing Windows/macOS/Linux CI matrix.
 
 Treat the code as executable design material. Improve it rather than preserving weak details for compatibility.
 

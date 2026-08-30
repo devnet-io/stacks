@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { initOutput, lockOutput, statusOutput, syncOutput, validateOutput } from "./application/contracts.ts";
 import { buildUsageReport } from "./core/usage.ts";
 import { completeTurn, completeWork, recordUsage, startWork } from "./core/events.ts";
 import { initializeStack } from "./core/init.ts";
@@ -101,29 +102,29 @@ function printJson(value: unknown): void {
 function help(): void {
   process.stdout.write(`Stacks - portable composition, context, and agent activity for local development\n\n`);
   process.stdout.write(`Usage:\n`);
-  process.stdout.write(`  stacks init --namespace <namespace> --name <name> [--root <dir>]\n`);
+  process.stdout.write(`  stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]\n`);
   process.stdout.write(`  stacks validate [--root <dir>] [--json]\n`);
   process.stdout.write(`  stacks status [--root <dir>] [--json]\n`);
   process.stdout.write(`  stacks sync [--root <dir>] [--dry-run] [--update] [--json]\n`);
   process.stdout.write(`  stacks lock [--root <dir>] [--json]\n`);
   process.stdout.write(`  stacks context <target> [--task <text>] [--root <dir>] [--json]\n`);
-  process.stdout.write(`  stacks checkin start --component <id> --summary <text> [--work <id>] [--agent <name>] [--client <name>] [--model <name>]\n`);
-  process.stdout.write(`  stacks checkin turn --session <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>]\n`);
-  process.stdout.write(`  stacks checkin complete --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>]\n`);
-  process.stdout.write(`  stacks usage record --session <id> --provider <name> --model <name> [token/cost options]\n`);
+  process.stdout.write(`  stacks checkin start --component <id> --summary <text> [--work <id>] [--agent <name>] [--client <name>] [--model <name>] [--json]\n`);
+  process.stdout.write(`  stacks checkin turn --session <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [--json]\n`);
+  process.stdout.write(`  stacks checkin complete --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`);
+  process.stdout.write(`  stacks usage record --session <id> --provider <name> --model <name> [token/cost options] [--json]\n`);
   process.stdout.write(`  stacks usage report [--root <dir>] [--json]\n`);
   process.stdout.write(`  stacks mcp [--root <dir>]\n`);
 }
 
 async function commandInit(parsed: ParsedArgs): Promise<void> {
   const manifestPath = await initializeStack(rootOption(parsed), requiredOption(parsed, "namespace"), requiredOption(parsed, "name"));
-  if (booleanOption(parsed, "json")) printJson({ manifestPath });
+  if (booleanOption(parsed, "json")) printJson(initOutput(await loadStack(manifestPath)));
   else process.stdout.write(`Created ${manifestPath}\n`);
 }
 
 async function commandValidate(parsed: ParsedArgs): Promise<void> {
   const result = await inspectManifest(rootOption(parsed));
-  if (booleanOption(parsed, "json")) printJson(result);
+  if (booleanOption(parsed, "json")) printJson(validateOutput(result));
   else if (result.valid) process.stdout.write(`Valid Stack manifest: ${result.manifestPath}\n`);
   else process.stdout.write(`Invalid Stack manifest: ${result.manifestPath}\n- ${result.errors.join("\n- ")}\n`);
   if (!result.valid) process.exitCode = 2;
@@ -133,7 +134,7 @@ async function commandStatus(parsed: ParsedArgs): Promise<void> {
   const stack = await loadStack(rootOption(parsed));
   const statuses = getComponentStatuses(stack);
   if (booleanOption(parsed, "json")) {
-    printJson({ stackId: stack.manifest.metadata.id, namespace: stack.manifest.metadata.namespace, name: stack.manifest.metadata.name, components: statuses });
+    printJson(statusOutput(stack, statuses));
     return;
   }
   process.stdout.write(`Stack: ${stack.manifest.metadata.namespace}/${stack.manifest.metadata.name}\n`);
@@ -154,7 +155,7 @@ async function commandSync(parsed: ParsedArgs): Promise<void> {
       update: booleanOption(parsed, "update"),
     }));
   }
-  if (booleanOption(parsed, "json")) printJson({ stackId: stack.manifest.metadata.id, namespace: stack.manifest.metadata.namespace, name: stack.manifest.metadata.name, results });
+  if (booleanOption(parsed, "json")) printJson(syncOutput(stack, results));
   else for (const result of results) process.stdout.write(`- ${result.componentId}: ${result.action} - ${result.message}\n`);
   if (results.some((result) => result.action === "error")) process.exitCode = 2;
 }
@@ -162,7 +163,7 @@ async function commandSync(parsed: ParsedArgs): Promise<void> {
 async function commandLock(parsed: ParsedArgs): Promise<void> {
   const stack = await loadStack(rootOption(parsed));
   const lockPath = await writeLockSnapshot(stack);
-  if (booleanOption(parsed, "json")) printJson({ lockPath });
+  if (booleanOption(parsed, "json")) printJson(lockOutput(stack, lockPath));
   else process.stdout.write(`Wrote ${lockPath}\n`);
 }
 

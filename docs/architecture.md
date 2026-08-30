@@ -32,12 +32,14 @@ Every current manifest has an immutable `metadata.id` and readable `metadata.nam
 
 ## Portability
 
-The implementation uses Node process and path APIs and invokes Git with argument arrays. Existing tests exercise temporary repositories on Windows. A three-operating-system CI workflow is being added; passing that workflow is required before portability is considered verified.
+The implementation uses Node process and path APIs and invokes Git with argument arrays. Temporary-repository tests and the same `npm run check` gate pass on Windows, macOS, and Linux in GitHub Actions.
+
+Versioned transport DTO builders live under `src/application/`. The CLI uses them for initialization, validation, status, synchronization, and lock output; MCP reuses the same status DTO. Context plans, events, and usage reports are already versioned domain DTOs. A subprocess integration test exercises the structured CLI lifecycle and verifies that stdout remains parseable JSON.
 
 ## Known limitations
 
 - Runtime manifest validation and JSON Schema remain separate representations.
 - JSONL appends have no cross-process locking strategy.
 - Context plans expose local absolute paths and have not yet been split into portable resource references plus local evidence.
-- CLI JSON contracts and MCP transport lack end-to-end contract tests.
+- MCP lacks an end-to-end client/server transport test.
 - The local web UI is a source-development workspace rather than an installed CLI command.

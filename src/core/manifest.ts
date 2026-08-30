@@ -62,7 +62,17 @@ export async function inspectManifest(start = process.cwd()): Promise<{
   errors: string[];
 }> {
   const manifestPath = await findManifest(start);
-  const parsed = await parseManifestFile(manifestPath);
+  let parsed: unknown;
+  try {
+    parsed = await parseManifestFile(manifestPath);
+  } catch (error) {
+    return {
+      manifestPath,
+      parsed: null,
+      valid: false,
+      errors: [`Unable to parse manifest: ${error instanceof Error ? error.message : String(error)}`],
+    };
+  }
   const result = validateManifest(parsed);
   return { manifestPath, parsed, ...result };
 }

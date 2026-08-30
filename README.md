@@ -158,11 +158,11 @@ The Git URLs above are placeholders. For an immediately runnable declaration, co
 ## Initial command surface
 
 ```text
-stacks init --namespace <namespace> --name <name> [--root <dir>]
+stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]
 stacks validate [--root <dir>] [--json]
 stacks status [--root <dir>] [--json]
-stacks sync [--root <dir>] [--dry-run] [--update]
-stacks lock [--root <dir>]
+stacks sync [--root <dir>] [--dry-run] [--update] [--json]
+stacks lock [--root <dir>] [--json]
 stacks context <target-component> [--task <text>] [--json]
 stacks checkin start --component <id> --summary <text> [...]
 stacks checkin turn --session <id> --summary <text> [...]

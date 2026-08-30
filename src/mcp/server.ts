@@ -1,6 +1,7 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
+import { statusOutput } from "../application/contracts.ts";
 import { buildUsageReport } from "../core/usage.ts";
 import { completeTurn, completeWork, recordUsage, startWork } from "../core/events.ts";
 import { resolveContext } from "../core/context.ts";
@@ -86,7 +87,7 @@ export function buildMcpServer(root: string): McpServer {
     },
     async () => {
       const stack = await loadStack(root);
-      return result({ stackId: stack.manifest.metadata.id, namespace: stack.manifest.metadata.namespace, name: stack.manifest.metadata.name, components: getComponentStatuses(stack) });
+      return result(statusOutput(stack, getComponentStatuses(stack)) as unknown as Record<string, unknown>);
     },
   );
 
