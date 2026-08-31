@@ -21,8 +21,10 @@
   --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
-* { border-color: var(--border); scrollbar-color: #9aaba3 transparent; }
-html, body { min-height: 100%; }
-body { margin: 0; min-width: 320px; background: var(--background); font-family: var(--font-ui); }
+@layer base {
+  * { border-color: var(--border); scrollbar-color: #9aaba3 transparent; }
+  html, body { min-height: 100%; }
+  body { margin: 0; min-width: 320px; background: var(--background); font-family: var(--font-ui); }
+}
 button:not(:disabled), a[href], input { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }

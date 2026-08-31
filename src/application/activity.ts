@@ -29,6 +29,7 @@ export interface ActivityEvent {
   type: string;
   componentId?: string;
   sessionId?: string;
+  turnId?: string;
   actor?: EventActor;
   summary?: string;
   status?: string;
@@ -79,6 +80,7 @@ function activityEvent(event: StackEvent): ActivityEvent {
     type: event.type,
     ...(event.componentId === undefined ? {} : { componentId: event.componentId }),
     ...(event.sessionId === undefined ? {} : { sessionId: event.sessionId }),
+    ...(event.turnId === undefined ? {} : { turnId: event.turnId }),
     ...(event.actor === undefined ? {} : { actor: event.actor }),
     ...(stringValue(data, "summary") === undefined ? {} : { summary: stringValue(data, "summary")! }),
     ...(stringValue(data, "status") === undefined ? {} : { status: stringValue(data, "status")! }),

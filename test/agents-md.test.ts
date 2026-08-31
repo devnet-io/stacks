@@ -17,6 +17,7 @@ test("AGENTS.md activation preserves user instructions and is idempotent", async
     const content = await readFile(target, "utf8");
     assert.ok(content.startsWith(userInstructions));
     assert.match(content, /Use the Stacks MCP `stack_memberships` tool/u);
+    assert.match(content, /call `turn_start`/u);
     assert.equal((await manageAgentsMd(root, "check")).status, "current");
     assert.equal((await manageAgentsMd(root, "install")).changed, false);
     assert.equal(await readFile(target, "utf8"), content);

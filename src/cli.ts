@@ -122,9 +122,9 @@ function help(topic?: string): void {
     context: `Resolve bounded, provenance-rich context for one target component.\n\n  stacks context <target> --stack <namespace/name> [--task <text>] [--json]\n`,
     ui: `Open the machine-level Stacks UI. It serves the UI and API together on port 3210, automatically choosing the next free port when needed.\n\n  stacks ui [--port <number>] [--no-open]\n`,
     mcp: `Run the machine-level MCP adapter over stdio. Agent clients start this command when needed; do not run it as a daemon.\n\n  stacks mcp\n`,
-    checkin: `Append agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn --stack <namespace/name> --session <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
-    usage: `Append usage data or report recorded usage. Monetary values require reported, estimated, or allocated provenance.\n\n  stacks usage record --stack <namespace/name> --session <id> --provider <name> --model <name> [token/cost options] [--json]\n  stacks usage report --stack <namespace/name> [--json]\n`,
-    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind        View or attach components and paths\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn|complete        Append work lifecycle events\n  usage record|report                Record and report usage\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
+    checkin: `Append turn-based agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn-start --stack <namespace/name> --session <id> --task <text> [--json]\n  stacks checkin turn-complete --stack <namespace/name> --session <id> --turn <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [token/cost options] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
+    usage: `Import delayed usage data or report recorded usage. Live agent telemetry belongs on turn completion. Monetary values require reported, estimated, or allocated provenance.\n\n  stacks usage import --stack <namespace/name> --provider <name> --model <name> [--session <id>] [--turn <id>] [token/cost options] [--json]\n  stacks usage report --stack <namespace/name> [--json]\n`,
+    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind        View or attach components and paths\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn-start|turn-complete|complete\n                                      Append turn-based work lifecycle events\n  usage import|report                Import delayed usage or report totals\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
     lock: `Write stack.lock.json with the current component revisions.\n\n  stacks lock --stack <namespace/name> [--json]\n`,
     init: `Create a legacy directory-based Stack manifest. New Stacks should normally use stacks stack create.\n\n  stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]\n`,
     validate: `Validate a standalone or legacy Stack definition. Registered Stacks are validated whenever they are loaded, including by stacks status.\n\n  stacks validate [--stack <namespace/name> | --root <dir>] [--json]\n`,
@@ -233,6 +233,40 @@ async function commandContext(parsed: ParsedArgs): Promise<void> {
   if (plan.errors.length > 0) process.exitCode = 2;
 }
 
+function usageFromOptions(parsed: ParsedArgs, required: boolean): UsageData | undefined {
+  const optionNames = ["provider", "model", "input", "output", "cached-input", "reasoning", "tool-calls", "duration-ms", "amount", "currency", "cost-kind", "pricing-reference", "note"];
+  if (!required && !optionNames.some((name) => parsed.options[name] !== undefined)) return undefined;
+  const costKind = stringOption(parsed, "cost-kind") as CostKind | undefined;
+  if (costKind && !["reported", "estimated", "allocated"].includes(costKind)) throw new Error("Invalid --cost-kind.");
+  const inputTokens = nonNegativeNumericOption(parsed, "input");
+  const outputTokens = nonNegativeNumericOption(parsed, "output");
+  const cachedInputTokens = nonNegativeNumericOption(parsed, "cached-input");
+  const reasoningTokens = nonNegativeNumericOption(parsed, "reasoning");
+  const toolCalls = nonNegativeNumericOption(parsed, "tool-calls");
+  const durationMs = nonNegativeNumericOption(parsed, "duration-ms");
+  const amount = nonNegativeNumericOption(parsed, "amount");
+  const currency = stringOption(parsed, "currency");
+  const pricingReference = stringOption(parsed, "pricing-reference");
+  const note = stringOption(parsed, "note");
+  const usage: UsageData = {
+    provider: requiredOption(parsed, "provider"),
+    model: requiredOption(parsed, "model"),
+    ...(inputTokens === undefined ? {} : { inputTokens }),
+    ...(outputTokens === undefined ? {} : { outputTokens }),
+    ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
+    ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+    ...(toolCalls === undefined ? {} : { toolCalls }),
+    ...(durationMs === undefined ? {} : { durationMs }),
+    ...(amount === undefined ? {} : { amount }),
+    ...(currency === undefined ? {} : { currency }),
+    ...(costKind === undefined ? {} : { costKind }),
+    ...(pricingReference === undefined ? {} : { pricingReference }),
+    ...(note === undefined ? {} : { note }),
+  };
+  if (usage.amount !== undefined && usage.costKind === undefined) throw new Error("--cost-kind is required whenever --amount is supplied.");
+  return usage;
+}
+
 async function commandCheckin(parsed: ParsedArgs): Promise<void> {
   const operation = parsed.positionals[1];
   const reference = stackReference(parsed);
@@ -249,20 +283,32 @@ async function commandCheckin(parsed: ParsedArgs): Promise<void> {
     else process.stdout.write(`Started session ${event.sessionId}\n`);
     return;
   }
-  if (operation === "turn") {
+  if (operation === "turn-start") {
+    const output = await application.startTurn(reference, {
+      sessionId: requiredOption(parsed, "session"),
+      task: requiredOption(parsed, "task"),
+    });
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Started turn ${output.turn.turnId} for session ${output.turn.sessionId} with ${output.context.items.length} context items\n`);
+    return;
+  }
+  if (operation === "turn-complete") {
     const status = stringOption(parsed, "status") as "progress" | "blocked" | "failed" | "complete" | undefined;
     if (status && !["progress", "blocked", "failed", "complete"].includes(status)) throw new Error("Invalid --status.");
     const changedPaths = listOption(parsed, "files");
     const nextStep = stringOption(parsed, "next");
-    const event = await application.completeTurn(reference, {
+    const usage = usageFromOptions(parsed, false);
+    const output = await application.completeTurn(reference, {
       sessionId: requiredOption(parsed, "session"),
+      turnId: requiredOption(parsed, "turn"),
       summary: requiredOption(parsed, "summary"),
       ...(status === undefined ? {} : { status }),
       ...(changedPaths === undefined ? {} : { changedPaths }),
       ...(nextStep === undefined ? {} : { nextStep }),
+      ...(usage === undefined ? {} : { usage }),
     });
-    if (booleanOption(parsed, "json")) printJson(event);
-    else process.stdout.write(`Recorded turn ${event.id} for session ${event.sessionId}\n`);
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Completed turn ${output.turn.turnId} for session ${output.turn.sessionId}${output.usage ? " with usage" : ""}\n`);
     return;
   }
   if (operation === "complete") {
@@ -279,55 +325,25 @@ async function commandCheckin(parsed: ParsedArgs): Promise<void> {
     else process.stdout.write(`Completed session ${event.sessionId} with event ${event.id}\n`);
     return;
   }
-  throw new Error("Usage: stacks checkin start|turn|complete ...");
+  throw new Error("Usage: stacks checkin start|turn-start|turn-complete|complete ...");
 }
 
 async function commandUsage(parsed: ParsedArgs): Promise<void> {
   const operation = parsed.positionals[1];
   const reference = stackReference(parsed);
-  if (operation === "record") {
-    const costKind = stringOption(parsed, "cost-kind") as CostKind | undefined;
-    if (costKind && !["reported", "estimated", "allocated"].includes(costKind)) throw new Error("Invalid --cost-kind.");
-
-    const inputTokens = nonNegativeNumericOption(parsed, "input");
-    const outputTokens = nonNegativeNumericOption(parsed, "output");
-    const cachedInputTokens = nonNegativeNumericOption(parsed, "cached-input");
-    const reasoningTokens = nonNegativeNumericOption(parsed, "reasoning");
-    const toolCalls = nonNegativeNumericOption(parsed, "tool-calls");
-    const durationMs = nonNegativeNumericOption(parsed, "duration-ms");
-    const amount = nonNegativeNumericOption(parsed, "amount");
-    const currency = stringOption(parsed, "currency");
-    const pricingReference = stringOption(parsed, "pricing-reference");
-    const note = stringOption(parsed, "note");
-
-    const usage: UsageData = {
-      provider: requiredOption(parsed, "provider"),
-      model: requiredOption(parsed, "model"),
-      ...(inputTokens === undefined ? {} : { inputTokens }),
-      ...(outputTokens === undefined ? {} : { outputTokens }),
-      ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
-      ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
-      ...(toolCalls === undefined ? {} : { toolCalls }),
-      ...(durationMs === undefined ? {} : { durationMs }),
-      ...(amount === undefined ? {} : { amount }),
-      ...(currency === undefined ? {} : { currency }),
-      ...(costKind === undefined ? {} : { costKind }),
-      ...(pricingReference === undefined ? {} : { pricingReference }),
-      ...(note === undefined ? {} : { note }),
-    };
-    if (usage.amount !== undefined && usage.costKind === undefined) {
-      throw new Error("--cost-kind is required whenever --amount is supplied.");
-    }
-
+  if (operation === "import") {
     const componentId = stringOption(parsed, "component");
+    const sessionId = stringOption(parsed, "session");
+    const turnId = stringOption(parsed, "turn");
     const workId = stringOption(parsed, "work");
     const actor = actorFrom(parsed);
-    const event = await application.recordUsage(reference, {
-      sessionId: requiredOption(parsed, "session"),
+    const event = await application.importUsage(reference, {
+      ...(sessionId === undefined ? {} : { sessionId }),
+      ...(turnId === undefined ? {} : { turnId }),
       ...(componentId === undefined ? {} : { componentId }),
       ...(workId === undefined ? {} : { workId }),
       ...(actor === undefined ? {} : { actor }),
-      usage,
+      usage: usageFromOptions(parsed, true)!,
     });
     if (booleanOption(parsed, "json")) printJson(event);
     else process.stdout.write(`Recorded usage event ${event.id}\n`);
@@ -346,7 +362,7 @@ async function commandUsage(parsed: ParsedArgs): Promise<void> {
     }
     return;
   }
-  throw new Error("Usage: stacks usage record|report ...");
+  throw new Error("Usage: stacks usage import|report ...");
 }
 
 async function commandMcp(parsed: ParsedArgs): Promise<void> {

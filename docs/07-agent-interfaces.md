@@ -36,9 +36,10 @@ Current tools are:
 - `stack_status`
 - `context_resolve`
 - `work_start`
+- `turn_start`
 - `turn_complete`
 - `work_complete`
-- `usage_record`
+- `usage_import`
 - `usage_report`
 
 `stack_memberships` maps an explicit workspace path to zero, one, or multiple bound Stack components. It never guesses when a directory is shared. Every subsequent Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
@@ -47,7 +48,7 @@ MCP may add an existing local component and change its binding, but Git cloning 
 
 ## Skills and clients
 
-The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, resolve bounded context, preserve component-local instructions, and append lifecycle events. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
+The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, start each participating turn, use its returned bounded context, close the same turn with known telemetry, preserve component-local instructions, and append the final work outcome. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
 
 Not every client exposes tokens, model identity, tool calls, or stable sessions. Adapters record partial facts and never fabricate values. Cost remains `reported`, `estimated`, or `allocated`.
 

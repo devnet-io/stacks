@@ -18,6 +18,12 @@ export function eventsLockPath(stack: LoadedStack): string {
   return path.join(stateDirectory(stack), "events.lock");
 }
 
+type PendingEvent<TData extends Record<string, unknown> = Record<string, unknown>> =
+  Omit<StackEvent<TData>, "schemaVersion" | "id" | "timestamp" | "stackId"> & {
+    id?: string;
+    timestamp?: string;
+  };
+
 async function wait(milliseconds: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -50,14 +56,8 @@ async function withEventAppendLock<T>(stack: LoadedStack, operation: () => Promi
   }
 }
 
-export async function appendEvent<TData extends Record<string, unknown>>(
-  stack: LoadedStack,
-  event: Omit<StackEvent<TData>, "schemaVersion" | "id" | "timestamp" | "stackId"> & {
-    id?: string;
-    timestamp?: string;
-  },
-): Promise<StackEvent<TData>> {
-  const full: StackEvent<TData> = {
+function completeEvent<TData extends Record<string, unknown>>(stack: LoadedStack, event: PendingEvent<TData>): StackEvent<TData> {
+  return {
     schemaVersion: "0.1",
     id: event.id ?? randomUUID(),
     timestamp: event.timestamp ?? new Date().toISOString(),
@@ -65,20 +65,30 @@ export async function appendEvent<TData extends Record<string, unknown>>(
     stackId: stack.manifest.metadata.id,
     ...(event.componentId === undefined ? {} : { componentId: event.componentId }),
     ...(event.sessionId === undefined ? {} : { sessionId: event.sessionId }),
+    ...(event.turnId === undefined ? {} : { turnId: event.turnId }),
     ...(event.workId === undefined ? {} : { workId: event.workId }),
     ...(event.actor === undefined ? {} : { actor: event.actor }),
     data: event.data,
   };
+}
+
+async function writeEvents(stack: LoadedStack, events: StackEvent[]): Promise<void> {
   const file = eventsPath(stack);
-  await withEventAppendLock(stack, async () => {
-    const handle = await open(file, "a");
-    try {
-      await handle.appendFile(`${JSON.stringify(full)}\n`, "utf8");
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
-  });
+  const handle = await open(file, "a");
+  try {
+    await handle.appendFile(events.map((event) => JSON.stringify(event)).join("\n") + "\n", "utf8");
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+export async function appendEvent<TData extends Record<string, unknown>>(
+  stack: LoadedStack,
+  event: PendingEvent<TData>,
+): Promise<StackEvent<TData>> {
+  const full = completeEvent(stack, event);
+  await withEventAppendLock(stack, () => writeEvents(stack, [full]));
   return full;
 }
 
@@ -173,36 +183,119 @@ export async function startWork(
   });
 }
 
-async function sessionStart(stack: LoadedStack, sessionId: string): Promise<StackEvent> {
-  const read = await readEvents(stack);
-  const start = read.events.find((event) => event.type === "work.started" && event.sessionId === sessionId);
+function sessionStartFrom(events: StackEvent[], sessionId: string): StackEvent {
+  const start = events.find((event) => event.type === "work.started" && event.sessionId === sessionId);
   if (!start) throw new Error(`No work.started event found for session ${sessionId}.`);
   return start;
+}
+
+function requireActiveSession(events: StackEvent[], sessionId: string): StackEvent {
+  const start = sessionStartFrom(events, sessionId);
+  if (events.some((event) => event.type === "work.completed" && event.sessionId === sessionId)) {
+    throw new Error(`Work session ${sessionId} is already complete.`);
+  }
+  return start;
+}
+
+function openTurn(events: StackEvent[], sessionId: string): StackEvent | undefined {
+  return events.find((event) => event.type === "turn.started" && event.sessionId === sessionId && event.turnId
+    && !events.some((candidate) => candidate.type === "turn.completed" && candidate.sessionId === sessionId && candidate.turnId === event.turnId));
+}
+
+function validateUsage(usage: UsageData): void {
+  if (!usage.provider.trim()) throw new Error("Usage provider is required.");
+  if (!usage.model.trim()) throw new Error("Usage model is required.");
+  for (const [name, value] of Object.entries({
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    cachedInputTokens: usage.cachedInputTokens,
+    reasoningTokens: usage.reasoningTokens,
+    toolCalls: usage.toolCalls,
+    durationMs: usage.durationMs,
+    amount: usage.amount,
+  })) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) throw new Error(`Usage ${name} must be a non-negative finite number.`);
+  }
+  if (usage.amount !== undefined && usage.costKind === undefined) throw new Error("costKind is required whenever amount is supplied.");
+}
+
+export async function startTurn(
+  stack: LoadedStack,
+  input: {
+    sessionId: string;
+    context: { generatedAt: string; items: number; warnings: number; errors: number };
+  },
+): Promise<StackEvent> {
+  return withEventAppendLock(stack, async () => {
+    const read = await readEvents(stack);
+    const start = requireActiveSession(read.events, input.sessionId);
+    const existing = openTurn(read.events, input.sessionId);
+    if (existing?.turnId) throw new Error(`Work session ${input.sessionId} already has open turn ${existing.turnId}.`);
+    const turn = completeEvent(stack, {
+      type: "turn.started",
+      ...(start.componentId === undefined ? {} : { componentId: start.componentId }),
+      sessionId: input.sessionId,
+      turnId: randomUUID(),
+      ...(start.workId === undefined ? {} : { workId: start.workId }),
+      ...(start.actor === undefined ? {} : { actor: start.actor }),
+      data: {
+        contextGeneratedAt: input.context.generatedAt,
+        contextItems: input.context.items,
+        contextWarnings: input.context.warnings,
+        contextErrors: input.context.errors,
+      },
+    });
+    await writeEvents(stack, [turn]);
+    return turn;
+  });
 }
 
 export async function completeTurn(
   stack: LoadedStack,
   input: {
     sessionId: string;
+    turnId: string;
     summary: string;
     status?: "progress" | "blocked" | "failed" | "complete";
     changedPaths?: string[];
     nextStep?: string;
+    usage?: UsageData;
   },
 ) {
-  const start = await sessionStart(stack, input.sessionId);
-  return appendEvent(stack, {
-    type: "turn.completed",
-    ...(start.componentId === undefined ? {} : { componentId: start.componentId }),
-    sessionId: input.sessionId,
-    ...(start.workId === undefined ? {} : { workId: start.workId }),
-    ...(start.actor === undefined ? {} : { actor: start.actor }),
-    data: {
-      summary: input.summary,
-      status: input.status ?? "progress",
-      changedPaths: input.changedPaths ?? [],
-      ...(input.nextStep === undefined ? {} : { nextStep: input.nextStep }),
-    },
+  if (input.usage) validateUsage(input.usage);
+  return withEventAppendLock(stack, async () => {
+    const read = await readEvents(stack);
+    const start = requireActiveSession(read.events, input.sessionId);
+    const turnStart = read.events.find((event) => event.type === "turn.started" && event.sessionId === input.sessionId && event.turnId === input.turnId);
+    if (!turnStart) throw new Error(`No turn.started event found for turn ${input.turnId} in session ${input.sessionId}.`);
+    if (read.events.some((event) => event.type === "turn.completed" && event.sessionId === input.sessionId && event.turnId === input.turnId)) {
+      throw new Error(`Turn ${input.turnId} is already complete.`);
+    }
+    const turn = completeEvent(stack, {
+      type: "turn.completed",
+      ...(start.componentId === undefined ? {} : { componentId: start.componentId }),
+      sessionId: input.sessionId,
+      turnId: input.turnId,
+      ...(start.workId === undefined ? {} : { workId: start.workId }),
+      ...(start.actor === undefined ? {} : { actor: start.actor }),
+      data: {
+        summary: input.summary,
+        status: input.status ?? "progress",
+        changedPaths: input.changedPaths ?? [],
+        ...(input.nextStep === undefined ? {} : { nextStep: input.nextStep }),
+      },
+    });
+    const usage = input.usage === undefined ? undefined : completeEvent(stack, {
+      type: "usage.recorded",
+      ...(start.componentId === undefined ? {} : { componentId: start.componentId }),
+      sessionId: input.sessionId,
+      turnId: input.turnId,
+      ...(start.workId === undefined ? {} : { workId: start.workId }),
+      ...(start.actor === undefined ? {} : { actor: start.actor }),
+      data: { ...input.usage, recording: "turn" },
+    });
+    await writeEvents(stack, usage ? [turn, usage] : [turn]);
+    return { schemaVersion: "0.1" as const, turn, ...(usage === undefined ? {} : { usage }) };
   });
 }
 
@@ -215,42 +308,61 @@ export async function completeWork(
     remaining?: string[];
   },
 ) {
-  const start = await sessionStart(stack, input.sessionId);
-  return appendEvent(stack, {
-    type: "work.completed",
-    ...(start.componentId === undefined ? {} : { componentId: start.componentId }),
-    sessionId: input.sessionId,
-    ...(start.workId === undefined ? {} : { workId: start.workId }),
-    ...(start.actor === undefined ? {} : { actor: start.actor }),
-    data: {
-      summary: input.summary,
-      outcome: input.outcome ?? "success",
-      remaining: input.remaining ?? [],
-    },
+  return withEventAppendLock(stack, async () => {
+    const read = await readEvents(stack);
+    const start = requireActiveSession(read.events, input.sessionId);
+    const activeTurn = openTurn(read.events, input.sessionId);
+    if (activeTurn?.turnId) throw new Error(`Cannot complete work session ${input.sessionId} while turn ${activeTurn.turnId} is open.`);
+    const event = completeEvent(stack, {
+      type: "work.completed",
+      ...(start.componentId === undefined ? {} : { componentId: start.componentId }),
+      sessionId: input.sessionId,
+      ...(start.workId === undefined ? {} : { workId: start.workId }),
+      ...(start.actor === undefined ? {} : { actor: start.actor }),
+      data: {
+        summary: input.summary,
+        outcome: input.outcome ?? "success",
+        remaining: input.remaining ?? [],
+      },
+    });
+    await writeEvents(stack, [event]);
+    return event;
   });
 }
 
-export async function recordUsage(
+export async function importUsage(
   stack: LoadedStack,
-  input: { sessionId: string; componentId?: string; workId?: string; actor?: EventActor; usage: UsageData },
+  input: { sessionId?: string; turnId?: string; componentId?: string; workId?: string; actor?: EventActor; usage: UsageData },
 ) {
+  validateUsage(input.usage);
   let componentId = input.componentId;
   let workId = input.workId;
   let actor = input.actor;
-  try {
-    const start = await sessionStart(stack, input.sessionId);
-    componentId ??= start.componentId;
-    workId ??= start.workId;
-    actor ??= start.actor;
-  } catch {
-    // Usage may be imported from a client that did not emit a start event.
+  let sessionId = input.sessionId;
+  const read = await readEvents(stack);
+  if (input.turnId) {
+    const turn = read.events.find((event) => event.type === "turn.started" && event.turnId === input.turnId);
+    if (!turn) throw new Error(`No turn.started event found for turn ${input.turnId}.`);
+    if (sessionId && turn.sessionId !== sessionId) throw new Error(`Turn ${input.turnId} does not belong to session ${sessionId}.`);
+    sessionId = turn.sessionId;
+  }
+  if (sessionId) {
+    try {
+      const start = sessionStartFrom(read.events, sessionId);
+      componentId ??= start.componentId;
+      workId ??= start.workId;
+      actor ??= start.actor;
+    } catch {
+      // Imported telemetry may refer to an external session that did not participate live.
+    }
   }
   return appendEvent(stack, {
     type: "usage.recorded",
     ...(componentId === undefined ? {} : { componentId }),
-    sessionId: input.sessionId,
+    ...(sessionId === undefined ? {} : { sessionId }),
+    ...(input.turnId === undefined ? {} : { turnId: input.turnId }),
     ...(workId === undefined ? {} : { workId }),
     ...(actor === undefined ? {} : { actor }),
-    data: input.usage as UsageData & Record<string, unknown>,
+    data: { ...input.usage, recording: "imported" },
   });
 }

@@ -40,6 +40,10 @@
       "type": "string",
       "minLength": 1
     },
+    "turnId": {
+      "type": "string",
+      "minLength": 1
+    },
     "workId": {
       "type": "string",
       "minLength": 1

@@ -77,21 +77,23 @@ The Activity section presents Stack creation, component additions, changed bindi
 | Command | Purpose |
 | --- | --- |
 | `stacks checkin start` | Append the start of a work session and return its session ID. |
-| `stacks checkin turn` | Append a completed turn, status, changed paths, and next step. |
+| `stacks checkin turn-start` | Open a turn and return its ID plus current context plan. |
+| `stacks checkin turn-complete` | Close that turn with status, changed paths, next step, and optional known telemetry. |
 | `stacks checkin complete` | Append completion and outcome without rewriting earlier events. |
-| `stacks usage record` | Append model/token/cost data for a session. |
+| `stacks usage import` | Import delayed provider or external telemetry not available at turn completion. |
 | `stacks usage report --stack <stack>` | Aggregate recorded usage. |
 
 Example:
 
 ```bash
 stacks checkin start --stack my-team/my-stack --component app --summary "Starting change"
-stacks checkin turn --stack my-team/my-stack --session <id> --summary "Implemented slice"
+stacks checkin turn-start --stack my-team/my-stack --session <id> --task "Implement the next slice"
+stacks checkin turn-complete --stack my-team/my-stack --session <id> --turn <turn-id> --summary "Implemented slice" --provider openai --model gpt-5
 stacks checkin complete --stack my-team/my-stack --session <id> --summary "Verified" --outcome success
 stacks usage report --stack my-team/my-stack
 ```
 
-Usage amounts require `--cost-kind reported|estimated|allocated`.
+Only one turn may be open in a session, and work completion refuses an open turn. Usage amounts require `--cost-kind reported|estimated|allocated`.
 
 ## Structured output
 

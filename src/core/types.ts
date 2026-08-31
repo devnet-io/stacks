@@ -154,6 +154,7 @@ export interface StackEvent<TData = Record<string, unknown>> {
   stackId: string;
   componentId?: string;
   sessionId?: string;
+  turnId?: string;
   workId?: string;
   actor?: EventActor;
   data: TData;

@@ -78,7 +78,7 @@
         "required": ["id", "timestamp", "type"],
         "properties": {
           "id": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" }, "type": { "type": "string" },
-          "componentId": { "type": "string" }, "sessionId": { "type": "string" }, "summary": { "type": "string" }, "status": { "type": "string" }, "outcome": { "type": "string" },
+          "componentId": { "type": "string" }, "sessionId": { "type": "string" }, "turnId": { "type": "string" }, "summary": { "type": "string" }, "status": { "type": "string" }, "outcome": { "type": "string" },
           "actor": {
             "type": "object",
             "additionalProperties": false,

@@ -288,24 +288,44 @@ stacks checkin start (--stack <namespace/name> | --root <directory>)
 stacks checkin start --stack acme/customer-portal --component app --summary "Implement account recovery" --agent codex --json
 ```
 
-### `stacks checkin turn`
+### `stacks checkin turn-start`
 
-Appends one completed-turn checkpoint.
+Opens one turn in an active session and returns its `turnId` plus the target component's current context plan.
 
 ```text
-stacks checkin turn (--stack <namespace/name> | --root <directory>)
-  --session <id> --summary <text>
-  [--status progress|blocked|failed|complete] [--files <comma-separated-paths>]
-  [--next <text>] [--json]
+stacks checkin turn-start (--stack <namespace/name> | --root <directory>)
+  --session <id> --task <text> [--json]
 ```
 
 ```bash
-stacks checkin turn --stack acme/customer-portal --session <id> --summary "Added recovery request flow" --status progress --files "src/recovery.ts,test/recovery.test.ts" --next "Add delivery adapter" --json
+stacks checkin turn-start --stack acme/customer-portal --session <id> --task "Add account recovery" --json
+```
+
+Only one turn may be open in a session. The task is returned in the transient context plan but is not copied into the durable activity event.
+
+### `stacks checkin turn-complete`
+
+Closes one started turn and optionally records known telemetry in the same logical operation.
+
+```text
+stacks checkin turn-complete (--stack <namespace/name> | --root <directory>)
+  --session <id> --turn <id> --summary <text>
+  [--status progress|blocked|failed|complete] [--files <comma-separated-paths>]
+  [--next <text>]
+  [--provider <name> --model <name>]
+  [--input <tokens>] [--output <tokens>] [--cached-input <tokens>]
+  [--reasoning <tokens>] [--tool-calls <count>] [--duration-ms <milliseconds>]
+  [--amount <number> --currency <code> --cost-kind reported|estimated|allocated]
+  [--pricing-reference <text>] [--note <text>] [--json]
+```
+
+```bash
+stacks checkin turn-complete --stack acme/customer-portal --session <id> --turn <turn-id> --summary "Added recovery request flow" --status progress --files "src/recovery.ts,test/recovery.test.ts" --next "Add delivery adapter" --provider openai --model gpt-5 --input 1200 --output 340 --json
 ```
 
 ### `stacks checkin complete`
 
-Appends the final outcome for a work session.
+Appends the final outcome for a work session. It refuses completion while a turn remains open.
 
 ```text
 stacks checkin complete (--stack <namespace/name> | --root <directory>)
@@ -319,13 +339,14 @@ stacks checkin complete --stack acme/customer-portal --session <id> --summary "A
 
 ## Usage events and reports
 
-### `stacks usage record`
+### `stacks usage import`
 
-Appends known provider, model, token, duration, tool-call, and monetary usage facts for a session. Unknown values should be omitted rather than guessed.
+Imports delayed provider, model, token, duration, tool-call, and monetary usage facts that were not available at live turn completion. Normal participating agents supply known telemetry to `stacks checkin turn-complete`. Unknown values should be omitted rather than guessed.
 
 ```text
-stacks usage record (--stack <namespace/name> | --root <directory>)
-  --session <id> --provider <name> --model <name>
+stacks usage import (--stack <namespace/name> | --root <directory>)
+  --provider <name> --model <name>
+  [--session <id>] [--turn <id>]
   [--component <id>] [--work <external-id>]
   [--input <tokens>] [--output <tokens>] [--cached-input <tokens>]
   [--reasoning <tokens>] [--tool-calls <count>] [--duration-ms <milliseconds>]
@@ -335,7 +356,7 @@ stacks usage record (--stack <namespace/name> | --root <directory>)
 ```
 
 ```bash
-stacks usage record --stack acme/customer-portal --session <id> --provider openai --model gpt-5 --input 1200 --output 340 --amount 0.02 --currency USD --cost-kind reported --pricing-reference "provider usage export" --json
+stacks usage import --stack acme/customer-portal --session <id> --turn <turn-id> --provider openai --model gpt-5 --input 1200 --output 340 --amount 0.02 --currency USD --cost-kind reported --pricing-reference "provider usage export" --json
 ```
 
 Whenever `--amount` is supplied, `--cost-kind` is required. Do not record raw prompts, completions, secrets, or source payloads.

@@ -2,7 +2,7 @@ import path from "node:path";
 import type { EventActor, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
 import { addRegisteredComponent, bindRegisteredComponent, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
-import { completeTurn, completeWork, recordComponentAdded, recordComponentBindingChanged, recordStackCreated, recordUsage, startWork } from "../core/events.ts";
+import { completeTurn, completeWork, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordStackCreated, startTurn as startCoreTurn, startWork } from "../core/events.ts";
 import { syncComponent } from "../core/git.ts";
 import { initializeStack } from "../core/init.ts";
 import { writeLockSnapshot } from "../core/lock.ts";
@@ -70,6 +70,12 @@ export interface ComponentMutationOutput extends StackDefinitionOutput {
   sync: Awaited<ReturnType<typeof syncComponent>>;
 }
 
+export interface TurnStartOutput {
+  schemaVersion: "0.1";
+  turn: StackEvent;
+  context: ReturnType<typeof resolveContext>;
+}
+
 export interface StacksApplication {
   listStacks(): Promise<StackIdentity[]>;
   createStack(selector: string, options?: MutationOptions): Promise<StackIdentity>;
@@ -87,9 +93,10 @@ export interface StacksApplication {
   lock(reference: StackReference): Promise<LockOutput>;
   resolveContext(reference: StackReference, target: string, task?: string): Promise<ReturnType<typeof resolveContext>>;
   startWork(reference: StackReference, input: { componentId: string; summary: string; workId?: string; actor?: EventActor }): Promise<StackEvent>;
-  completeTurn(reference: StackReference, input: { sessionId: string; summary: string; status?: "progress" | "blocked" | "failed" | "complete"; changedPaths?: string[]; nextStep?: string }): Promise<StackEvent>;
+  startTurn(reference: StackReference, input: { sessionId: string; task: string }): Promise<TurnStartOutput>;
+  completeTurn(reference: StackReference, input: { sessionId: string; turnId: string; summary: string; status?: "progress" | "blocked" | "failed" | "complete"; changedPaths?: string[]; nextStep?: string; usage?: UsageData }): ReturnType<typeof completeTurn>;
   completeWork(reference: StackReference, input: { sessionId: string; summary: string; outcome?: "success" | "partial" | "failed" | "cancelled"; remaining?: string[] }): Promise<StackEvent>;
-  recordUsage(reference: StackReference, input: { sessionId: string; componentId?: string; workId?: string; actor?: EventActor; usage: UsageData }): Promise<StackEvent>;
+  importUsage(reference: StackReference, input: { sessionId?: string; turnId?: string; componentId?: string; workId?: string; actor?: EventActor; usage: UsageData }): Promise<StackEvent>;
   getUsageReport(reference: StackReference): Promise<UsageReport>;
   getOverview(reference: StackReference): Promise<StackOverview>;
   getActivity(reference: StackReference): Promise<StackActivity>;
@@ -226,7 +233,20 @@ export class LocalStacksApplication implements StacksApplication {
     return startWork(await this.load(reference), input);
   }
 
-  async completeTurn(reference: StackReference, input: Parameters<typeof completeTurn>[1]): Promise<StackEvent> {
+  async startTurn(reference: StackReference, input: { sessionId: string; task: string }): Promise<TurnStartOutput> {
+    const stack = await this.load(reference);
+    const history = await readEvents(stack);
+    const session = history.events.find((event) => event.type === "work.started" && event.sessionId === input.sessionId);
+    if (!session?.componentId) throw new Error(`No component-scoped work.started event found for session ${input.sessionId}.`);
+    const context = resolveContext(stack, session.componentId, input.task);
+    const turn = await startCoreTurn(stack, {
+      sessionId: input.sessionId,
+      context: { generatedAt: context.generatedAt, items: context.items.length, warnings: context.warnings.length, errors: context.errors.length },
+    });
+    return { schemaVersion: "0.1", turn, context };
+  }
+
+  async completeTurn(reference: StackReference, input: Parameters<typeof completeTurn>[1]): ReturnType<typeof completeTurn> {
     return completeTurn(await this.load(reference), input);
   }
 
@@ -234,8 +254,8 @@ export class LocalStacksApplication implements StacksApplication {
     return completeWork(await this.load(reference), input);
   }
 
-  async recordUsage(reference: StackReference, input: Parameters<typeof recordUsage>[1]): Promise<StackEvent> {
-    return recordUsage(await this.load(reference), input);
+  async importUsage(reference: StackReference, input: Parameters<typeof importUsage>[1]): Promise<StackEvent> {
+    return importUsage(await this.load(reference), input);
   }
 
   async getUsageReport(reference: StackReference): Promise<UsageReport> {

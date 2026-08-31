@@ -11,6 +11,16 @@ function result(value: Record<string, unknown>) {
 }
 
 const selector = z.string().min(1).describe("Registered Stack selector in namespace/name form");
+const usageShape = {
+  provider: z.string().min(1), model: z.string().min(1), inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
+  cachedInputTokens: z.number().nonnegative().optional(), reasoningTokens: z.number().nonnegative().optional(), toolCalls: z.number().nonnegative().optional(),
+  durationMs: z.number().nonnegative().optional(), amount: z.number().nonnegative().optional(), currency: z.string().optional(),
+  costKind: z.enum(["reported", "estimated", "allocated"]).optional(), pricingReference: z.string().optional(), note: z.string().optional(),
+} as const;
+const requireCostProvenance = (value: { amount?: number | undefined; costKind?: CostKind | undefined }) => value.amount === undefined || value.costKind !== undefined;
+const usageSchema = z.object(usageShape).refine(requireCostProvenance, { message: "costKind is required whenever amount is supplied" });
+const usageImportSchema = z.object({ ...usageShape, stack: selector, sessionId: z.string().min(1).optional(), turnId: z.string().min(1).optional(), componentId: z.string().optional() })
+  .refine(requireCostProvenance, { message: "costKind is required whenever amount is supplied" });
 
 export function buildMcpServer(application: StacksApplication = createLocalStacksApplication()): McpServer {
   const server = new McpServer({ name: "stacks", version: STACKS_VERSION }, { instructions: STACKS_MCP_INSTRUCTIONS });
@@ -95,11 +105,17 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
     return result(await application.startWork({ stack: stackSelector }, { componentId, summary, ...(workId ? { workId } : {}), ...(actor ? { actor } : {}) }) as unknown as Record<string, unknown>);
   });
 
-  server.registerTool("turn_complete", {
-    title: "Record completed agent turn", description: "Append a progress checkpoint for a Stack work session.",
-    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), summary: z.string().min(1), status: z.enum(["progress", "blocked", "failed", "complete"]).optional(), changedPaths: z.array(z.string()).optional(), nextStep: z.string().optional() }),
+  server.registerTool("turn_start", {
+    title: "Start agent turn", description: "Open one turn in an active work session and return its context plan.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), task: z.string().min(1) }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-  }, async ({ stack: stackSelector, sessionId, summary, status, changedPaths, nextStep }) => result(await application.completeTurn({ stack: stackSelector }, { sessionId, summary, ...(status ? { status } : {}), ...(changedPaths ? { changedPaths } : {}), ...(nextStep ? { nextStep } : {}) }) as unknown as Record<string, unknown>));
+  }, async ({ stack: stackSelector, sessionId, task }) => result(await application.startTurn({ stack: stackSelector }, { sessionId, task }) as unknown as Record<string, unknown>));
+
+  server.registerTool("turn_complete", {
+    title: "Complete agent turn", description: "Close one started turn and append its progress plus optional observed telemetry.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), turnId: z.string().min(1), summary: z.string().min(1), status: z.enum(["progress", "blocked", "failed", "complete"]).optional(), changedPaths: z.array(z.string()).optional(), nextStep: z.string().optional(), usage: usageSchema.optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, sessionId, turnId, summary, status, changedPaths, nextStep, usage }) => result(await application.completeTurn({ stack: stackSelector }, { sessionId, turnId, summary, ...(status ? { status } : {}), ...(changedPaths ? { changedPaths } : {}), ...(nextStep ? { nextStep } : {}), ...(usage ? { usage: usage as UsageData } : {}) }) as unknown as Record<string, unknown>));
 
   server.registerTool("work_complete", {
     title: "Complete Stack work session", description: "Append the outcome for a Stack work session.",
@@ -107,13 +123,13 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   }, async ({ stack: stackSelector, sessionId, summary, outcome, remaining }) => result(await application.completeWork({ stack: stackSelector }, { sessionId, summary, ...(outcome ? { outcome } : {}), ...(remaining ? { remaining } : {}) }) as unknown as Record<string, unknown>));
 
-  server.registerTool("usage_record", {
-    title: "Record agent usage", description: "Append provider/model/token/cost telemetry with explicit cost provenance.",
-    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), provider: z.string().min(1), model: z.string().min(1), componentId: z.string().optional(), inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), cachedInputTokens: z.number().nonnegative().optional(), reasoningTokens: z.number().nonnegative().optional(), toolCalls: z.number().nonnegative().optional(), durationMs: z.number().nonnegative().optional(), amount: z.number().nonnegative().optional(), currency: z.string().optional(), costKind: z.enum(["reported", "estimated", "allocated"]).optional(), pricingReference: z.string().optional(), note: z.string().optional() }).refine((value) => value.amount === undefined || value.costKind !== undefined, { message: "costKind is required whenever amount is supplied" }),
+  server.registerTool("usage_import", {
+    title: "Import delayed usage", description: "Append delayed provider or external telemetry with explicit cost provenance.",
+    inputSchema: usageImportSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-  }, async ({ stack: stackSelector, sessionId, componentId, provider, model, inputTokens, outputTokens, cachedInputTokens, reasoningTokens, toolCalls, durationMs, amount, currency, costKind, pricingReference, note }) => {
+  }, async ({ stack: stackSelector, sessionId, turnId, componentId, provider, model, inputTokens, outputTokens, cachedInputTokens, reasoningTokens, toolCalls, durationMs, amount, currency, costKind, pricingReference, note }) => {
     const usage: UsageData = { provider, model, ...(inputTokens === undefined ? {} : { inputTokens }), ...(outputTokens === undefined ? {} : { outputTokens }), ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }), ...(reasoningTokens === undefined ? {} : { reasoningTokens }), ...(toolCalls === undefined ? {} : { toolCalls }), ...(durationMs === undefined ? {} : { durationMs }), ...(amount === undefined ? {} : { amount }), ...(currency === undefined ? {} : { currency }), ...(costKind === undefined ? {} : { costKind: costKind as CostKind }), ...(pricingReference === undefined ? {} : { pricingReference }), ...(note === undefined ? {} : { note }) };
-    return result(await application.recordUsage({ stack: stackSelector }, { sessionId, ...(componentId ? { componentId } : {}), usage }) as unknown as Record<string, unknown>);
+    return result(await application.importUsage({ stack: stackSelector }, { ...(sessionId ? { sessionId } : {}), ...(turnId ? { turnId } : {}), ...(componentId ? { componentId } : {}), usage }) as unknown as Record<string, unknown>);
   });
 
   server.registerTool("usage_report", {

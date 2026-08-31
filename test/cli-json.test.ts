@@ -131,12 +131,22 @@ test("CLI JSON contracts cover the five-minute Stack lifecycle", async () => {
     assert.equal(started.type, "work.started");
     assert.equal(typeof started.sessionId, "string");
 
-    const usage = runJson([
-      "usage", "record", "--session", String(started.sessionId), "--provider", "test-provider", "--model", "test-model",
+    const turnStarted = runJson(["checkin", "turn-start", "--session", String(started.sessionId), "--task", "Evaluate the app", "--root", root]);
+    assert.equal(object(turnStarted.turn).type, "turn.started");
+    assert.equal(object(turnStarted.context).targetComponentId, "app");
+    const turnId = String(object(turnStarted.turn).turnId);
+
+    const completed = runJson([
+      "checkin", "turn-complete", "--session", String(started.sessionId), "--turn", turnId, "--summary", "Evaluation complete",
+      "--provider", "test-provider", "--model", "test-model",
       "--input", "10", "--output", "5", "--amount", "0.01", "--currency", "USD", "--cost-kind", "reported", "--root", root,
     ]);
-    assert.equal(usage.type, "usage.recorded");
-    assert.equal(object(usage.data).costKind, "reported");
+    assert.equal(object(completed.turn).type, "turn.completed");
+    assert.equal(object(completed.usage).turnId, turnId);
+    assert.equal(object(object(completed.usage).data).costKind, "reported");
+
+    const finished = runJson(["checkin", "complete", "--session", String(started.sessionId), "--summary", "Done", "--root", root]);
+    assert.equal(finished.type, "work.completed");
 
     const report = runJson(["usage", "report", "--root", root]);
     assert.equal(report.schemaVersion, "0.1");

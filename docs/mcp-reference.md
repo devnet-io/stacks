@@ -26,10 +26,10 @@ Every Stack-specific tool takes `stack` in `namespace/name` form. Use `stack_mem
 2. Call `stack_memberships` with the workspace directory. If there is no match, call `stack_list`; if there are multiple matches, select explicitly.
 3. Call `component_get` and `stack_status` for the target component.
 4. Call `work_start` before material work and retain the returned `sessionId`.
-5. Call `context_resolve` for the target and task before reading cross-component guidance.
-6. Append `turn_complete` after meaningful increments or blockers.
-7. Call `usage_record` only with known facts.
-8. Call `work_complete` with the outcome and remaining work.
+5. At the beginning of every participating turn, call `turn_start` with the session and current task. Retain its `turnId` and follow the returned context plan.
+6. Close that exact turn with `turn_complete`, including only telemetry the client actually observes.
+7. Use `usage_import` only for delayed provider exports or external measurements.
+8. Call `work_complete` with the outcome and remaining work after all turns are closed.
 
 ## Resources
 
@@ -209,32 +209,51 @@ Optional input: `workId`, `agent`, `client`, `model`.
 }
 ```
 
-### `turn_complete`
+### `turn_start`
 
-Appends a completed-turn checkpoint to an existing session.
+Opens one turn in an active work session, appends `turn.started`, and returns the new `turnId` together with the target component's current context plan. Only one turn may be open in a session.
 
-Required input: `stack`, `sessionId`, `summary`.
+Required input: `stack`, `sessionId`, `task`.
 
-Optional input:
-
-- `status`: `progress`, `blocked`, `failed`, or `complete`;
-- `changedPaths`: array of component-relative changed paths;
-- `nextStep`: concise next action.
+The task is used in the transient context result but is not copied into the durable activity event.
 
 ```json
 {
   "stack": "acme/customer-portal",
   "sessionId": "session-id",
+  "task": "Add account recovery"
+}
+```
+
+### `turn_complete`
+
+Closes one started turn. It appends `turn.completed` and, when `usage` is supplied, a linked `usage.recorded` event under the same event-writer lock.
+
+Required input: `stack`, `sessionId`, `turnId`, `summary`.
+
+Optional input:
+
+- `status`: `progress`, `blocked`, `failed`, or `complete`;
+- `changedPaths`: array of component-relative changed paths;
+- `nextStep`: concise next action;
+- `usage`: observed provider/model/token/duration/tool/cost facts for this turn. `provider` and `model` are required inside `usage`; monetary amounts require `costKind`.
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "sessionId": "session-id",
+  "turnId": "turn-id",
   "summary": "Added recovery request flow and tests",
   "status": "progress",
   "changedPaths": ["src/recovery.ts", "test/recovery.test.ts"],
-  "nextStep": "Add the delivery adapter"
+  "nextStep": "Add the delivery adapter",
+  "usage": { "provider": "openai", "model": "gpt-5", "inputTokens": 1200, "outputTokens": 340 }
 }
 ```
 
 ### `work_complete`
 
-Appends the final work outcome.
+Appends the final work outcome. It refuses completion while a turn remains open.
 
 Required input: `stack`, `sessionId`, `summary`.
 
@@ -255,13 +274,13 @@ Optional input:
 
 ## Usage tools
 
-### `usage_record`
+### `usage_import`
 
-Appends known provider/model/token/cost telemetry. Unknown values should be omitted rather than estimated silently.
+Imports delayed provider/model/token/cost telemetry that was not available during live turn completion. Normal participating agents report known telemetry through `turn_complete`; unknown values are omitted rather than estimated silently.
 
-Required input: `stack`, `sessionId`, `provider`, `model`.
+Required input: `stack`, `provider`, `model`.
 
-Optional input: `componentId`, `inputTokens`, `outputTokens`, `cachedInputTokens`, `reasoningTokens`, `toolCalls`, `durationMs`, `amount`, `currency`, `costKind`, `pricingReference`, and `note`.
+Optional input: `sessionId`, `turnId`, `componentId`, `inputTokens`, `outputTokens`, `cachedInputTokens`, `reasoningTokens`, `toolCalls`, `durationMs`, `amount`, `currency`, `costKind`, `pricingReference`, and `note`. A supplied `turnId` must identify a known turn and determines its session.
 
 If `amount` is present, `costKind` is required:
 
@@ -273,6 +292,7 @@ If `amount` is present, `costKind` is required:
 {
   "stack": "acme/customer-portal",
   "sessionId": "session-id",
+  "turnId": "turn-id",
   "provider": "openai",
   "model": "gpt-5",
   "inputTokens": 1200,

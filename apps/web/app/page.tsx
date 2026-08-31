@@ -120,7 +120,7 @@ export default function Home() {
   };
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col border-r border-white/8 bg-sidebar px-4 py-5 text-sidebar-foreground lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col border-r border-white/[.08] bg-sidebar px-4 py-5 text-sidebar-foreground lg:flex">
         <div className="flex items-center gap-3 px-2">
           <div className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_28px_color-mix(in_oklch,var(--primary),transparent_65%)]">
             <Network className="size-5" />
@@ -144,7 +144,7 @@ export default function Home() {
               id="stack-selector"
               value={selectedStack ?? ''}
               onChange={(event) => selectStack(event.target.value)}
-              className="mt-1.5 w-full rounded-md border border-white/8 bg-white/[.025] px-2 py-1.5 text-xs text-slate-300 outline-none hover:border-white/15 focus:border-primary/60"
+              className="mt-1.5 w-full rounded-md border border-white/[.08] bg-white/[.025] px-2 py-1.5 text-xs text-slate-300 outline-none hover:border-white/[.15] focus:border-primary/60"
             >
               {stacks.map((stack) => (
                 <option
@@ -174,7 +174,7 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <div className="mt-auto border-t border-white/6 pt-3">
+        <div className="mt-auto border-t border-white/[.06] pt-3">
           <AppMenu />
         </div>
       </aside>

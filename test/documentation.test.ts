@@ -52,7 +52,7 @@ test("documents every CLI operation with focused reference sections", () => {
   const operations = [
     "help", "--version", "stack create", "stack list", "component list", "component get",
     "component add", "component bind", "locate", "agent print", "agent check", "agent install", "agent remove", "status", "context", "sync", "lock", "ui", "mcp",
-    "checkin start", "checkin turn", "checkin complete", "usage record", "usage report",
+    "checkin start", "checkin turn-start", "checkin turn-complete", "checkin complete", "usage import", "usage report",
     "doctor", "validate", "init",
   ];
   for (const operation of operations) assert.match(reference, new RegExp("### `stacks " + operation + "`", "u"));
@@ -62,7 +62,7 @@ test("documents every CLI operation with focused reference sections", () => {
 
 test("publishes complete MCP instructions, tools, resources, and examples", () => {
   const reference = doc("mcp-reference.md");
-  for (const tool of ["instructions_get", "stack_list", "stack_memberships", "stack_get", "component_list", "component_get", "component_add", "component_bind", "stack_status", "context_resolve", "work_start", "turn_complete", "work_complete", "usage_record", "usage_report"]) {
+  for (const tool of ["instructions_get", "stack_list", "stack_memberships", "stack_get", "component_list", "component_get", "component_add", "component_bind", "stack_status", "context_resolve", "work_start", "turn_start", "turn_complete", "work_complete", "usage_import", "usage_report"]) {
     assert.match(reference, new RegExp("### `" + tool + "`", "u"));
   }
   for (const uri of ["stacks://instructions", "stacks://reference/mcp", "stacks://reference/cli", "stacks://catalog"]) assert.match(reference, new RegExp(uri.replaceAll("/", "\\/"), "u"));

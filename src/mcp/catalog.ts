@@ -10,9 +10,10 @@ export const STACKS_MCP_TOOL_NAMES = [
   "stack_status",
   "context_resolve",
   "work_start",
+  "turn_start",
   "turn_complete",
   "work_complete",
-  "usage_record",
+  "usage_import",
   "usage_report",
 ] as const;
 

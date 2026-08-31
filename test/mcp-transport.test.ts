@@ -40,7 +40,7 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     send({ jsonrpc: "2.0", id: 4, method: "resources/read", params: { uri: "stacks://reference/mcp" } });
     const readReference = await response(4);
     const contents = (readReference.result as { contents: Array<{ text: string }> }).contents;
-    assert.match(contents[0]?.text ?? "", /### `usage_record`/u);
+    assert.match(contents[0]?.text ?? "", /### `usage_import`/u);
 
     send({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "instructions_get", arguments: {} } });
     const instructions = await response(5);
