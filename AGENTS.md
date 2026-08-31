@@ -46,6 +46,7 @@ Read `docs/00-input-synthesis.md` and the current-state documentation named belo
 - Resolve and verify file-backed resource paths before reading them.
 - Do not write to component repositories during `status`, `validate`, or context resolution.
 - Refuse destructive Git behavior. Do not reset, clean, force-checkout, or overwrite dirty repositories.
+- Preserve repository metadata ownership. In managed sandboxes, run Git operations that write `.git` with the workspace owner's authorized or escalated identity; do not let a sandbox service account create or take ownership of `.git`. Treat `safe.directory` as a temporary diagnostic override, not the long-term fix for an ownership mismatch.
 - Add tests for every behavior change. Favor temporary-directory integration tests for filesystem and Git behavior.
 - Keep structured `--json` output stable and separate from human-oriented output.
 - Log MCP diagnostics to stderr only; stdout is the protocol channel.
