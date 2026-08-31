@@ -87,9 +87,9 @@ export function StackActivity({ stack }: { stack?: string }) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-          Agent check-ins and usage recorded for this Stack. Event history is
-          append-only; costs retain their reported, estimated, or allocated
-          provenance.
+          Stack changes, agent check-ins, and usage recorded for this Stack.
+          Event history is append-only; costs retain their reported, estimated,
+          or allocated provenance.
         </p>
         <Button
           variant="outline"
@@ -187,9 +187,8 @@ function EmptyActivity() {
         <CircleDotDashed className="mx-auto size-8 text-muted-foreground" />
         <h2 className="mt-4 text-lg font-semibold">No activity recorded yet</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Connected agents create a session with <code>start_work</code>, record
-          progress with <code>complete_turn</code>, and close it with{' '}
-          <code>complete_work</code>. Their check-ins will appear here.
+          Component changes appear automatically. Connected agents can also
+          create work sessions and report progress and usage.
         </p>
       </CardContent>
     </Card>
@@ -242,7 +241,8 @@ function Sessions({ sessions }: { sessions: ActivitySession[] }) {
           ))
         ) : (
           <p className="text-sm text-muted-foreground">
-            Usage was recorded without a work session.
+            No agent work sessions recorded yet. Stack management events still
+            appear in the timeline.
           </p>
         )}
       </CardContent>
@@ -267,7 +267,7 @@ function RecentEvents({ events }: { events: ActivityEvent[] }) {
               <span className="relative mt-1.5 size-[15px] shrink-0 rounded-full border-4 border-background bg-primary" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-mono text-xs font-semibold">{event.type}</p>
+                  <p className="text-xs font-semibold">{eventLabel(event.type)}</p>
                   <time className="text-xs text-muted-foreground">
                     {formatDate(event.timestamp)}
                   </time>
@@ -275,6 +275,14 @@ function RecentEvents({ events }: { events: ActivityEvent[] }) {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {event.summary ?? usageSummary(event) ?? event.componentId ?? 'Stack event'}
                 </p>
+                {(event.componentId || event.actor?.client || event.actor?.agent) && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {event.componentId && <Badge variant="outline">{event.componentId}</Badge>}
+                    {(event.actor?.agent || event.actor?.client) && (
+                      <Badge variant="secondary">{event.actor.agent ?? event.actor.client}</Badge>
+                    )}
+                  </div>
+                )}
               </div>
             </li>
           ))}
@@ -288,6 +296,19 @@ function usageSummary(event: ActivityEvent): string | undefined {
   if (event.type !== 'usage.recorded') return undefined;
   const tokens = (event.inputTokens ?? 0) + (event.outputTokens ?? 0);
   return `${event.provider ?? 'Unknown provider'} / ${event.model ?? 'unknown model'} · ${formatNumber(tokens)} tokens`;
+}
+
+function eventLabel(type: string): string {
+  const labels: Record<string, string> = {
+    'stack.created': 'Stack created',
+    'component.added': 'Component added',
+    'component.binding.changed': 'Component binding changed',
+    'work.started': 'Work started',
+    'turn.completed': 'Turn completed',
+    'work.completed': 'Work completed',
+    'usage.recorded': 'Usage recorded',
+  };
+  return labels[type] ?? type;
 }
 
 function formatNumber(value: number): string {

@@ -10,3 +10,4 @@ These records explain accepted decisions that shape the current system. They are
 - [0006: Global catalog and explicit bindings](0006-global-catalog-and-explicit-bindings.md)
 - [0007: Application boundary and optional HTTP client](0007-application-boundary-and-optional-http-client.md)
 - [0008: Cross-process event appends](0008-cross-process-event-appends.md)
+- [0009: Management mutations are activity events](0009-management-mutations-are-activity-events.md)

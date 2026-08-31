@@ -53,6 +53,9 @@ test("global local API lists and explicitly selects registered Stacks", async ()
     assert.equal(bound.status, 200, await bound.text());
     const managed = await (await fetch(`${api.origin}/api/v0.1/overview?stack=acme%2Fthree`)).json() as StackOverview;
     assert.equal(managed.components[0]?.root, path.resolve(rebound));
+    const managementActivity = await (await fetch(`${api.origin}/api/v0.1/activity?stack=acme%2Fthree`)).json() as StackActivity;
+    assert.deepEqual(managementActivity.recentEvents.map((event) => event.type), ["component.binding.changed", "component.added", "stack.created"]);
+    assert.ok(managementActivity.recentEvents.every((event) => event.actor?.client === "stacks-web"));
 
     const duplicate = await fetch(`${api.origin}/api/v0.1/stacks`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selector: "acme/three" }),

@@ -167,7 +167,7 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
       if (request.method === "POST" && url.pathname === "/api/v0.1/stacks") {
         if (options.root) throw new HttpError(409, "Stack management is unavailable in legacy --root mode.");
         const body = await readJsonBody(request);
-        const stack = await application.createStack(requiredString(body, "selector"));
+        const stack = await application.createStack(requiredString(body, "selector"), { actor: { client: "stacks-web" } });
         send(response, 201, { schemaVersion: "0.1", stack });
         return;
       }
@@ -179,6 +179,7 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
           ...(optionalString(body, "git") === undefined ? {} : { git: optionalString(body, "git")! }),
           ...(optionalString(body, "kind") === undefined ? {} : { kind: optionalString(body, "kind")! }),
           ...(optionalString(body, "name") === undefined ? {} : { name: optionalString(body, "name")! }),
+          actor: { client: "stacks-web" },
         });
         const componentId = requiredString(body, "id");
         const { id, namespace, name } = output.manifest.metadata;
@@ -189,7 +190,7 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         if (options.root) throw new HttpError(409, "Component management is unavailable in legacy --root mode.");
         const body = await readJsonBody(request);
         const componentId = requiredString(body, "componentId");
-        const output = await application.bindComponent(requiredString(body, "stack"), componentId, requiredString(body, "path"));
+        const output = await application.bindComponent(requiredString(body, "stack"), componentId, requiredString(body, "path"), { actor: { client: "stacks-web" } });
         const { id, namespace, name } = output.manifest.metadata;
         send(response, 200, { schemaVersion: "0.1", stack: { id, namespace, name }, component: { id: componentId, path: output.bindings[componentId] }, sync: output.sync });
         return;

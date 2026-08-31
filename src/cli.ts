@@ -404,7 +404,7 @@ async function commandStack(parsed: ParsedArgs): Promise<void> {
   if (operation === "create") {
     const selector = parsed.positionals[2];
     if (!selector) throw new Error("Usage: stacks stack create <namespace/name>.");
-    const identity = await application.createStack(selector);
+    const identity = await application.createStack(selector, { actor: { client: "stacks-cli" } });
     const output = { schemaVersion: "0.1", stack: identity };
     if (booleanOption(parsed, "json")) printJson(output);
     else process.stdout.write(`Created Stack ${selector}\n`);
@@ -443,7 +443,7 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
   if (!id) throw new Error("Usage: stacks component add|bind <namespace/name> <id> --path <dir> ...");
   const localPath = requiredOption(parsed, "path");
   if (operation === "bind") {
-    const changed = await application.bindComponent(selector, id, localPath);
+    const changed = await application.bindComponent(selector, id, localPath, { actor: { client: "stacks-cli" } });
     const output = { schemaVersion: "0.1", stack: selector, component: id, path: changed.bindings[id], sync: changed.sync };
     if (booleanOption(parsed, "json")) printJson(output); else process.stdout.write(`Bound ${id} in ${selector} to ${changed.bindings[id]}\n${changed.sync.message}\n`);
     return;
@@ -454,6 +454,7 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
     ...(stringOption(parsed, "git") === undefined ? {} : { git: stringOption(parsed, "git")! }),
     ...(stringOption(parsed, "kind") === undefined ? {} : { kind: stringOption(parsed, "kind")! }),
     ...(stringOption(parsed, "name") === undefined ? {} : { name: stringOption(parsed, "name")! }),
+    actor: { client: "stacks-cli" },
   });
   const output = { schemaVersion: "0.1", stack: selector, component: id, path: changed.bindings[id], sync: changed.sync };
   if (booleanOption(parsed, "json")) printJson(output);

@@ -143,7 +143,7 @@ Adds an existing local directory to a Stack. Required input: `stack`, `component
 }
 ```
 
-Side effects: writes the Stack definition and machine-local binding, then inspects the directory. It does not clone, move, or modify the component repository. Non-idempotent: do not retry an uncertain call without checking `component_get`.
+Side effects: writes the Stack definition and machine-local binding, appends a `component.added` Activity event attributed to `stacks-mcp`, then inspects the directory. It does not clone, move, or modify the component repository. Non-idempotent: do not retry an uncertain call without checking `component_get`.
 
 ### `component_bind`
 
@@ -153,7 +153,7 @@ Changes the explicit local directory for an existing component.
 { "stack": "acme/customer-portal", "componentId": "shared-ui", "path": "/work/shared-ui" }
 ```
 
-Side effects: writes the machine-local binding and inspects the directory. For a missing Git destination it reports that cloning would be required but does not perform the clone. It does not move or modify the repository. Idempotent for the same Stack, component, and path.
+Side effects: writes the machine-local binding and, when the path changed, appends a `component.binding.changed` Activity event attributed to `stacks-mcp`, then inspects the directory. For a missing Git destination it reports that cloning would be required but does not perform the clone. It does not move or modify the repository. Idempotent for the same Stack, component, and path.
 
 ### `stack_status`
 

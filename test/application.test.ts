@@ -16,8 +16,8 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
   });
   try {
     await mkdir(component, { recursive: true });
-    await application.createStack("tests/application");
-    await application.addComponent({ stack: "tests/application", id: "app", path: component, kind: "product" });
+    await application.createStack("tests/application", { actor: { client: "test-client" } });
+    await application.addComponent({ stack: "tests/application", id: "app", path: component, kind: "product", actor: { client: "test-client" } });
 
     const components = await application.listComponents("tests/application");
     assert.equal(components.components[0]?.component.id, "app");
@@ -27,11 +27,17 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     assert.equal(memberships.memberships[0]?.component.id, "app");
 
     const remote = path.join(root, "components", "remote");
+    const rebound = path.join(root, "components", "remote-bound");
     await addRegisteredComponent("tests/application", { id: "remote", path: remote, git: "https://example.com/remote.git" }, directories);
-    const bound = await application.bindComponent("tests/application", "remote", remote, { materialize: false });
+    const bound = await application.bindComponent("tests/application", "remote", rebound, { materialize: false, actor: { client: "test-client" } });
     assert.equal(bound.sync.action, "clone");
     assert.equal(bound.sync.changed, false);
-    assert.equal(existsSync(remote), false);
+    assert.equal(existsSync(rebound), false);
+    await application.bindComponent("tests/application", "remote", rebound, { materialize: false, actor: { client: "test-client" } });
+
+    const activity = await application.getActivity({ stack: "tests/application" });
+    assert.deepEqual(activity.recentEvents.map((event) => event.type), ["component.binding.changed", "component.added", "stack.created"]);
+    assert.ok(activity.recentEvents.every((event) => event.actor?.client === "test-client"));
 
     const catalog = await application.getCatalogStatus();
     assert.equal(catalog.schemaVersion, "0.1");

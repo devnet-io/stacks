@@ -8,7 +8,7 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | --- | --- |
 | Manifest and context spike | Existing unit tests validate manifests and resolve layered capability context. |
 | Conservative Git operations | Temporary-repository integration test covers clone, fetch, dirty preservation, and lock observation. |
-| Agent events and usage | Lifecycle and aggregation test covers start, turn, usage, and completion. |
+| Stack, agent, and usage events | Application, HTTP, lifecycle, and aggregation tests cover Stack creation, component addition and rebinding, work starts, turns, usage, and completion with adapter provenance. |
 | Foundation example | Example test verifies materialized paths and selected context. |
 | npm workspace and copied installation | Root workspaces include local web and reserved cloud applications. `install:local` gracefully retires registered UI processes, then packs and globally installs a copied CLI plus static web artifact; the quality gate verifies an isolated non-symlink installation and starts its unified UI/API process. |
 | Stable Stack identity | Manifests require immutable ID, namespace, and name; events and plans use the immutable ID. |
@@ -27,7 +27,7 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | Human and agent interface references | The web documentation library includes exhaustive CLI and MCP references. MCP initialization instructions, `instructions_get`, and packaged `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli` resources expose the same operational truth to agents. |
 | Application use-case boundary | CLI, stdio MCP, and loopback HTTP orchestration use the `StacksApplication` interface with an in-process local implementation. Global `status` reads the catalog; other commands enter directory compatibility mode only through explicit `--root`. ADR 0007 records optional REST-client and Streamable HTTP MCP direction. |
 | Admin Manage vertical slice | The loopback API and UI create registered Stacks, add components at explicit paths, and change machine-local bindings. Mutations require JSON, enforce browser origin restrictions, report conflict/input states, and use cross-process catalog writer serialization with reader-safe commit ordering. |
-| Admin Activity vertical slice | Per-Stack cross-process writer serialization protects append-only JSONL events. A bounded application DTO, versioned HTTP endpoint/schema, session and provenance-preserving usage aggregation, responsive loading/empty/error/success UI, and concurrency/integration tests are implemented. |
+| Admin Activity vertical slice | Per-Stack cross-process writer serialization protects append-only JSONL events. Registered Stack creation, component addition, and changed bindings are recorded by the shared application boundary with CLI/web/MCP provenance. A bounded application DTO, versioned HTTP endpoint/schema, management and session timeline, provenance-preserving usage aggregation, responsive loading/empty/error/success UI, and concurrency/integration tests are implemented. |
 
 ## Proposed
 

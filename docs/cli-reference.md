@@ -48,7 +48,7 @@ stacks stack create <namespace/name> [--json]
 stacks stack create acme/customer-portal
 ```
 
-The Stack receives an immutable ID. The namespace and name remain its human-readable selector.
+The Stack receives an immutable ID. The namespace and name remain its human-readable selector. Success appends a `stack.created` Activity event attributed to `stacks-cli`.
 
 ### `stacks stack list`
 
@@ -102,7 +102,7 @@ stacks component add acme/customer-portal app --path /work/customer-portal --kin
 stacks component add acme/customer-portal standards --path /work/engineering-standards --git https://github.com/acme/engineering-standards.git --kind knowledge
 ```
 
-`--path` is always required. Without `--git`, the directory must exist. `--kind` is optional and defaults to the extensible label `component`; capabilities describe functional behavior. Stacks never adds a membership marker or Git submodule.
+`--path` is always required. Without `--git`, the directory must exist. `--kind` is optional and defaults to the extensible label `component`; capabilities describe functional behavior. Stacks never adds a membership marker or Git submodule. Success appends a `component.added` Activity event attributed to `stacks-cli`.
 
 ### `stacks component bind`
 
@@ -116,7 +116,7 @@ stacks component bind <namespace/name> <id> --path <directory> [--json]
 stacks component bind acme/customer-portal app --path /work/customer-portal
 ```
 
-For a Git component, a missing bound destination may be cloned. Existing repositories are inspected conservatively.
+For a Git component, a missing bound destination may be cloned. Existing repositories are inspected conservatively. A changed path appends a `component.binding.changed` Activity event attributed to `stacks-cli`; rebinding to the same path does not add a duplicate.
 
 ## Inspection and context
 

@@ -36,7 +36,7 @@ Returns Stack identity, storage mode, component health summary, explicit paths, 
 
 ### `GET /api/v0.1/activity`
 
-Returns the append-only event summary, token totals, cost totals grouped by currency and provenance, at most 100 work sessions, and at most the 100 newest sanitized events. Aggregate counts cover the complete readable history. Monetary totals are never combined across `reported`, `estimated`, and `allocated` values. The response follows `schemas/http-activity.schema.json`.
+Returns the append-only event summary, token totals, cost totals grouped by currency and provenance, at most 100 work sessions, and at most the 100 newest sanitized events. Recent events include Stack creation, component additions, changed bindings, agent work, and usage, with adapter actor provenance when available. Aggregate counts cover the complete readable history. Monetary totals are never combined across `reported`, `estimated`, and `allocated` values. The response follows `schemas/http-activity.schema.json`.
 
 ### `GET /api/v0.1/graph`
 
@@ -71,7 +71,7 @@ Returns `201` with the immutable identity. It creates catalog state only; it doe
 }
 ```
 
-`stack`, `id`, and `path` are required. `git`, `name`, and `kind` are optional; omitted kind persists as `component`. Without `git`, the directory must already exist. With `git`, a missing explicit path may be cloned. Returns `201` with Stack identity, component binding, and synchronization result.
+`stack`, `id`, and `path` are required. `git`, `name`, and `kind` are optional; omitted kind persists as `component`. Without `git`, the directory must already exist. With `git`, a missing explicit path may be cloned. Returns `201` with Stack identity, component binding, and synchronization result, and appends a `component.added` Activity event attributed to `stacks-web`.
 
 ## Change a component binding
 
@@ -85,7 +85,7 @@ Returns `201` with the immutable identity. It creates catalog state only; it doe
 }
 ```
 
-Changes only the machine-local binding. Stacks never moves the repository. A non-Git component path must exist; a missing Git path may be cloned. Returns Stack identity, the resulting binding, and synchronization result.
+Changes only the machine-local binding. Stacks never moves the repository. A non-Git component path must exist; a missing Git path may be cloned. Returns Stack identity, the resulting binding, and synchronization result. A changed path appends a `component.binding.changed` Activity event attributed to `stacks-web`; the same path is an event no-op.
 
 ## Not yet exposed
 

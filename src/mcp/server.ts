@@ -67,13 +67,13 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
     title: "Add local component", description: "Add an existing local directory as a Stack component. This does not clone, move, or modify the component repository.",
     inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1), name: z.string().min(1).optional(), kind: z.string().min(1).optional() }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-  }, async ({ stack: stackSelector, componentId, path, name, kind }) => result(await application.addComponent({ stack: stackSelector, id: componentId, path, ...(name ? { name } : {}), ...(kind ? { kind } : {}) }) as unknown as Record<string, unknown>));
+  }, async ({ stack: stackSelector, componentId, path, name, kind }) => result(await application.addComponent({ stack: stackSelector, id: componentId, path, ...(name ? { name } : {}), ...(kind ? { kind } : {}), actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
   server.registerTool("component_bind", {
     title: "Bind component directory", description: "Set the explicit local directory for an existing component. This does not move or modify the repository.",
     inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1) }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-  }, async ({ stack: stackSelector, componentId, path }) => result(await application.bindComponent(stackSelector, componentId, path, { materialize: false }) as unknown as Record<string, unknown>));
+  }, async ({ stack: stackSelector, componentId, path }) => result(await application.bindComponent(stackSelector, componentId, path, { materialize: false, actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
   server.registerTool("stack_status", {
     title: "Inspect Stack status", description: "Inspect explicit component paths and Git state without modifying them.", inputSchema: z.object({ stack: selector }),

@@ -79,6 +79,11 @@
         "properties": {
           "id": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" }, "type": { "type": "string" },
           "componentId": { "type": "string" }, "sessionId": { "type": "string" }, "summary": { "type": "string" }, "status": { "type": "string" }, "outcome": { "type": "string" },
+          "actor": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "agent": { "type": "string" }, "client": { "type": "string" }, "model": { "type": "string" } }
+          },
           "provider": { "type": "string" }, "model": { "type": "string" }, "inputTokens": { "type": "number" }, "outputTokens": { "type": "number" },
           "amount": { "type": "number" }, "currency": { "type": "string" }, "costKind": { "enum": ["reported", "estimated", "allocated"] }
         }

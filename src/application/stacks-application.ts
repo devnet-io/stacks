@@ -2,7 +2,7 @@ import path from "node:path";
 import type { EventActor, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
 import { addRegisteredComponent, bindRegisteredComponent, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
-import { completeTurn, completeWork, recordUsage, startWork } from "../core/events.ts";
+import { completeTurn, completeWork, recordComponentAdded, recordComponentBindingChanged, recordStackCreated, recordUsage, startWork } from "../core/events.ts";
 import { syncComponent } from "../core/git.ts";
 import { initializeStack } from "../core/init.ts";
 import { writeLockSnapshot } from "../core/lock.ts";
@@ -55,6 +55,15 @@ export interface AddComponentInput {
   kind?: string;
   git?: string;
   name?: string;
+  actor?: EventActor;
+}
+
+export interface MutationOptions {
+  actor?: EventActor;
+}
+
+export interface BindComponentOptions extends MutationOptions {
+  materialize?: boolean;
 }
 
 export interface ComponentMutationOutput extends StackDefinitionOutput {
@@ -63,12 +72,12 @@ export interface ComponentMutationOutput extends StackDefinitionOutput {
 
 export interface StacksApplication {
   listStacks(): Promise<StackIdentity[]>;
-  createStack(selector: string): Promise<StackIdentity>;
+  createStack(selector: string, options?: MutationOptions): Promise<StackIdentity>;
   findMemberships(directory: string): Promise<MembershipOutput>;
   listComponents(stack: string): Promise<ComponentListOutput>;
   getComponent(stack: string, componentId: string): Promise<ComponentOutput>;
   addComponent(input: AddComponentInput): Promise<ComponentMutationOutput>;
-  bindComponent(stack: string, componentId: string, localPath: string, options?: { materialize?: boolean }): Promise<ComponentMutationOutput>;
+  bindComponent(stack: string, componentId: string, localPath: string, options?: BindComponentOptions): Promise<ComponentMutationOutput>;
   getStack(reference: StackReference): Promise<StackDefinitionOutput>;
   initializeLegacyStack(root: string, namespace: string, name: string): Promise<InitOutput>;
   validateStack(reference: StackReference): Promise<ValidateOutput>;
@@ -114,8 +123,10 @@ export class LocalStacksApplication implements StacksApplication {
     return (await listRegisteredStacks(this.options.catalogDirectories)).map(({ id, namespace, name }) => ({ id, namespace, name }));
   }
 
-  async createStack(selector: string): Promise<StackIdentity> {
-    return stackIdentity((await createRegisteredStack(selector, this.options.catalogDirectories)).manifest);
+  async createStack(selector: string, options: MutationOptions = {}): Promise<StackIdentity> {
+    const stack = await createRegisteredStack(selector, this.options.catalogDirectories);
+    await recordStackCreated(stack, options.actor);
+    return stackIdentity(stack.manifest);
   }
 
   async findMemberships(directory: string): Promise<MembershipOutput> {
@@ -139,15 +150,33 @@ export class LocalStacksApplication implements StacksApplication {
   }
 
   async addComponent(input: AddComponentInput): Promise<ComponentMutationOutput> {
-    const { stack, ...component } = input;
+    const { stack, actor, ...component } = input;
     const loaded = await addRegisteredComponent(stack, component, this.options.catalogDirectories);
     const added = loaded.manifest.components.find((candidate) => candidate.id === input.id)!;
+    await recordComponentAdded(loaded, {
+      componentId: added.id,
+      path: loaded.bindings![added.id]!,
+      kind: added.kind ?? "component",
+      sourceType: added.source.type === "git" ? "git" : "local",
+      ...(actor === undefined ? {} : { actor }),
+    });
     return { ...definition(loaded), sync: await syncComponent(loaded, added) };
   }
 
-  async bindComponent(stack: string, componentId: string, localPath: string, options: { materialize?: boolean } = {}): Promise<ComponentMutationOutput> {
+  async bindComponent(stack: string, componentId: string, localPath: string, options: BindComponentOptions = {}): Promise<ComponentMutationOutput> {
+    const before = await loadRegisteredStack(stack, this.options.catalogDirectories);
+    const previousPath = before.bindings?.[componentId];
     const loaded = await bindRegisteredComponent(stack, componentId, localPath, this.options.catalogDirectories);
     const component = loaded.manifest.components.find((candidate) => candidate.id === componentId)!;
+    const boundPath = loaded.bindings![componentId]!;
+    if (previousPath !== boundPath) {
+      await recordComponentBindingChanged(loaded, {
+        componentId,
+        path: boundPath,
+        ...(previousPath === undefined ? {} : { previousPath }),
+        ...(options.actor === undefined ? {} : { actor: options.actor }),
+      });
+    }
     return { ...definition(loaded), sync: await syncComponent(loaded, component, options.materialize === false ? { dryRun: true } : {}) };
   }
 

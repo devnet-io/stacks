@@ -106,6 +106,48 @@ export async function readEvents(stack: LoadedStack): Promise<ReadEventsResult> 
   return { events, warnings };
 }
 
+export async function recordStackCreated(stack: LoadedStack, actor?: EventActor): Promise<StackEvent> {
+  const selector = `${stack.manifest.metadata.namespace}/${stack.manifest.metadata.name}`;
+  return appendEvent(stack, {
+    type: "stack.created",
+    ...(actor === undefined ? {} : { actor }),
+    data: { summary: `Created Stack ${selector}.` },
+  });
+}
+
+export async function recordComponentAdded(
+  stack: LoadedStack,
+  input: { componentId: string; path: string; kind: string; sourceType: "local" | "git"; actor?: EventActor },
+): Promise<StackEvent> {
+  return appendEvent(stack, {
+    type: "component.added",
+    componentId: input.componentId,
+    ...(input.actor === undefined ? {} : { actor: input.actor }),
+    data: {
+      summary: `Added component ${input.componentId}.`,
+      path: input.path,
+      kind: input.kind,
+      sourceType: input.sourceType,
+    },
+  });
+}
+
+export async function recordComponentBindingChanged(
+  stack: LoadedStack,
+  input: { componentId: string; path: string; previousPath?: string; actor?: EventActor },
+): Promise<StackEvent> {
+  return appendEvent(stack, {
+    type: "component.binding.changed",
+    componentId: input.componentId,
+    ...(input.actor === undefined ? {} : { actor: input.actor }),
+    data: {
+      summary: `Changed the binding for ${input.componentId}.`,
+      path: input.path,
+      ...(input.previousPath === undefined ? {} : { previousPath: input.previousPath }),
+    },
+  });
+}
+
 function requireComponent(stack: LoadedStack, componentId: string): void {
   if (!componentById(stack.manifest, componentId)) throw new Error(`Unknown component: ${componentId}.`);
 }

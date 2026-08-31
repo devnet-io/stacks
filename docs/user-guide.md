@@ -72,7 +72,7 @@ Fully quit and reopen Codex after registration, and after installing any Stacks 
 
 ## Work and usage events
 
-The Activity section presents these records without exposing the raw JSONL file. Its session and recent-event lists are each bounded to 100 records, while aggregate counts cover the complete readable event history. Independent local writers serialize appends with a per-Stack lock; earlier events are never rewritten.
+The Activity section presents Stack creation, component additions, changed bindings, agent work, and usage without exposing the raw JSONL file. New management operations are recorded automatically whether they use the CLI, web UI, or MCP; Stacks does not fabricate entries for changes made before this behavior existed. Session and recent-event lists are each bounded to 100 records, while aggregate counts cover the complete readable event history. Independent local writers serialize appends with a per-Stack lock; earlier events are never rewritten.
 
 | Command | Purpose |
 | --- | --- |

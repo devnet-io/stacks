@@ -10,7 +10,7 @@ This document defines the product independent of release state. See [Project sta
 - Component repositories remain independent; local composition does not turn them into submodules by default.
 - Context is a bounded, explainable selection of resources rather than a repository dump.
 - Human and agent interfaces use the same application semantics.
-- Starts, turns, completions, usage, and decisions are append-only events.
+- Stack-management changes, starts, turns, completions, usage, and decisions are append-only events.
 - Local use requires no hosted service.
 - An optional hosted representation may later expose authorized Stack snapshots, documentation, and remote MCP without becoming an agent orchestrator or replacing canonical Git state.
 - Ingested repositories and documents are untrusted evidence. Findings become proposals before target components change.
