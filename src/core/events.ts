@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
-import type { EventActor, LoadedStack, StackEvent, UsageData } from "./types.ts";
+import type { CapabilityRequestStatus, EventActor, LoadedStack, StackEvent, UsageData } from "./types.ts";
 import { stateDirectory } from "./paths.ts";
 import { componentById } from "./manifest.ts";
 
@@ -67,6 +67,7 @@ function completeEvent<TData extends Record<string, unknown>>(stack: LoadedStack
     ...(event.sessionId === undefined ? {} : { sessionId: event.sessionId }),
     ...(event.turnId === undefined ? {} : { turnId: event.turnId }),
     ...(event.workId === undefined ? {} : { workId: event.workId }),
+    ...(event.requestId === undefined ? {} : { requestId: event.requestId }),
     ...(event.actor === undefined ? {} : { actor: event.actor }),
     data: event.data,
   };
@@ -176,6 +177,107 @@ export async function recordComponentConfigurationChanged(
 
 function requireComponent(stack: LoadedStack, componentId: string): void {
   if (!componentById(stack.manifest, componentId)) throw new Error(`Unknown component: ${componentId}.`);
+}
+
+const requestTransitions: Record<CapabilityRequestStatus, CapabilityRequestStatus[]> = {
+  requested: ["in-progress", "provider-complete", "rejected", "superseded"],
+  "in-progress": ["provider-complete", "rejected", "superseded"],
+  "provider-complete": ["in-progress", "consumer-verified", "rejected", "superseded"],
+  "consumer-verified": [],
+  rejected: [],
+  superseded: [],
+};
+
+function text(value: string, label: string): string {
+  const normalized = value.trim();
+  if (!normalized) throw new Error(`${label} is required.`);
+  return normalized;
+}
+
+export async function createCapabilityRequest(
+  stack: LoadedStack,
+  input: {
+    requesterComponentId: string;
+    providerComponentId: string;
+    sessionId: string;
+    capability: string;
+    reason: string;
+    acceptance?: string;
+    actor?: EventActor;
+  },
+): Promise<StackEvent> {
+  requireComponent(stack, input.requesterComponentId);
+  requireComponent(stack, input.providerComponentId);
+  if (input.requesterComponentId === input.providerComponentId) throw new Error("A capability request must cross component boundaries.");
+  return withEventAppendLock(stack, async () => {
+    const read = await readEvents(stack);
+    const work = requireActiveSession(read.events, input.sessionId);
+    if (work.componentId !== input.requesterComponentId) throw new Error(`Work session ${input.sessionId} belongs to ${work.componentId ?? "an unknown component"}, not ${input.requesterComponentId}.`);
+    const event = completeEvent(stack, {
+      type: "capability-request.created",
+      componentId: input.requesterComponentId,
+      sessionId: input.sessionId,
+      requestId: randomUUID(),
+      ...(input.actor === undefined ? {} : { actor: input.actor }),
+      data: {
+        requesterComponentId: input.requesterComponentId,
+        providerComponentId: input.providerComponentId,
+        capability: text(input.capability, "Capability"),
+        reason: text(input.reason, "Request reason"),
+        ...(input.acceptance?.trim() ? { acceptance: input.acceptance.trim() } : {}),
+        status: "requested",
+      },
+    });
+    await writeEvents(stack, [event]);
+    return event;
+  });
+}
+
+export async function transitionCapabilityRequest(
+  stack: LoadedStack,
+  input: {
+    requestId: string;
+    componentId: string;
+    status: Exclude<CapabilityRequestStatus, "requested">;
+    summary: string;
+    evidence?: string;
+    actor?: EventActor;
+  },
+): Promise<StackEvent> {
+  requireComponent(stack, input.componentId);
+  return withEventAppendLock(stack, async () => {
+    const read = await readEvents(stack);
+    const created = read.events.find((event) => event.type === "capability-request.created" && event.requestId === input.requestId);
+    if (!created) throw new Error(`Unknown capability request ${input.requestId}.`);
+    const requester = String(created.data.requesterComponentId ?? "");
+    const provider = String(created.data.providerComponentId ?? "");
+    const transitions = read.events.filter((event) => event.type === "capability-request.transitioned" && event.requestId === input.requestId);
+    const current = (transitions.at(-1)?.data.toStatus ?? created.data.status ?? "requested") as CapabilityRequestStatus;
+    if (!requestTransitions[current].includes(input.status)) throw new Error(`Capability request ${input.requestId} cannot transition from ${current} to ${input.status}.`);
+    const allowedActors = input.status === "consumer-verified" || input.status === "superseded"
+      ? [requester]
+      : input.status === "in-progress" && current === "provider-complete"
+        ? [requester, provider]
+        : input.status === "rejected"
+          ? [requester, provider]
+          : [provider];
+    if (!allowedActors.includes(input.componentId)) throw new Error(`Component ${input.componentId} cannot transition capability request ${input.requestId} to ${input.status}.`);
+    const event = completeEvent(stack, {
+      type: "capability-request.transitioned",
+      componentId: input.componentId,
+      ...(created.sessionId === undefined ? {} : { sessionId: created.sessionId }),
+      requestId: input.requestId,
+      ...(input.actor === undefined ? {} : { actor: input.actor }),
+      data: {
+        fromStatus: current,
+        toStatus: input.status,
+        summary: text(input.summary, "Transition summary"),
+        ...(input.evidence?.trim() ? { evidence: input.evidence.trim() } : {}),
+      },
+    });
+    await writeEvents(stack, [event]);
+    return event;
+  });
 }
 
 export async function startWork(

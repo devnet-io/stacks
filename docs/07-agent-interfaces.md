@@ -38,6 +38,10 @@ Current tools are:
 - `guidance_configure`
 - `stack_status`
 - `context_resolve`
+- `capability_request_list`
+- `capability_request_get`
+- `capability_request_create`
+- `capability_request_transition`
 - `work_list`
 - `work_get`
 - `turn_get`
@@ -54,6 +58,8 @@ MCP may add an existing local component, change its binding, and author capabili
 
 `sessionId` identifies one logical work item rather than a Codex chat. `work_list`, `work_get`, and `turn_get` are read-only inspection tools for deciding whether to resume active work and for reviewing its child turns. The same work may span clarifications and retries; `work_complete` closes it only after the logical outcome is known.
 
+Capability-request tools record a missing cross-component capability against active consumer work, expose current and historical state, and enforce provider completion separately from consumer verification. They never assign or schedule implementation work. Non-terminal requests relevant to a target are included in resolved context under a fixed count bound.
+
 ## Skills and clients
 
 The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, distinguish direct and ancestor results, explicitly resolve ambiguity, inspect the target component, start each participating turn, use its returned briefing, review omissions, close the same turn with known telemetry, preserve component-local instructions, and append the final work outcome. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
@@ -64,7 +70,7 @@ Not every client exposes tokens, model identity, tool calls, or stable sessions.
 
 ## Human UI
 
-`stacks ui` presents the machine catalog with a Stack selector above its section navigation. Overview, Graph, Activity, Manage, Tools & agents, and canonical documentation use the same application semantics available to agents. Manage authors the minimum capability/context graph without requiring direct catalog-file editing. A bottom application menu shows the installed version; Tools & agents contains runtime connection settings, while installation remains in canonical documentation.
+`stacks ui` presents the machine catalog with a Stack selector above its section navigation. Overview, Graph, Activity, Requests, Manage, Tools & agents, and canonical documentation use the same application semantics available to agents. Requests exposes the cross-component request protocol without becoming a scheduler. Manage authors the minimum capability/context graph without requiring direct catalog-file editing. A bottom application menu shows the installed version; Tools & agents contains runtime connection settings, while installation remains in canonical documentation.
 
 ## Hosted boundary
 

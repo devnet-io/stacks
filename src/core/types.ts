@@ -1,6 +1,7 @@
 export type GuidanceStrength = "required" | "preferred" | "reference";
 export type ComponentAccess = "read-only" | "read-write";
 export type CostKind = "reported" | "estimated" | "allocated";
+export type CapabilityRequestStatus = "requested" | "in-progress" | "provider-complete" | "consumer-verified" | "rejected" | "superseded";
 
 export interface ContextPath {
   path: string;
@@ -192,6 +193,7 @@ export interface StackEvent<TData = Record<string, unknown>> {
   sessionId?: string;
   turnId?: string;
   workId?: string;
+  requestId?: string;
   actor?: EventActor;
   data: TData;
 }

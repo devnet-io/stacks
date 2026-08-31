@@ -5,6 +5,7 @@ import { createLocalStacksApplication, type StacksApplication, type StackReferen
 import type { HostedMcpConfiguration } from "../application/integrations.ts";
 import type { PlatformDirectories } from "../core/catalog.ts";
 import { STACKS_VERSION } from "../version.ts";
+import type { CapabilityRequestStatus } from "../core/types.ts";
 
 export interface LocalApiOptions {
   root?: string;
@@ -122,10 +123,18 @@ function optionalStrength(body: Record<string, unknown>, name: string): "require
 function applicationErrorStatus(error: unknown): number {
   if (error instanceof HttpError) return error.status;
   const message = error instanceof Error ? error.message : String(error);
-  if (/already exists|already registered|or identity .* is already/u.test(message)) return 409;
+  if (/already exists|already registered|or identity .* is already|cannot transition/u.test(message)) return 409;
   if (/^Unknown /u.test(message)) return 404;
-  if (/must |Missing |does not exist|selector/u.test(message)) return 400;
+  if (/must |Missing |does not exist|selector|belongs to/u.test(message)) return 400;
   return 500;
+}
+
+function transitionStatus(body: Record<string, unknown>): Exclude<CapabilityRequestStatus, "requested"> {
+  const value = requiredString(body, "status") as CapabilityRequestStatus;
+  if (!["in-progress", "provider-complete", "consumer-verified", "rejected", "superseded"].includes(value)) {
+    throw new HttpError(400, "status must be in-progress, provider-complete, consumer-verified, rejected, or superseded.");
+  }
+  return value as Exclude<CapabilityRequestStatus, "requested">;
 }
 
 const contentTypes: Record<string, string> = {
@@ -261,6 +270,33 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         send(response, 200, output as unknown as Record<string, unknown>);
         return;
       }
+      if (request.method === "POST" && url.pathname === "/api/v0.1/capability-requests") {
+        if (options.root) throw new HttpError(409, "Capability requests are unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.createCapabilityRequest({ stack: requiredString(body, "stack") }, {
+          requesterComponentId: requiredString(body, "requesterComponentId"),
+          providerComponentId: requiredString(body, "providerComponentId"),
+          sessionId: requiredString(body, "sessionId"),
+          capability: requiredString(body, "capability"),
+          reason: requiredString(body, "reason"),
+          ...(optionalString(body, "acceptance") === undefined ? {} : { acceptance: optionalString(body, "acceptance")! }),
+          actor: { client: "stacks-web" },
+        });
+        send(response, 201, output as unknown as Record<string, unknown>);
+        return;
+      }
+      if (request.method === "PUT" && url.pathname === "/api/v0.1/capability-request") {
+        if (options.root) throw new HttpError(409, "Capability requests are unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.transitionCapabilityRequest({ stack: requiredString(body, "stack") }, {
+          requestId: requiredString(body, "requestId"), componentId: requiredString(body, "componentId"),
+          status: transitionStatus(body), summary: requiredString(body, "summary"),
+          ...(optionalString(body, "evidence") === undefined ? {} : { evidence: optionalString(body, "evidence")! }),
+          actor: { client: "stacks-web" },
+        });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
       if (request.method !== "GET") {
         send(response, 405, { schemaVersion: "0.1", error: "Method not allowed." });
         return;
@@ -306,6 +342,16 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         if (!sessionId) throw new HttpError(400, "session must be a non-empty string.");
         if (!turnId) throw new HttpError(400, "turn must be a non-empty string.");
         send(response, 200, await application.getActivityTurn(await selected(), sessionId, turnId) as unknown as Record<string, unknown>);
+        return;
+      }
+      if (url.pathname === "/api/v0.1/capability-requests") {
+        send(response, 200, await application.listCapabilityRequests(await selected()) as unknown as Record<string, unknown>);
+        return;
+      }
+      if (url.pathname === "/api/v0.1/capability-request") {
+        const requestId = url.searchParams.get("request");
+        if (!requestId) throw new HttpError(400, "request must be a non-empty string.");
+        send(response, 200, await application.getCapabilityRequest(await selected(), requestId) as unknown as Record<string, unknown>);
         return;
       }
       if (url.pathname === "/api/v0.1/integrations") {

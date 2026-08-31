@@ -12,6 +12,7 @@ function result(value: Record<string, unknown>) {
 
 const selector = z.string().min(1).describe("Registered Stack selector in namespace/name form");
 const strength = z.enum(["required", "preferred", "reference"]);
+const requestTransitionStatus = z.enum(["in-progress", "provider-complete", "consumer-verified", "rejected", "superseded"]);
 const usageShape = {
   provider: z.string().min(1), model: z.string().min(1), inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
   cachedInputTokens: z.number().nonnegative().optional(), reasoningTokens: z.number().nonnegative().optional(), toolCalls: z.number().nonnegative().optional(),
@@ -130,6 +131,38 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
   }, async ({ stack: stackSelector, target, task, mode, maxBytes }) => result(await application.resolveContext({ stack: stackSelector }, target, task, {
     ...(mode === undefined ? {} : { mode }),
     ...(maxBytes === undefined ? {} : { maxBytes }),
+  }) as unknown as Record<string, unknown>));
+
+  server.registerTool("capability_request_list", {
+    title: "List capability requests", description: "List bounded cross-component capability requests and their current append-only lifecycle state.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1).optional(), status: z.enum(["requested", "in-progress", "provider-complete", "consumer-verified", "rejected", "superseded"]).optional() }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, status }) => {
+    const output = await application.listCapabilityRequests({ stack: stackSelector });
+    return result({ ...output, requests: output.requests.filter((request) => (!componentId || request.requesterComponentId === componentId || request.providerComponentId === componentId) && (!status || request.status === status)) } as unknown as Record<string, unknown>);
+  });
+
+  server.registerTool("capability_request_get", {
+    title: "Get capability request", description: "Inspect one request, its originating work session, current state, evidence, and append-only transition history.",
+    inputSchema: z.object({ stack: selector, requestId: z.string().min(1) }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, requestId }) => result(await application.getCapabilityRequest({ stack: stackSelector }, requestId) as unknown as Record<string, unknown>));
+
+  server.registerTool("capability_request_create", {
+    title: "Create capability request", description: "Record a missing capability from active consumer work for an expected provider. This does not assign or schedule provider work.",
+    inputSchema: z.object({ stack: selector, requesterComponentId: z.string().min(1), providerComponentId: z.string().min(1), sessionId: z.string().min(1), capability: z.string().min(1), reason: z.string().min(1), acceptance: z.string().min(1).optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, requesterComponentId, providerComponentId, sessionId, capability, reason, acceptance }) => result(await application.createCapabilityRequest({ stack: stackSelector }, {
+    requesterComponentId, providerComponentId, sessionId, capability, reason,
+    ...(acceptance ? { acceptance } : {}), actor: { client: "stacks-mcp" },
+  }) as unknown as Record<string, unknown>));
+
+  server.registerTool("capability_request_transition", {
+    title: "Transition capability request", description: "Append a role-checked request transition. Providers start or report completion; consumers verify or supersede. Stacks does not assign work.",
+    inputSchema: z.object({ stack: selector, requestId: z.string().min(1), componentId: z.string().min(1), status: requestTransitionStatus, summary: z.string().min(1), evidence: z.string().min(1).optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ stack: stackSelector, requestId, componentId, status, summary, evidence }) => result(await application.transitionCapabilityRequest({ stack: stackSelector }, {
+    requestId, componentId, status, summary, ...(evidence ? { evidence } : {}), actor: { client: "stacks-mcp" },
   }) as unknown as Record<string, unknown>));
 
   server.registerTool("work_list", {

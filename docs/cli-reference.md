@@ -381,6 +381,59 @@ stacks checkin complete (--stack <namespace/name> | --root <directory>)
 stacks checkin complete --stack acme/customer-portal --session <id> --summary "Account recovery verified" --outcome success --json
 ```
 
+## Cross-component capability requests
+
+Requests record missing shared capabilities and their evidence without assigning or scheduling provider work. Creation requires active logical work owned by the requester. All changes append events; `provider-complete` remains distinct from `consumer-verified`.
+
+### `stacks request list`
+
+Lists up to 50 requests, newest update first. `--component` matches either requester or provider; `--status` filters the current projected state.
+
+```text
+stacks request list --stack <namespace/name> [--component <id>] [--status <status>] [--json]
+```
+
+### `stacks request get`
+
+Returns one request, originating work session, current state, newest-first transitions, evidence, and sanitized linked events. Read-only.
+
+```text
+stacks request get <request-id> --stack <namespace/name> [--json]
+```
+
+### `stacks request create`
+
+Creates a stable request linked to active requester work. The requester and provider must be distinct registered components.
+
+```text
+stacks request create --stack <namespace/name>
+  --requester <component> --provider <component> --session <active-session>
+  --capability <name> --reason <text> [--acceptance <text>]
+  [--agent <name>] [--client <name>] [--model <name>] [--json]
+```
+
+```bash
+stacks request create --stack acme/customer-portal --requester app --provider shared-ui --session <id> --capability ui.dialog --reason "Avoid a product-local dialog" --acceptance "Accessible export and usage guide" --json
+```
+
+Non-idempotent. Inspect existing requests before retrying an uncertain call.
+
+### `stacks request transition`
+
+Appends a role-checked transition and optional evidence. Providers use `in-progress` and `provider-complete`; requesters use `consumer-verified` or `superseded`. Either party may reject. A requester may return provider-complete work to `in-progress` when verification finds more provider work is necessary. Verified, rejected, and superseded requests are terminal.
+
+```text
+stacks request transition <request-id> --stack <namespace/name>
+  --component <acting-component>
+  --status in-progress|provider-complete|consumer-verified|rejected|superseded
+  --summary <text> [--evidence <text>]
+  [--agent <name>] [--client <name>] [--model <name>] [--json]
+```
+
+```bash
+stacks request transition <request-id> --stack acme/customer-portal --component shared-ui --status provider-complete --summary "Dialog exported and documented" --evidence "shared-ui@abc123" --json
+```
+
 ## Usage events and reports
 
 ### `stacks usage import`

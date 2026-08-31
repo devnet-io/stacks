@@ -27,9 +27,10 @@ Every Stack-specific tool takes `stack` in `namespace/name` form. Use `stack_mem
 3. Call `component_get` and `stack_status` for the target component.
 4. Treat one `sessionId` as a logical work item, not the whole chat. Reuse a retained active item across clarifications/retries; use `work_list` or `work_get` when status is uncertain, and call `work_start` before genuinely new material work.
 5. At the beginning of every participating turn, call `turn_start` with the session and current task. Retain its `turnId`, use the materialized briefing, and review its omissions and truncations.
-6. Close that exact turn with `turn_complete`, including only telemetry the client actually observes.
-7. Use `usage_import` only for delayed provider exports or external measurements.
-8. Call `work_complete` only when the logical work is finished and all its turns are closed. One chat may contain multiple work items.
+6. When an authoritative provider lacks a capability needed by active work, inspect matching requests before creating one linked to that session. Provider completion and consumer verification remain separate.
+7. Close that exact turn with `turn_complete`, including only telemetry the client actually observes.
+8. Use `usage_import` only for delayed provider exports or external measurements.
+9. Call `work_complete` only when the logical work is finished and all its turns are closed. One chat may contain multiple work items.
 
 ## Resources
 
@@ -235,7 +236,64 @@ Input:
 
 Output includes the plan plus `briefing`: safely read content, source/included byte counts, SHA-256 content hashes, truncation state, provenance, omissions, exact budget use, and a SHA-256 digest. Missing, unreadable, directory, unsafe symlink escape, binary, and budget exclusions are explicit. The tool never scans undeclared paths. Side effects: none; read-only and idempotent.
 
+## Capability request tools
+
+These tools record cross-component needs and evidence. They do not assign agents, schedule work, or mutate component repositories.
+
+### `capability_request_list`
+
+Lists up to 50 requests newest-update first. Optional `componentId` matches requester or provider; optional `status` filters the current state.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "shared-ui", "status": "requested" }
+```
+
 Side effects: none; read-only and idempotent.
+
+### `capability_request_get`
+
+Returns one request, originating work session, current state, evidence, newest-first transition history, and sanitized linked events.
+
+```json
+{ "stack": "acme/customer-portal", "requestId": "request-id" }
+```
+
+Side effects: none; read-only and idempotent.
+
+### `capability_request_create`
+
+Creates a stable request from active consumer work. Required input: `stack`, `requesterComponentId`, `providerComponentId`, `sessionId`, `capability`, and `reason`. Optional `acceptance` describes the evidence the consumer expects. The requester and provider must be distinct, and the active session must belong to the requester.
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "requesterComponentId": "app",
+  "providerComponentId": "shared-ui",
+  "sessionId": "active-session-id",
+  "capability": "ui.dialog",
+  "reason": "Avoid a product-local dialog",
+  "acceptance": "Accessible export and usage guide"
+}
+```
+
+Side effects: appends `capability-request.created`. Non-idempotent; inspect existing requests before retrying an uncertain call.
+
+### `capability_request_transition`
+
+Appends a role-checked transition. Providers start or report `provider-complete`; requesters report `consumer-verified` or `superseded`. Either side may reject. A requester may return provider-complete work to `in-progress`. Verified, rejected, and superseded requests are terminal.
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "requestId": "request-id",
+  "componentId": "shared-ui",
+  "status": "provider-complete",
+  "summary": "Dialog exported and documented",
+  "evidence": "shared-ui@abc123"
+}
+```
+
+Side effects: appends `capability-request.transitioned`. Non-idempotent; use `capability_request_get` before retrying an uncertain call.
 
 ### `work_list`
 

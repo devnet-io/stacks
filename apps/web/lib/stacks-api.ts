@@ -2,6 +2,7 @@ import type { StackOverview } from '../../../src/application/overview.ts';
 import type { StackIntegrations } from '../../../src/application/integrations.ts';
 import type { StackGraph } from '../../../src/application/graph.ts';
 import type { ActivityTurnDetail, ActivityWorkDetail, StackActivity } from '../../../src/application/activity.ts';
+import type { CapabilityRequestDetail, CapabilityRequestList } from '../../../src/application/capability-requests.ts';
 import type { SyncResult } from '../../../src/core/types.ts';
 import type { ComponentListOutput, ComponentOutput } from '../../../src/application/stacks-application.ts';
 
@@ -231,6 +232,39 @@ export async function fetchActivityTurn(
   if (!response.ok) throw new Error('error' in body && body.error ? body.error : `Local API returned ${response.status}.`);
   if (!('work' in body) || !('turn' in body)) throw new Error('The local API returned an unsupported turn detail contract.');
   return body;
+}
+
+export async function fetchCapabilityRequests(stack: string, signal?: AbortSignal): Promise<CapabilityRequestList> {
+  const response = await fetch(endpoint('/api/v0.1/capability-requests', stack), { headers: { Accept: 'application/json' }, signal });
+  const body = (await response.json()) as CapabilityRequestList | { error?: string };
+  if (!response.ok) throw new Error('error' in body && body.error ? body.error : `Local API returned ${response.status}.`);
+  if (!('requests' in body)) throw new Error('The local API returned an unsupported capability-request contract.');
+  return body;
+}
+
+export async function fetchCapabilityRequest(stack: string, requestId: string, signal?: AbortSignal): Promise<CapabilityRequestDetail> {
+  const url = new URL(endpoint('/api/v0.1/capability-request', stack));
+  url.searchParams.set('request', requestId);
+  const response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+  const body = (await response.json()) as CapabilityRequestDetail | { error?: string };
+  if (!response.ok) throw new Error('error' in body && body.error ? body.error : `Local API returned ${response.status}.`);
+  if (!('request' in body) || !('transitions' in body)) throw new Error('The local API returned an unsupported capability-request detail contract.');
+  return body;
+}
+
+export async function createCapabilityRequest(input: {
+  stack: string; requesterComponentId: string; providerComponentId: string; sessionId: string;
+  capability: string; reason: string; acceptance?: string;
+}): Promise<CapabilityRequestDetail> {
+  return mutation('/api/v0.1/capability-requests', 'POST', input);
+}
+
+export async function transitionCapabilityRequest(input: {
+  stack: string; requestId: string; componentId: string;
+  status: 'in-progress' | 'provider-complete' | 'consumer-verified' | 'rejected' | 'superseded';
+  summary: string; evidence?: string;
+}): Promise<CapabilityRequestDetail> {
+  return mutation('/api/v0.1/capability-request', 'PUT', input);
 }
 
 export async function fetchIntegrations(

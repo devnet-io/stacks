@@ -41,7 +41,7 @@ stacks ui
 
 Stacks serves the static Vite application and `/api/v0.1/*` from the same Node process. The default address is `http://localhost:3210/`. If port 3210 is unavailable, Stacks tries successive ports and prints the selected address. Passing `--port` requests an exact port and reports a conflict instead of silently changing it. Re-running `npm run install:local` gracefully stops registered UI processes before replacing the installed snapshot; restart with `stacks ui` afterward.
 
-The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity separates logical work from Stack changes and links to work/turn details, Manage creates Stacks, binds components, and configures capability providers, requirements, and guidance paths, Tools & agents contains runtime connection instructions, and Documentation renders every canonical Markdown file under `docs/`. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
+The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity separates logical work from Stack changes and links to work/turn details, Requests provides paginated request creation/list/detail/transition views, Manage creates Stacks, binds components, and configures capability providers, requirements, and guidance paths, Tools & agents contains runtime connection instructions, and Documentation renders every canonical Markdown file under `docs/`. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
 
 Documentation is grouped by purpose. Selecting a document reveals its second- and third-level headings as nested navigation. The current section, document, and heading are encoded in the URL as `view`, `document`, and `heading`, so bookmarks and shared local links reopen the same location. Links between canonical Markdown documents remain inside the documentation interface.
 
@@ -54,7 +54,13 @@ Read-only endpoints:
 - `GET /api/v0.1/integrations?stack=namespace/name`
 - `GET /api/v0.1/health`
 
-Contracts are stored in `schemas/`, including separate Activity overview, logical-work detail, and turn-detail schemas. Canonical documentation remains in `docs/`; do not maintain a second copy in frontend components.
+Contracts are stored in `schemas/`, including separate Activity overview, logical-work detail, turn-detail, and capability-request list/detail schemas. Canonical documentation remains in `docs/`; do not maintain a second copy in frontend components.
+
+## Cross-component capability requests
+
+A capability request records that active work in one component depends on a missing capability expected from another component. Creation requires the requesting component's active `sessionId`, the expected provider, capability, reason, and optional acceptance evidence. It does not assign an agent or schedule provider work.
+
+The lifecycle is `requested`, `in-progress`, `provider-complete`, and `consumer-verified`, with `rejected` and `superseded` terminal alternatives. Providers start or report completion; only the requester verifies the original need. Every transition appends a summary and optional evidence. The Requests UI exposes the same protocol as `stacks request ...` and the `capability_request_*` MCP tools. Relevant non-terminal requests are included in bounded resolved context for both requesters and providers.
 
 ## Local MCP
 
@@ -68,7 +74,7 @@ Fully quit and reopen Codex after registration, and after installing any Stacks 
 
 `stacks agent print|check|install|remove` manages repository activation separately from the global MCP connection. Install and remove touch only the delimited Stacks block, preserve all other `AGENTS.md` content, refuse malformed markers and symlinks, and never hard-code one Stack selection.
 
-`stack_memberships` accepts a workspace path. Direct `component` results mean the path is inside a binding. If there are no direct matches, `ancestor` results identify bound components below a shared parent and require an explicit target choice. `stack_list` remains the fallback when there is no relationship. `component_list`, `component_get`, `component_add`, and `component_bind` provide structured local component management. Selected-Stack, context, lifecycle, and usage tools require `stack: "namespace/name"`. Git cloning and synchronization are intentionally not exposed through MCP.
+`stack_memberships` accepts a workspace path. Direct `component` results mean the path is inside a binding. If there are no direct matches, `ancestor` results identify bound components below a shared parent and require an explicit target choice. `stack_list` remains the fallback when there is no relationship. Component tools provide structured local management; capability-request tools expose create/list/detail/transition behavior with provider and consumer roles. Selected-Stack, context, lifecycle, request, and usage tools require `stack: "namespace/name"`. Git cloning and synchronization are intentionally not exposed through MCP.
 
 ## Work and usage events
 

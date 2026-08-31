@@ -3,7 +3,7 @@ import type { CapabilityExport, CapabilityRequirement, ContextBriefing, ContextP
 import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
 import { materializeContextBriefing, type BriefingOptions } from "../core/briefing.ts";
-import { completeTurn, completeWork, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordComponentConfigurationChanged, recordStackCreated, startTurn as startCoreTurn, startWork } from "../core/events.ts";
+import { completeTurn, completeWork, createCapabilityRequest, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordComponentConfigurationChanged, recordStackCreated, startTurn as startCoreTurn, startWork, transitionCapabilityRequest } from "../core/events.ts";
 import { syncComponent } from "../core/git.ts";
 import { initializeStack } from "../core/init.ts";
 import { writeLockSnapshot } from "../core/lock.ts";
@@ -14,6 +14,7 @@ import { buildStackGraph, type StackGraph } from "./graph.ts";
 import { buildStackIntegrations, type HostedMcpConfiguration, type StackIntegrations } from "./integrations.ts";
 import { buildStackOverview, type StackOverview } from "./overview.ts";
 import { buildActivityTurnDetail, buildActivityWorkDetail, buildStackActivity, type ActivityTurnDetail, type ActivityWorkDetail, type StackActivity } from "./activity.ts";
+import { buildCapabilityRequestDetail, buildCapabilityRequestList, relevantCapabilityRequests, type CapabilityRequestDetail, type CapabilityRequestList, type CapabilityRequestSummary } from "./capability-requests.ts";
 import { initOutput, lockOutput, stackIdentity, statusOutput, syncOutput, validateOutput, type InitOutput, type LockOutput, type StackIdentity, type StatusOutput, type SyncOutput, type ValidateOutput } from "./contracts.ts";
 
 export type StackReference = { stack: string; root?: never } | { root: string; stack?: never };
@@ -80,7 +81,7 @@ export interface TurnStartOutput {
   context: ResolvedContext;
 }
 
-export interface ResolvedContext extends ContextPlan { briefing: ContextBriefing }
+export interface ResolvedContext extends ContextPlan { briefing: ContextBriefing; capabilityRequests: CapabilityRequestSummary[] }
 
 export interface StacksApplication {
   listStacks(): Promise<StackIdentity[]>;
@@ -105,6 +106,10 @@ export interface StacksApplication {
   startTurn(reference: StackReference, input: { sessionId: string; task: string; maxBytes?: number }): Promise<TurnStartOutput>;
   completeTurn(reference: StackReference, input: { sessionId: string; turnId: string; summary: string; status?: "progress" | "blocked" | "failed" | "complete"; changedPaths?: string[]; nextStep?: string; usage?: UsageData }): ReturnType<typeof completeTurn>;
   completeWork(reference: StackReference, input: { sessionId: string; summary: string; outcome?: "success" | "partial" | "failed" | "cancelled"; remaining?: string[] }): Promise<StackEvent>;
+  createCapabilityRequest(reference: StackReference, input: Parameters<typeof createCapabilityRequest>[1]): Promise<CapabilityRequestDetail>;
+  transitionCapabilityRequest(reference: StackReference, input: Parameters<typeof transitionCapabilityRequest>[1]): Promise<CapabilityRequestDetail>;
+  listCapabilityRequests(reference: StackReference): Promise<CapabilityRequestList>;
+  getCapabilityRequest(reference: StackReference, requestId: string): Promise<CapabilityRequestDetail>;
   importUsage(reference: StackReference, input: { sessionId?: string; turnId?: string; componentId?: string; workId?: string; actor?: EventActor; usage: UsageData }): Promise<StackEvent>;
   getUsageReport(reference: StackReference): Promise<UsageReport>;
   getOverview(reference: StackReference): Promise<StackOverview>;
@@ -273,7 +278,8 @@ export class LocalStacksApplication implements StacksApplication {
   async resolveContext(reference: StackReference, target: string, task?: string, options: BriefingOptions = {}): Promise<ResolvedContext> {
     const stack = await this.load(reference);
     const plan = resolveContext(stack, target, task);
-    return { ...plan, briefing: await materializeContextBriefing(stack, plan, options) };
+    const requests = await buildCapabilityRequestList(stack);
+    return { ...plan, briefing: await materializeContextBriefing(stack, plan, options), capabilityRequests: relevantCapabilityRequests(requests.requests, target) };
   }
 
   async startWork(reference: StackReference, input: Parameters<typeof startWork>[1]): Promise<StackEvent> {
@@ -291,7 +297,8 @@ export class LocalStacksApplication implements StacksApplication {
       mode: previousTurns === 0 ? "orientation" : "refresh",
       ...(input.maxBytes === undefined ? {} : { maxBytes: input.maxBytes }),
     });
-    const context: ResolvedContext = { ...plan, briefing };
+    const requests = await buildCapabilityRequestList(stack);
+    const context: ResolvedContext = { ...plan, briefing, capabilityRequests: relevantCapabilityRequests(requests.requests, session.componentId) };
     const turn = await startCoreTurn(stack, {
       sessionId: input.sessionId,
       context: {
@@ -316,6 +323,26 @@ export class LocalStacksApplication implements StacksApplication {
 
   async completeWork(reference: StackReference, input: Parameters<typeof completeWork>[1]): Promise<StackEvent> {
     return completeWork(await this.load(reference), input);
+  }
+
+  async createCapabilityRequest(reference: StackReference, input: Parameters<typeof createCapabilityRequest>[1]): Promise<CapabilityRequestDetail> {
+    const stack = await this.load(reference);
+    const event = await createCapabilityRequest(stack, input);
+    return buildCapabilityRequestDetail(stack, event.requestId!);
+  }
+
+  async transitionCapabilityRequest(reference: StackReference, input: Parameters<typeof transitionCapabilityRequest>[1]): Promise<CapabilityRequestDetail> {
+    const stack = await this.load(reference);
+    await transitionCapabilityRequest(stack, input);
+    return buildCapabilityRequestDetail(stack, input.requestId);
+  }
+
+  async listCapabilityRequests(reference: StackReference): Promise<CapabilityRequestList> {
+    return buildCapabilityRequestList(await this.load(reference));
+  }
+
+  async getCapabilityRequest(reference: StackReference, requestId: string): Promise<CapabilityRequestDetail> {
+    return buildCapabilityRequestDetail(await this.load(reference), requestId);
   }
 
   async importUsage(reference: StackReference, input: Parameters<typeof importUsage>[1]): Promise<StackEvent> {

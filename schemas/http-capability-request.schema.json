@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-capability-request.schema.json",
+  "title": "Stacks capability request detail",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stack", "request", "transitions", "events", "warnings"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "stack": { "type": "object" },
+    "request": { "type": "object" },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["eventId", "timestamp", "componentId", "fromStatus", "toStatus", "summary"],
+        "properties": {
+          "eventId": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" }, "componentId": { "type": "string" },
+          "fromStatus": { "type": "string" }, "toStatus": { "type": "string" }, "summary": { "type": "string" }, "evidence": { "type": "string" }
+        }
+      }
+    },
+    "events": { "type": "array", "items": { "type": "object" } },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

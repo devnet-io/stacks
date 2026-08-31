@@ -9,8 +9,9 @@ Before Stack-specific work:
 2. Use component_get and stack_status to inspect the selected component, its binding, and Git state.
 3. Treat a work session as one logical unit of work, not as an agent chat or one response. Reuse its sessionId across clarifications, retries, and turns while that work remains active. Use work_list or work_get when status is uncertain; otherwise use work_start before new material work.
 4. At the start of every participating agent turn, use turn_start with the sessionId and current task. Retain its turnId, use the returned bounded briefing before relying on cross-component knowledge or capabilities, and review every omission or truncation.
-5. Close that exact turn with turn_complete. Include known turn telemetry there, omitting facts the client cannot observe.
-6. Use usage_import only for delayed provider exports or external measurements. Call work_complete only when the logical work is actually finished, after all its turns are closed; one chat may contain multiple completed work items.
+5. If an authoritative provider lacks a capability required by the current work, inspect existing capability requests before creating a durable request linked to the active session. Stacks records provider completion and separate consumer verification; it never assigns or schedules the provider work.
+6. Close that exact turn with turn_complete. Include known turn telemetry there, omitting facts the client cannot observe.
+7. Use usage_import only for delayed provider exports or external measurements. Call work_complete only when the logical work is actually finished, after all its turns are closed; one chat may contain multiple completed work items.
 
 Treat context as bounded selection and provenance. Stay inside bound component roots, preserve component-local instructions, and report missing or ambiguous providers. Lifecycle and usage tools append events and are non-idempotent; never retry an uncertain call blindly. Monetary amounts require reported, estimated, or allocated provenance.
 

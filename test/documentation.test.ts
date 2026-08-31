@@ -66,7 +66,7 @@ test("documents every CLI operation with focused reference sections", () => {
   const operations = [
     "help", "--version", "stack create", "stack list", "component list", "component get",
     "component add", "component bind", "component provide", "component consume", "component guidance", "locate", "agent print", "agent check", "agent install", "agent remove", "status", "context", "sync", "lock", "ui", "mcp",
-    "checkin start", "checkin turn-start", "checkin turn-complete", "checkin complete", "usage import", "usage report",
+    "checkin start", "checkin turn-start", "checkin turn-complete", "checkin complete", "request list", "request get", "request create", "request transition", "usage import", "usage report",
     "doctor", "validate", "init",
   ];
   for (const operation of operations) assert.match(reference, new RegExp("### `stacks " + operation + "`", "u"));
@@ -76,7 +76,7 @@ test("documents every CLI operation with focused reference sections", () => {
 
 test("publishes complete MCP instructions, tools, resources, and examples", () => {
   const reference = doc("mcp-reference.md");
-  for (const tool of ["instructions_get", "stack_list", "stack_memberships", "stack_get", "component_list", "component_get", "component_add", "component_bind", "capability_provide", "capability_consume", "guidance_configure", "stack_status", "context_resolve", "work_list", "work_get", "turn_get", "work_start", "turn_start", "turn_complete", "work_complete", "usage_import", "usage_report"]) {
+  for (const tool of ["instructions_get", "stack_list", "stack_memberships", "stack_get", "component_list", "component_get", "component_add", "component_bind", "capability_provide", "capability_consume", "guidance_configure", "stack_status", "context_resolve", "capability_request_list", "capability_request_get", "capability_request_create", "capability_request_transition", "work_list", "work_get", "turn_get", "work_start", "turn_start", "turn_complete", "work_complete", "usage_import", "usage_report"]) {
     assert.match(reference, new RegExp("### `" + tool + "`", "u"));
   }
   for (const uri of ["stacks://instructions", "stacks://reference/mcp", "stacks://reference/cli", "stacks://catalog"]) assert.match(reference, new RegExp(uri.replaceAll("/", "\\/"), "u"));
@@ -90,10 +90,10 @@ test("publishes complete MCP instructions, tools, resources, and examples", () =
 test("documents every implemented local HTTP route and mutation boundary", () => {
   const reference = doc("http-reference.md");
   for (const route of [
-    "GET /api/v0.1/health", "GET /api/v0.1/stacks", "GET /api/v0.1/overview", "GET /api/v0.1/activity", "GET /api/v0.1/activity/work", "GET /api/v0.1/activity/turn",
+    "GET /api/v0.1/health", "GET /api/v0.1/stacks", "GET /api/v0.1/overview", "GET /api/v0.1/activity", "GET /api/v0.1/activity/work", "GET /api/v0.1/activity/turn", "GET /api/v0.1/capability-requests", "GET /api/v0.1/capability-request",
     "GET /api/v0.1/graph", "GET /api/v0.1/integrations", "POST /api/v0.1/runtime/shutdown", "POST /api/v0.1/stacks",
     "GET /api/v0.1/components", "POST /api/v0.1/components", "PUT /api/v0.1/component-binding",
-    "PUT /api/v0.1/capability-provider", "PUT /api/v0.1/capability-requirement", "PUT /api/v0.1/component-guidance",
+    "PUT /api/v0.1/capability-provider", "PUT /api/v0.1/capability-requirement", "PUT /api/v0.1/component-guidance", "POST /api/v0.1/capability-requests", "PUT /api/v0.1/capability-request",
   ]) assert.match(reference, new RegExp("### `" + route.replaceAll("/", "\\/") + "`", "u"));
   assert.match(reference, /must not be exposed beyond loopback/u);
   assert.match(reference, /Content-Type: application\/json/u);

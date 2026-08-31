@@ -5,6 +5,7 @@ import {
   Network,
   Search,
   Settings2,
+  GitPullRequest,
   TerminalSquare,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -15,6 +16,7 @@ import { CliMcp } from '@/components/cli-mcp';
 import { StackGraph } from '@/components/stack-graph';
 import { StackManagement } from '@/components/stack-management';
 import { StackActivity } from '@/components/stack-activity';
+import { CapabilityRequests } from '@/components/capability-requests';
 import { AppMenu } from '@/components/app-menu';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -37,6 +39,7 @@ type Section =
   | 'graph'
   | 'activity'
   | 'management'
+  | 'requests'
   | 'documentation'
   | 'integrations';
 
@@ -44,6 +47,7 @@ const navigation = [
   { name: 'Overview', icon: Boxes, section: 'overview' },
   { name: 'Graph', icon: Network, section: 'graph' },
   { name: 'Activity', icon: Activity, section: 'activity' },
+  { name: 'Requests', icon: GitPullRequest, section: 'requests' },
   { name: 'Manage', icon: Settings2, section: 'management' },
   { name: 'Tools & agents', icon: TerminalSquare, section: 'integrations' },
   { name: 'Documentation', icon: BookOpen, section: 'documentation' },
@@ -190,6 +194,8 @@ export default function Home() {
                     ? 'Activity'
                   : section === 'management'
                     ? 'Manage'
+                  : section === 'requests'
+                    ? 'Requests'
                     : section === 'documentation'
                       ? 'Documentation'
                       : 'Tools & agents'}
@@ -234,6 +240,8 @@ export default function Home() {
             <StackGraph stack={selectedStack} />
           ) : section === 'activity' ? (
             <StackActivity stack={selectedStack} />
+          ) : section === 'requests' ? (
+            <CapabilityRequests stack={selectedStack} />
           ) : (
             <CliMcp stack={selectedStack} />
           )}

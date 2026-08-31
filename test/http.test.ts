@@ -11,7 +11,7 @@ import type { StackActivity } from "../src/application/activity.ts";
 import { completeTurn, startTurn, startWork } from "../src/core/events.ts";
 import { loadStack } from "../src/core/manifest.ts";
 import { startLocalApi } from "../src/http/server.ts";
-import { addRegisteredComponent, createRegisteredStack } from "../src/core/catalog.ts";
+import { addRegisteredComponent, createRegisteredStack, loadRegisteredStack } from "../src/core/catalog.ts";
 import { browserOpenCommand, existingStacksWeb, findPackageRoot } from "../src/ui/launcher.ts";
 import { STACKS_VERSION } from "../src/version.ts";
 
@@ -71,6 +71,25 @@ test("global local API lists and explicitly selects registered Stacks", async ()
     assert.equal(guidance.status, 200, await guidance.text());
     const configuredComponents = await (await fetch(`${api.origin}/api/v0.1/components?stack=acme%2Fthree`)).json() as { components: Array<{ component: { id: string; consumes?: unknown[] } }> };
     assert.equal(configuredComponents.components.find((item) => item.component.id === "app")?.component.consumes?.length, 1);
+
+    const registered = await loadRegisteredStack("acme/three", directories);
+    const requestWork = await startWork(registered, { componentId: "app", summary: "Need shared modal" });
+    const createdRequest = await fetch(`${api.origin}/api/v0.1/capability-requests`, {
+      method: "POST", headers: { "Content-Type": "application/json", Origin: api.origin },
+      body: JSON.stringify({ stack: "acme/three", requesterComponentId: "app", providerComponentId: "knowledge", sessionId: requestWork.sessionId, capability: "ui.modal", reason: "Avoid a product-local modal." }),
+    });
+    assert.equal(createdRequest.status, 201);
+    const requestBody = await createdRequest.json() as { request: { requestId: string; status: string } };
+    assert.equal(requestBody.request.status, "requested");
+    const transitionedRequest = await fetch(`${api.origin}/api/v0.1/capability-request`, {
+      method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
+      body: JSON.stringify({ stack: "acme/three", requestId: requestBody.request.requestId, componentId: "knowledge", status: "provider-complete", summary: "Modal is available.", evidence: "knowledge@abc" }),
+    });
+    assert.equal(transitionedRequest.status, 200, await transitionedRequest.text());
+    const requestList = await (await fetch(`${api.origin}/api/v0.1/capability-requests?stack=acme%2Fthree`)).json() as { requests: Array<{ status: string }> };
+    assert.equal(requestList.requests[0]?.status, "provider-complete");
+    const requestDetail = await (await fetch(`${api.origin}/api/v0.1/capability-request?stack=acme%2Fthree&request=${requestBody.request.requestId}`)).json() as { transitions: unknown[] };
+    assert.equal(requestDetail.transitions.length, 1);
 
     const bound = await fetch(`${api.origin}/api/v0.1/component-binding`, {
       method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },

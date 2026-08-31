@@ -54,6 +54,15 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     ]);
     assert.equal(context.briefing.items[0]?.content, "# Engineering rules\n");
     assert.equal(context.briefing.omissions[0]?.reason, "missing");
+    assert.deepEqual(context.capabilityRequests, []);
+    const blockedWork = await application.startWork({ stack: "tests/application" }, { componentId: "app", summary: "Need shared security guidance" });
+    const request = await application.createCapabilityRequest({ stack: "tests/application" }, {
+      requesterComponentId: "app", providerComponentId: "knowledge", sessionId: blockedWork.sessionId!,
+      capability: "practice.security", reason: "Shared policy is required.",
+    });
+    const contextWithRequest = await application.resolveContext({ stack: "tests/application" }, "knowledge", "Publish security guidance");
+    assert.equal(contextWithRequest.capabilityRequests[0]?.requestId, request.request.requestId);
+    assert.equal((await application.listCapabilityRequests({ stack: "tests/application" })).requests.length, 1);
 
     const remote = path.join(root, "components", "remote");
     const rebound = path.join(root, "components", "remote-bound");

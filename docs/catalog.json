@@ -30,6 +30,7 @@
     { "path": "docs/adr/0009-management-mutations-are-activity-events.md", "id": "adr-0009", "category": "decisions", "lifecycle": "decision", "order": 9 },
     { "path": "docs/adr/0010-turns-are-first-class-protocol-boundaries.md", "id": "adr-0010", "category": "decisions", "lifecycle": "decision", "order": 10 },
     { "path": "docs/adr/0011-bounded-context-briefings.md", "id": "adr-0011", "category": "decisions", "lifecycle": "decision", "order": 11 },
+    { "path": "docs/adr/0012-capability-requests-are-role-checked-events.md", "id": "adr-0012", "category": "decisions", "lifecycle": "decision", "order": 12 },
     { "path": "docs/rfcs/README.md", "id": "rfc-index", "category": "decisions", "lifecycle": "proposed", "order": 200 },
     { "path": "docs/rfcs/0001-portable-runtime-and-hosted-adapters.md", "id": "rfc-portable-runtime", "category": "decisions", "lifecycle": "proposed", "order": 210 },
 

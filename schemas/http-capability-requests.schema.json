@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-capability-requests.schema.json",
+  "title": "Stacks capability request list",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stack", "requests", "limit", "warnings"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "stack": { "$ref": "#/$defs/stack" },
+    "requests": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/request" } },
+    "limit": { "const": 50 },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "stack": {
+      "type": "object", "additionalProperties": false, "required": ["id", "namespace", "name"],
+      "properties": { "id": { "type": "string" }, "namespace": { "type": "string" }, "name": { "type": "string" } }
+    },
+    "status": { "enum": ["requested", "in-progress", "provider-complete", "consumer-verified", "rejected", "superseded"] },
+    "request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["requestId", "status", "capability", "requesterComponentId", "providerComponentId", "sessionId", "reason", "createdAt", "updatedAt"],
+      "properties": {
+        "requestId": { "type": "string" }, "status": { "$ref": "#/$defs/status" }, "capability": { "type": "string" },
+        "requesterComponentId": { "type": "string" }, "providerComponentId": { "type": "string" }, "sessionId": { "type": "string" },
+        "reason": { "type": "string" }, "acceptance": { "type": "string" }, "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }, "latestSummary": { "type": "string" }, "latestEvidence": { "type": "string" }
+      }
+    }
+  }
+}

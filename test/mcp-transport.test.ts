@@ -90,8 +90,21 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     const turnDetail = (await response(15)).result as { structuredContent: { turn: { summary: string; changedPaths: string[] } } };
     assert.equal(turnDetail.structuredContent.turn.summary, "Lifecycle exercised");
     assert.deepEqual(turnDetail.structuredContent.turn.changedPaths, ["src/example.ts"]);
-    send({ jsonrpc: "2.0", id: 16, method: "tools/call", params: { name: "work_complete", arguments: { stack: "tests/mcp-authoring", sessionId, summary: "Logical work complete" } } });
-    assert.equal((await response(16)).result !== undefined, true);
+    send({ jsonrpc: "2.0", id: 16, method: "tools/call", params: { name: "capability_request_create", arguments: { stack: "tests/mcp-authoring", requesterComponentId: "product", providerComponentId: "knowledge", sessionId, capability: "practice.security", reason: "Product work needs shared security guidance." } } });
+    const createdRequest = (await response(16)).result as { structuredContent: { request: { requestId: string; status: string } } };
+    const requestId = createdRequest.structuredContent.request.requestId;
+    assert.equal(createdRequest.structuredContent.request.status, "requested");
+    send({ jsonrpc: "2.0", id: 17, method: "tools/call", params: { name: "capability_request_list", arguments: { stack: "tests/mcp-authoring", componentId: "knowledge" } } });
+    const requestList = (await response(17)).result as { structuredContent: { requests: Array<{ requestId: string }> } };
+    assert.equal(requestList.structuredContent.requests[0]?.requestId, requestId);
+    send({ jsonrpc: "2.0", id: 18, method: "tools/call", params: { name: "capability_request_transition", arguments: { stack: "tests/mcp-authoring", requestId, componentId: "knowledge", status: "provider-complete", summary: "Security guidance published.", evidence: "engineering.md" } } });
+    assert.equal((await response(18)).result !== undefined, true);
+    send({ jsonrpc: "2.0", id: 19, method: "tools/call", params: { name: "capability_request_get", arguments: { stack: "tests/mcp-authoring", requestId } } });
+    const requestDetail = (await response(19)).result as { structuredContent: { request: { status: string }; transitions: unknown[] } };
+    assert.equal(requestDetail.structuredContent.request.status, "provider-complete");
+    assert.equal(requestDetail.structuredContent.transitions.length, 1);
+    send({ jsonrpc: "2.0", id: 20, method: "tools/call", params: { name: "work_complete", arguments: { stack: "tests/mcp-authoring", sessionId, summary: "Logical work complete" } } });
+    assert.equal((await response(20)).result !== undefined, true);
     assert.match(stderr, /^Stacks MCP server is listening for the machine catalog/u);
     assert.ok(stdout.split("\n").filter(Boolean).every((line) => (JSON.parse(line) as { jsonrpc?: string }).jsonrpc === "2.0"));
   } finally {

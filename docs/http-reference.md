@@ -50,6 +50,14 @@ Requires `?stack=namespace%2Fname&session=<sessionId>` for registered mode. Retu
 
 Requires `?stack=namespace%2Fname&session=<sessionId>&turn=<turnId>`. Returns one turn with status, outcome summary, changed paths, next step, briefing identity/counts, usage, and sanitized linked events. Unknown work or turn returns `404`. The response follows `schemas/http-activity-turn.schema.json`.
 
+### `GET /api/v0.1/capability-requests`
+
+Requires `?stack=namespace%2Fname`. Returns at most 50 request summaries newest-update first, including current state, requester, expected provider, blocked session, reason, acceptance, and latest evidence. The response follows `schemas/http-capability-requests.schema.json`.
+
+### `GET /api/v0.1/capability-request`
+
+Requires `?stack=namespace%2Fname&request=<requestId>`. Returns one request, newest-first transitions, sanitized linked events, and reader warnings. Unknown requests return `404`. The response follows `schemas/http-capability-request.schema.json`.
+
 ### `GET /api/v0.1/graph`
 
 Returns component nodes, capability/dependency edges, and unresolved requirements.
@@ -143,6 +151,41 @@ Upserts by component and capability. `from` and `optional` are optional.
 
 Upserts by component and path. Every path is component-relative; the referenced content remains repository-owned.
 
+## Capability request mutations
+
+These JSON-only mutations append request events. They do not assign agents, schedule work, or modify component repositories.
+
+### `POST /api/v0.1/capability-requests`
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "requesterComponentId": "app",
+  "providerComponentId": "shared-ui",
+  "sessionId": "active-session-id",
+  "capability": "ui.dialog",
+  "reason": "Avoid a product-local dialog",
+  "acceptance": "Accessible export and usage guide"
+}
+```
+
+The active session must belong to the requester, and requester/provider must be distinct registered components. Returns `201` with request detail. Non-idempotent.
+
+### `PUT /api/v0.1/capability-request`
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "requestId": "request-id",
+  "componentId": "shared-ui",
+  "status": "provider-complete",
+  "summary": "Dialog exported and documented",
+  "evidence": "shared-ui@abc123"
+}
+```
+
+Appends one role-checked transition and returns updated request detail. Invalid lifecycle transitions return `409`; unknown requests return `404`. Non-idempotent.
+
 ## Not yet exposed
 
-Portable definition register/export, bulk synchronization, context, lifecycle writes, and usage writes currently remain CLI/MCP operations. The HTTP API exposes their read-only Activity projection. Write parity will be added through `StacksApplication` before the remote endpoint mode ships.
+Portable definition register/export, bulk synchronization, context, work/turn lifecycle writes, and usage writes currently remain CLI/MCP operations. The HTTP API exposes their read-only Activity projection and the full capability-request protocol. Remaining write parity will be added through `StacksApplication` before the remote endpoint mode ships.

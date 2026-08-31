@@ -3,7 +3,7 @@ import process from "node:process";
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createLocalStacksApplication, type StackReference } from "./application/stacks-application.ts";
-import type { CostKind, EventActor, UsageData } from "./core/types.ts";
+import type { CapabilityRequestStatus, CostKind, EventActor, UsageData } from "./core/types.ts";
 import { STACKS_VERSION } from "./version.ts";
 import { manageAgentsMd, type AgentsMdOperation } from "./agent/agents-md.ts";
 import { STACKS_MCP_RESOURCES, STACKS_MCP_TOOL_NAMES } from "./mcp/catalog.ts";
@@ -124,7 +124,8 @@ function help(topic?: string): void {
     mcp: `Run the machine-level MCP adapter over stdio. Agent clients start this command when needed; do not run it as a daemon.\n\n  stacks mcp\n`,
     checkin: `Append turn-based agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn-start --stack <namespace/name> --session <id> --task <text> [--max-bytes <number>] [--json]\n  stacks checkin turn-complete --stack <namespace/name> --session <id> --turn <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [token/cost options] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
     usage: `Import delayed usage data or report recorded usage. Live agent telemetry belongs on turn completion. Monetary values require reported, estimated, or allocated provenance.\n\n  stacks usage import --stack <namespace/name> --provider <name> --model <name> [--session <id>] [--turn <id>] [token/cost options] [--json]\n  stacks usage report --stack <namespace/name> [--json]\n`,
-    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind|...    View, attach, and configure components\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn-start|turn-complete|complete\n                                      Append turn-based work lifecycle events\n  usage import|report                Import delayed usage or report totals\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
+    request: `Record and inspect cross-component capability needs without assigning or scheduling work. Creation must link to active consumer work. Provider completion and consumer verification are separate transitions.\n\n  stacks request list --stack <namespace/name> [--component <id>] [--status <status>] [--json]\n  stacks request get <request-id> --stack <namespace/name> [--json]\n  stacks request create --stack <namespace/name> --requester <id> --provider <id> --session <id> --capability <name> --reason <text> [--acceptance <text>] [--json]\n  stacks request transition <request-id> --stack <namespace/name> --component <id> --status <status> --summary <text> [--evidence <text>] [--json]\n`,
+    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind|...    View, attach, and configure components\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn-start|turn-complete|complete\n                                      Append turn-based work lifecycle events\n  usage import|report                Import delayed usage or report totals\n  request list|get|create|transition Track cross-component capability needs\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
     lock: `Write stack.lock.json with the current component revisions.\n\n  stacks lock --stack <namespace/name> [--json]\n`,
     init: `Create a legacy directory-based Stack manifest. New Stacks should normally use stacks stack create.\n\n  stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]\n`,
     validate: `Validate a standalone or legacy Stack definition. Registered Stacks are validated whenever they are loaded, including by stacks status.\n\n  stacks validate [--stack <namespace/name> | --root <dir>] [--json]\n`,
@@ -141,6 +142,7 @@ function help(topic?: string): void {
   process.stdout.write(`  stacks locate [directory]                 Find Stack membership\n`);
   process.stdout.write(`  stacks status --stack <namespace/name>    Inspect Stack health\n`);
   process.stdout.write(`  stacks context <target> --stack <name>    Resolve agent context\n`);
+  process.stdout.write(`  stacks request list --stack <name>       Inspect capability requests\n`);
   process.stdout.write(`  stacks ui                                 Open the local UI\n`);
   process.stdout.write(`  stacks mcp                                Run the stdio adapter\n\n`);
   process.stdout.write(`Run stacks help commands for every command, or stacks help <command> for details.\n`);
@@ -374,6 +376,59 @@ async function commandUsage(parsed: ParsedArgs): Promise<void> {
     return;
   }
   throw new Error("Usage: stacks usage import|report ...");
+}
+
+async function commandRequest(parsed: ParsedArgs): Promise<void> {
+  const operation = parsed.positionals[1];
+  const reference = stackReference(parsed);
+  if (operation === "list") {
+    const output = await application.listCapabilityRequests(reference);
+    const componentId = stringOption(parsed, "component");
+    const status = stringOption(parsed, "status");
+    if (status && !["requested", "in-progress", "provider-complete", "consumer-verified", "rejected", "superseded"].includes(status)) throw new Error("Invalid --status.");
+    const requests = output.requests.filter((request) => (!componentId || request.requesterComponentId === componentId || request.providerComponentId === componentId) && (!status || request.status === status));
+    const result = { ...output, requests };
+    if (booleanOption(parsed, "json")) printJson(result);
+    else if (!requests.length) process.stdout.write("No matching capability requests.\n");
+    else for (const request of requests) process.stdout.write(`${request.requestId}\t${request.status}\t${request.capability}\t${request.requesterComponentId} -> ${request.providerComponentId}\n`);
+    return;
+  }
+  const requestId = parsed.positionals[2];
+  if (operation === "get") {
+    if (!requestId) throw new Error("Usage: stacks request get <request-id> --stack <namespace/name>.");
+    const output = await application.getCapabilityRequest(reference, requestId);
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`${output.request.capability} [${output.request.status}]\n${output.request.requesterComponentId} -> ${output.request.providerComponentId}\n${output.request.reason}\nRequest: ${output.request.requestId}\nWork session: ${output.request.sessionId}\n`);
+    return;
+  }
+  if (operation === "create") {
+    const actor = actorFrom(parsed);
+    const output = await application.createCapabilityRequest(reference, {
+      requesterComponentId: requiredOption(parsed, "requester"), providerComponentId: requiredOption(parsed, "provider"),
+      sessionId: requiredOption(parsed, "session"), capability: requiredOption(parsed, "capability"), reason: requiredOption(parsed, "reason"),
+      ...(stringOption(parsed, "acceptance") === undefined ? {} : { acceptance: stringOption(parsed, "acceptance")! }),
+      ...(actor === undefined ? { actor: { client: "stacks-cli" } } : { actor }),
+    });
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Created capability request ${output.request.requestId} for ${output.request.capability}.\n`);
+    return;
+  }
+  if (operation === "transition") {
+    if (!requestId) throw new Error("Usage: stacks request transition <request-id> ...");
+    const status = requiredOption(parsed, "status") as CapabilityRequestStatus;
+    if (!["in-progress", "provider-complete", "consumer-verified", "rejected", "superseded"].includes(status)) throw new Error("Invalid --status.");
+    const actor = actorFrom(parsed);
+    const output = await application.transitionCapabilityRequest(reference, {
+      requestId, componentId: requiredOption(parsed, "component"), status: status as Exclude<CapabilityRequestStatus, "requested">,
+      summary: requiredOption(parsed, "summary"),
+      ...(stringOption(parsed, "evidence") === undefined ? {} : { evidence: stringOption(parsed, "evidence")! }),
+      ...(actor === undefined ? { actor: { client: "stacks-cli" } } : { actor }),
+    });
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Capability request ${requestId} is now ${output.request.status}.\n`);
+    return;
+  }
+  throw new Error("Usage: stacks request list|get|create|transition ...");
 }
 
 async function commandMcp(parsed: ParsedArgs): Promise<void> {
@@ -629,6 +684,9 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
       return;
     case "usage":
       await commandUsage(parsed);
+      return;
+    case "request":
+      await commandRequest(parsed);
       return;
     case "mcp":
       await commandMcp(parsed);

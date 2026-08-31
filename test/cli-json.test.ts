@@ -46,6 +46,15 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     assert.equal(object(guided.component).id, "app");
     const context = runJson(["context", "app", "--stack", "tests/global-cli"], 0, env);
     assert.ok((context.items as unknown[]).some((item) => object(item).path === "engineering.md"));
+    const requestWork = runJson(["checkin", "start", "--stack", "tests/global-cli", "--component", "app", "--summary", "Need shared security capability"], 0, env);
+    const request = runJson(["request", "create", "--stack", "tests/global-cli", "--requester", "app", "--provider", "knowledge", "--session", String(requestWork.sessionId), "--capability", "practice.security", "--reason", "Avoid product-local policy"], 0, env);
+    const requestId = String(object(request.request).requestId);
+    assert.equal(object(request.request).status, "requested");
+    const transitioned = runJson(["request", "transition", requestId, "--stack", "tests/global-cli", "--component", "knowledge", "--status", "provider-complete", "--summary", "Security policy published", "--evidence", "engineering.md"], 0, env);
+    assert.equal(object(transitioned.request).status, "provider-complete");
+    const requestList = runJson(["request", "list", "--stack", "tests/global-cli", "--component", "app"], 0, env);
+    assert.equal((requestList.requests as unknown[]).length, 1);
+    assert.equal(object(runJson(["request", "get", requestId, "--stack", "tests/global-cli"], 0, env).request).requestId, requestId);
 
     const components = runJson(["component", "list", "tests/global-cli"], 0, env);
     assert.equal(object(object((components.components as unknown[])[0]).component).id, "app");
