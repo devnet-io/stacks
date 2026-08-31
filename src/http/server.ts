@@ -91,6 +91,34 @@ function optionalString(body: Record<string, unknown>, name: string): string | u
   return value.trim() || undefined;
 }
 
+function optionalBoolean(body: Record<string, unknown>, name: string): boolean | undefined {
+  const value = body[name];
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") throw new HttpError(400, `${name} must be boolean.`);
+  return value;
+}
+
+function optionalNumber(body: Record<string, unknown>, name: string): number | undefined {
+  const value = body[name];
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new HttpError(400, `${name} must be a finite number.`);
+  return value;
+}
+
+function optionalStringArray(body: Record<string, unknown>, name: string): string[] | undefined {
+  const value = body[name];
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) throw new HttpError(400, `${name} must be an array of non-empty strings.`);
+  return value.map((item) => String(item).trim());
+}
+
+function optionalStrength(body: Record<string, unknown>, name: string): "required" | "preferred" | "reference" | undefined {
+  const value = optionalString(body, name);
+  if (value === undefined) return undefined;
+  if (value !== "required" && value !== "preferred" && value !== "reference") throw new HttpError(400, `${name} must be required, preferred, or reference.`);
+  return value;
+}
+
 function applicationErrorStatus(error: unknown): number {
   if (error instanceof HttpError) return error.status;
   const message = error instanceof Error ? error.message : String(error);
@@ -195,6 +223,44 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         send(response, 200, { schemaVersion: "0.1", stack: { id, namespace, name }, component: { id: componentId, path: output.bindings[componentId] }, sync: output.sync });
         return;
       }
+      if (request.method === "PUT" && url.pathname === "/api/v0.1/capability-provider") {
+        if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const contextPath = optionalString(body, "contextPath");
+        const contextStrength = optionalStrength(body, "strength");
+        const priority = optionalNumber(body, "priority");
+        const output = await application.configureCapabilityExport(requiredString(body, "stack"), requiredString(body, "componentId"), {
+          capability: requiredString(body, "capability"),
+          ...(optionalString(body, "description") === undefined ? {} : { description: optionalString(body, "description")! }),
+          ...(contextPath === undefined ? {} : { context: [{ path: contextPath, ...(contextStrength === undefined ? {} : { strength: contextStrength }), ...(priority === undefined ? {} : { priority }) }] }),
+        }, { actor: { client: "stacks-web" } });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
+      if (request.method === "PUT" && url.pathname === "/api/v0.1/capability-requirement") {
+        if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.configureCapabilityRequirement(requiredString(body, "stack"), requiredString(body, "componentId"), {
+          capability: requiredString(body, "capability"),
+          ...(optionalString(body, "from") === undefined ? {} : { from: optionalString(body, "from")! }),
+          ...(optionalBoolean(body, "optional") === undefined ? {} : { optional: optionalBoolean(body, "optional")! }),
+        }, { actor: { client: "stacks-web" } });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
+      if (request.method === "PUT" && url.pathname === "/api/v0.1/component-guidance") {
+        if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.configureGuidance(requiredString(body, "stack"), requiredString(body, "componentId"), {
+          path: requiredString(body, "path"),
+          ...(optionalString(body, "description") === undefined ? {} : { description: optionalString(body, "description")! }),
+          ...(optionalStrength(body, "strength") === undefined ? {} : { strength: optionalStrength(body, "strength")! }),
+          ...(optionalNumber(body, "priority") === undefined ? {} : { priority: optionalNumber(body, "priority")! }),
+          ...(optionalStringArray(body, "appliesTo") === undefined ? {} : { appliesTo: optionalStringArray(body, "appliesTo")! }),
+        }, { actor: { client: "stacks-web" } });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
       if (request.method !== "GET") {
         send(response, 405, { schemaVersion: "0.1", error: "Method not allowed." });
         return;
@@ -204,6 +270,13 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
           ? [(await application.getStack({ root: options.root })).manifest.metadata]
           : await application.listStacks();
         send(response, 200, { schemaVersion: "0.1", stacks: registered.map(({ id, namespace, name }) => ({ id, namespace, name })) });
+        return;
+      }
+      if (url.pathname === "/api/v0.1/components") {
+        if (options.root) throw new HttpError(409, "Component management is unavailable in legacy --root mode.");
+        const stack = url.searchParams.get("stack");
+        if (!stack) throw new HttpError(400, "stack must be a non-empty string.");
+        send(response, 200, await application.listComponents(stack) as unknown as Record<string, unknown>);
         return;
       }
       const selected = async (): Promise<StackReference> => {

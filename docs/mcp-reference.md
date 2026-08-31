@@ -155,6 +155,52 @@ Changes the explicit local directory for an existing component.
 
 Side effects: writes the machine-local binding and, when the path changed, appends a `component.binding.changed` Activity event attributed to `stacks-mcp`, then inspects the directory. For a missing Git destination it reports that cloning would be required but does not perform the clone. It does not move or modify the repository. Idempotent for the same Stack, component, and path.
 
+### `capability_provide`
+
+Upserts a capability exported by a component and optionally exposes one component-relative context path.
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "componentId": "shared-ui",
+  "capability": "ui.react.components",
+  "description": "Shared React components",
+  "contextPath": "docs/components.md",
+  "strength": "required",
+  "priority": 1000
+}
+```
+
+Side effects: when state changes, writes the portable Stack definition and appends a `component.configuration.changed` event attributed to `stacks-mcp`. An identical upsert is an event no-op. It never writes the referenced file. Idempotent for the same Stack, component, and capability.
+
+### `capability_consume`
+
+Upserts a capability requirement for a consumer. `from` selects the authoritative provider; omit it only when provider inference is intentionally unambiguous.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components", "from": "shared-ui", "optional": false }
+```
+
+Side effects: when state changes, writes the portable Stack definition and appends a configuration event. An identical upsert is an event no-op. Idempotent for the same Stack, component, and capability.
+
+### `guidance_configure`
+
+Upserts one component-relative guidance descriptor.
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "componentId": "standards",
+  "path": "engineering.md",
+  "description": "Required engineering rules",
+  "strength": "required",
+  "priority": 1000,
+  "appliesTo": ["practice.engineering"]
+}
+```
+
+Side effects: when state changes, writes the portable Stack definition and appends a configuration event. An identical upsert is an event no-op. It never creates or modifies the guidance file. Idempotent for the same Stack, component, and path.
+
 ### `stack_status`
 
 Validates the loaded Stack and inspects component paths and Git state without modifying repositories.
@@ -211,7 +257,7 @@ Optional input: `workId`, `agent`, `client`, `model`.
 
 ### `turn_start`
 
-Opens one turn in an active work session, appends `turn.started`, and returns the new `turnId` together with the target component's current context plan. Only one turn may be open in a session.
+Opens one turn in an active work session, appends `turn.started`, and returns top-level `sessionId` and `turnId` fields together with the target component's current context plan and underlying event. Only one turn may be open in a session.
 
 Required input: `stack`, `sessionId`, `task`.
 

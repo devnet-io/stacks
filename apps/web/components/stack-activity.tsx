@@ -306,6 +306,7 @@ function eventLabel(type: string): string {
     'stack.created': 'Stack created',
     'component.added': 'Component added',
     'component.binding.changed': 'Component binding changed',
+    'component.configuration.changed': 'Component configuration changed',
     'work.started': 'Work started',
     'turn.started': 'Turn started',
     'turn.completed': 'Turn completed',

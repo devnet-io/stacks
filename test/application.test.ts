@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -18,6 +18,24 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     await mkdir(component, { recursive: true });
     await application.createStack("tests/application", { actor: { client: "test-client" } });
     await application.addComponent({ stack: "tests/application", id: "app", path: component, kind: "product", actor: { client: "test-client" } });
+    const knowledge = path.join(root, "components", "knowledge");
+    await mkdir(knowledge, { recursive: true });
+    await writeFile(path.join(knowledge, "engineering.md"), "# Engineering rules\n", "utf8");
+    await application.addComponent({ stack: "tests/application", id: "knowledge", path: knowledge, kind: "knowledge", actor: { client: "test-client" } });
+    await application.configureCapabilityExport("tests/application", "knowledge", {
+      capability: "practice.engineering",
+      context: [{ path: "engineering.md", strength: "required" }],
+    }, { actor: { client: "test-client" } });
+    await application.configureCapabilityExport("tests/application", "knowledge", {
+      capability: "practice.engineering",
+      context: [{ path: "engineering.md", strength: "required" }],
+    }, { actor: { client: "test-client" } });
+    await application.configureCapabilityRequirement("tests/application", "app", {
+      capability: "practice.engineering", from: "knowledge",
+    }, { actor: { client: "test-client" } });
+    await application.configureGuidance("tests/application", "app", {
+      path: "AGENTS.md", strength: "preferred",
+    }, { actor: { client: "test-client" } });
 
     const components = await application.listComponents("tests/application");
     assert.equal(components.components[0]?.component.id, "app");
@@ -25,6 +43,11 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     assert.equal((await application.getComponent("tests/application", "app")).component.kind, "product");
     const memberships = await application.findMemberships(component);
     assert.equal(memberships.memberships[0]?.component.id, "app");
+    const context = await application.resolveContext({ stack: "tests/application" }, "app", "Follow shared engineering rules");
+    assert.deepEqual(context.items.map((item) => [item.componentId, item.path, item.exists]), [
+      ["knowledge", "engineering.md", true],
+      ["app", "AGENTS.md", false],
+    ]);
 
     const remote = path.join(root, "components", "remote");
     const rebound = path.join(root, "components", "remote-bound");
@@ -36,18 +59,26 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     await application.bindComponent("tests/application", "remote", rebound, { materialize: false, actor: { client: "test-client" } });
 
     const activity = await application.getActivity({ stack: "tests/application" });
-    assert.deepEqual(activity.recentEvents.map((event) => event.type), ["component.binding.changed", "component.added", "stack.created"]);
+    assert.deepEqual(activity.recentEvents.map((event) => event.type), [
+      "component.binding.changed",
+      "component.configuration.changed",
+      "component.configuration.changed",
+      "component.configuration.changed",
+      "component.added",
+      "component.added",
+      "stack.created",
+    ]);
     assert.ok(activity.recentEvents.every((event) => event.actor?.client === "test-client"));
 
     const catalog = await application.getCatalogStatus();
     assert.equal(catalog.schemaVersion, "0.1");
     assert.equal(catalog.stacks.length, 1);
     assert.equal(catalog.stacks[0]?.stack.name, "application");
-    assert.equal(catalog.stacks[0]?.components[0]?.root, path.resolve(component));
+    assert.equal(catalog.stacks[0]?.components.find((item) => item.id === "app")?.root, path.resolve(component));
 
     const overview = await application.getOverview({ stack: "tests/application" });
     assert.equal(overview.workspace.mode, "registered");
-    assert.equal(overview.summary.ready, 1);
+    assert.equal(overview.summary.ready, 2);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

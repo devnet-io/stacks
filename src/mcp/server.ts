@@ -11,6 +11,7 @@ function result(value: Record<string, unknown>) {
 }
 
 const selector = z.string().min(1).describe("Registered Stack selector in namespace/name form");
+const strength = z.enum(["required", "preferred", "reference"]);
 const usageShape = {
   provider: z.string().min(1), model: z.string().min(1), inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
   cachedInputTokens: z.number().nonnegative().optional(), reasoningTokens: z.number().nonnegative().optional(), toolCalls: z.number().nonnegative().optional(),
@@ -84,6 +85,38 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
     inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1) }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector, componentId, path }) => result(await application.bindComponent(stackSelector, componentId, path, { materialize: false, actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
+  server.registerTool("capability_provide", {
+    title: "Configure capability provider", description: "Upsert one capability exported by a component, optionally with one bounded context path.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), description: z.string().min(1).optional(), contextPath: z.string().min(1).optional(), strength: strength.optional(), priority: z.number().optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, capability, description, contextPath, strength: contextStrength, priority }) => result(await application.configureCapabilityExport(stackSelector, componentId, {
+    capability,
+    ...(description ? { description } : {}),
+    ...(contextPath ? { context: [{ path: contextPath, ...(contextStrength ? { strength: contextStrength } : {}), ...(priority === undefined ? {} : { priority }) }] } : {}),
+  }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
+  server.registerTool("capability_consume", {
+    title: "Configure capability requirement", description: "Upsert one capability consumed by a component and optionally select its authoritative provider.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), from: z.string().min(1).optional(), optional: z.boolean().optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, capability, from, optional }) => result(await application.configureCapabilityRequirement(stackSelector, componentId, {
+    capability,
+    ...(from ? { from } : {}),
+    ...(optional === undefined ? {} : { optional }),
+  }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
+  server.registerTool("guidance_configure", {
+    title: "Configure component guidance", description: "Upsert one component-relative guidance path with strength, priority, and optional capability scope.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1), description: z.string().min(1).optional(), strength: strength.optional(), priority: z.number().optional(), appliesTo: z.array(z.string().min(1)).optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, path, description, strength: guidanceStrength, priority, appliesTo }) => result(await application.configureGuidance(stackSelector, componentId, {
+    path,
+    ...(description ? { description } : {}),
+    ...(guidanceStrength ? { strength: guidanceStrength } : {}),
+    ...(priority === undefined ? {} : { priority }),
+    ...(appliesTo ? { appliesTo } : {}),
+  }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
   server.registerTool("stack_status", {
     title: "Inspect Stack status", description: "Inspect explicit component paths and Git state without modifying them.", inputSchema: z.object({ stack: selector }),

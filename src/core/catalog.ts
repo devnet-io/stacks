@@ -3,7 +3,7 @@ import { access, mkdir, open, readFile, realpath, rename, unlink, writeFile } fr
 import os from "node:os";
 import path from "node:path";
 import { assertValidManifest } from "./validation.ts";
-import type { LoadedStack, StackComponent, StackManifest } from "./types.ts";
+import type { CapabilityExport, CapabilityRequirement, Guidance, LoadedStack, StackComponent, StackManifest } from "./types.ts";
 
 export interface PlatformDirectories { config: string; state: string }
 export interface CatalogEntry { id: string; namespace: string; name: string; definitionPath: string; bindingsPath: string }
@@ -242,4 +242,76 @@ export async function bindRegisteredComponent(stackSelector: string, componentId
     await writeJsonAtomic(entry.bindingsPath, { ...bindings, components: { ...bindings.components, [componentId]: { path: localPath } } });
   });
   return loadRegisteredStack(stackSelector, directories);
+}
+
+async function updateRegisteredComponent(
+  stackSelector: string,
+  componentId: string,
+  update: (component: StackComponent) => StackComponent,
+  directories: PlatformDirectories,
+): Promise<{ stack: LoadedStack; changed: boolean }> {
+  let changed = false;
+  await withCatalogMutation(directories, async () => {
+    const catalog = await readCatalog(directories);
+    const entry = catalog.stacks.find((candidate) => selector(candidate) === stackSelector || candidate.id === stackSelector);
+    if (!entry) throw new Error(`Unknown registered Stack: ${stackSelector}.`);
+    const stack = await loadRegisteredStack(stackSelector, directories);
+    const componentIndex = stack.manifest.components.findIndex((candidate) => candidate.id === componentId);
+    if (componentIndex < 0) throw new Error(`Unknown component ${componentId} in ${selector(entry)}.`);
+    const component = stack.manifest.components[componentIndex]!;
+    const updated = update(component);
+    if (JSON.stringify(updated) === JSON.stringify(component)) return;
+    changed = true;
+    const components = [...stack.manifest.components];
+    components[componentIndex] = updated;
+    const manifest = { ...stack.manifest, components };
+    assertValidManifest(manifest);
+    await writeJsonAtomic(entry.definitionPath, manifest);
+  });
+  return { stack: await loadRegisteredStack(stackSelector, directories), changed };
+}
+
+function upsertBy<T>(items: T[] | undefined, matches: (item: T) => boolean, value: T): T[] {
+  const current = items ?? [];
+  const index = current.findIndex(matches);
+  if (index < 0) return [...current, value];
+  const updated = [...current];
+  updated[index] = value;
+  return updated;
+}
+
+export function configureRegisteredCapabilityExport(
+  stackSelector: string,
+  componentId: string,
+  value: CapabilityExport,
+  directories = platformDirectories(),
+): Promise<{ stack: LoadedStack; changed: boolean }> {
+  return updateRegisteredComponent(stackSelector, componentId, (component) => ({
+    ...component,
+    provides: upsertBy(component.provides, (item) => item.capability === value.capability, value),
+  }), directories);
+}
+
+export function configureRegisteredCapabilityRequirement(
+  stackSelector: string,
+  componentId: string,
+  value: CapabilityRequirement,
+  directories = platformDirectories(),
+): Promise<{ stack: LoadedStack; changed: boolean }> {
+  return updateRegisteredComponent(stackSelector, componentId, (component) => ({
+    ...component,
+    consumes: upsertBy(component.consumes, (item) => item.capability === value.capability, value),
+  }), directories);
+}
+
+export function configureRegisteredGuidance(
+  stackSelector: string,
+  componentId: string,
+  value: Guidance,
+  directories = platformDirectories(),
+): Promise<{ stack: LoadedStack; changed: boolean }> {
+  return updateRegisteredComponent(stackSelector, componentId, (component) => ({
+    ...component,
+    guidance: upsertBy(component.guidance, (item) => item.path === value.path, value),
+  }), directories);
 }

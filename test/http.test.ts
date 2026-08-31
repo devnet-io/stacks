@@ -19,8 +19,11 @@ test("global local API lists and explicitly selects registered Stacks", async ()
   const root = await mkdtemp(path.join(os.tmpdir(), "stacks-global-http-"));
   const directories = { config: path.join(root, "config"), state: path.join(root, "state") };
   const component = path.join(root, "app");
+  const knowledge = path.join(root, "knowledge");
   const rebound = path.join(root, "rebound-app");
   await mkdir(component, { recursive: true });
+  await mkdir(knowledge, { recursive: true });
+  await writeFile(path.join(knowledge, "engineering.md"), "# Engineering\n", "utf8");
   await mkdir(rebound, { recursive: true });
   await createRegisteredStack("acme/one", directories);
   await createRegisteredStack("acme/two", directories);
@@ -46,6 +49,29 @@ test("global local API lists and explicitly selects registered Stacks", async ()
     });
     assert.equal(added.status, 201, await added.text());
 
+    const addedKnowledge = await fetch(`${api.origin}/api/v0.1/components`, {
+      method: "POST", headers: { "Content-Type": "application/json", Origin: api.origin },
+      body: JSON.stringify({ stack: "acme/three", id: "knowledge", path: knowledge, kind: "knowledge" }),
+    });
+    assert.equal(addedKnowledge.status, 201, await addedKnowledge.text());
+    const provider = await fetch(`${api.origin}/api/v0.1/capability-provider`, {
+      method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
+      body: JSON.stringify({ stack: "acme/three", componentId: "knowledge", capability: "practice.engineering", contextPath: "engineering.md", strength: "required" }),
+    });
+    assert.equal(provider.status, 200, await provider.text());
+    const requirement = await fetch(`${api.origin}/api/v0.1/capability-requirement`, {
+      method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
+      body: JSON.stringify({ stack: "acme/three", componentId: "app", capability: "practice.engineering", from: "knowledge" }),
+    });
+    assert.equal(requirement.status, 200, await requirement.text());
+    const guidance = await fetch(`${api.origin}/api/v0.1/component-guidance`, {
+      method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
+      body: JSON.stringify({ stack: "acme/three", componentId: "app", path: "AGENTS.md", strength: "preferred" }),
+    });
+    assert.equal(guidance.status, 200, await guidance.text());
+    const configuredComponents = await (await fetch(`${api.origin}/api/v0.1/components?stack=acme%2Fthree`)).json() as { components: Array<{ component: { id: string; consumes?: unknown[] } }> };
+    assert.equal(configuredComponents.components.find((item) => item.component.id === "app")?.component.consumes?.length, 1);
+
     const bound = await fetch(`${api.origin}/api/v0.1/component-binding`, {
       method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
       body: JSON.stringify({ stack: "acme/three", componentId: "app", path: rebound }),
@@ -54,7 +80,15 @@ test("global local API lists and explicitly selects registered Stacks", async ()
     const managed = await (await fetch(`${api.origin}/api/v0.1/overview?stack=acme%2Fthree`)).json() as StackOverview;
     assert.equal(managed.components[0]?.root, path.resolve(rebound));
     const managementActivity = await (await fetch(`${api.origin}/api/v0.1/activity?stack=acme%2Fthree`)).json() as StackActivity;
-    assert.deepEqual(managementActivity.recentEvents.map((event) => event.type), ["component.binding.changed", "component.added", "stack.created"]);
+    assert.deepEqual(managementActivity.recentEvents.map((event) => event.type), [
+      "component.binding.changed",
+      "component.configuration.changed",
+      "component.configuration.changed",
+      "component.configuration.changed",
+      "component.added",
+      "component.added",
+      "stack.created",
+    ]);
     assert.ok(managementActivity.recentEvents.every((event) => event.actor?.client === "stacks-web"));
 
     const duplicate = await fetch(`${api.origin}/api/v0.1/stacks`, {

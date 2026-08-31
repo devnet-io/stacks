@@ -23,9 +23,12 @@ function runJson(args: string[], expectedStatus = 0, env: NodeJS.ProcessEnv = pr
 test("global catalog CLI creates, binds, and inspects a Stack from any directory", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "stacks-global-cli-"));
   const component = path.join(root, "ordinary-project-location", "app");
+  const knowledge = path.join(root, "ordinary-project-location", "knowledge");
   const env = { ...process.env, STACKS_CONFIG_HOME: path.join(root, "config", "stacks"), STACKS_STATE_HOME: path.join(root, "state", "stacks") };
   try {
     await mkdir(component, { recursive: true });
+    await mkdir(knowledge, { recursive: true });
+    await writeFile(path.join(knowledge, "engineering.md"), "# Engineering\n", "utf8");
     const created = runJson(["stack", "create", "tests/global-cli"], 0, env);
     const identity = object(created.stack);
     assert.equal(identity.namespace, "tests");
@@ -34,6 +37,15 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     const added = runJson(["component", "add", "tests/global-cli", "app", "--path", component, "--kind", "product"], 0, env);
     assert.equal(added.stack, "tests/global-cli");
     assert.equal(added.path, path.resolve(component));
+    runJson(["component", "add", "tests/global-cli", "knowledge", "--path", knowledge, "--kind", "knowledge"], 0, env);
+    const provided = runJson(["component", "provide", "tests/global-cli", "knowledge", "practice.engineering", "--context", "engineering.md", "--strength", "required"], 0, env);
+    assert.equal(object(provided.component).id, "knowledge");
+    const consumed = runJson(["component", "consume", "tests/global-cli", "app", "practice.engineering", "--from", "knowledge"], 0, env);
+    assert.equal(object(consumed.component).id, "app");
+    const guided = runJson(["component", "guidance", "tests/global-cli", "app", "--path", "AGENTS.md", "--strength", "preferred"], 0, env);
+    assert.equal(object(guided.component).id, "app");
+    const context = runJson(["context", "app", "--stack", "tests/global-cli"], 0, env);
+    assert.ok((context.items as unknown[]).some((item) => object(item).path === "engineering.md"));
 
     const components = runJson(["component", "list", "tests/global-cli"], 0, env);
     assert.equal(object(object((components.components as unknown[])[0]).component).id, "app");
@@ -51,7 +63,7 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     const validated = runJson(["validate", "--stack", "tests/global-cli"], 0, env);
     assert.equal(validated.valid, true);
     const status = runJson(["status", "--stack", "tests/global-cli"], 0, env);
-    assert.equal(object((status.components as unknown[])[0]).root, path.resolve(component));
+    assert.ok((status.components as unknown[]).some((item) => object(item).root === path.resolve(component)));
 
     const globalStatus = runJson(["status"], 0, env);
     assert.equal(globalStatus.schemaVersion, "0.1");
@@ -135,6 +147,8 @@ test("CLI JSON contracts cover the five-minute Stack lifecycle", async () => {
     assert.equal(object(turnStarted.turn).type, "turn.started");
     assert.equal(object(turnStarted.context).targetComponentId, "app");
     const turnId = String(object(turnStarted.turn).turnId);
+    assert.equal(turnStarted.turnId, turnId);
+    assert.equal(turnStarted.sessionId, started.sessionId);
 
     const completed = runJson([
       "checkin", "turn-complete", "--session", String(started.sessionId), "--turn", turnId, "--summary", "Evaluation complete",
@@ -188,6 +202,11 @@ test("CLI help keeps routine commands concise and explains advanced commands", (
   const status = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "help", "status"], { encoding: "utf8", windowsHide: true });
   assert.equal(status.status, 0, status.stderr);
   assert.match(status.stdout, /Loading a Stack also validates its definition/u);
+
+  const mcpFlag = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, "mcp", "--help"], { encoding: "utf8", windowsHide: true });
+  assert.equal(mcpFlag.status, 0, mcpFlag.stderr);
+  assert.match(mcpFlag.stdout, /^Stacks · mcp/u);
+  assert.doesNotMatch(mcpFlag.stderr, /listening/u);
 });
 
 test("CLI reports the root package version", () => {

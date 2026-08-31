@@ -33,6 +33,9 @@ Current tools are:
 - `component_get`
 - `component_add`
 - `component_bind`
+- `capability_provide`
+- `capability_consume`
+- `guidance_configure`
 - `stack_status`
 - `context_resolve`
 - `work_start`
@@ -44,7 +47,7 @@ Current tools are:
 
 `stack_memberships` maps an explicit workspace path to zero, one, or multiple bound Stack components. It never guesses when a directory is shared. Every subsequent Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
 
-MCP may add an existing local component and change its binding, but Git cloning and repository synchronization remain absent because those filesystem/network mutations are better initiated explicitly through the CLI.
+MCP may add an existing local component, change its binding, and author capability/provider relationships plus guidance descriptors. Git cloning and repository synchronization remain absent because those filesystem/network mutations are better initiated explicitly through the CLI.
 
 ## Skills and clients
 
@@ -56,7 +59,7 @@ Not every client exposes tokens, model identity, tool calls, or stable sessions.
 
 ## Human UI
 
-`stacks ui` presents the machine catalog with a Stack selector above its section navigation. Overview, Graph, Activity, Tools & agents, and canonical documentation use the same contracts available to agents. A bottom application menu shows the installed version; Tools & agents contains runtime connection settings, while installation remains in canonical documentation.
+`stacks ui` presents the machine catalog with a Stack selector above its section navigation. Overview, Graph, Activity, Manage, Tools & agents, and canonical documentation use the same application semantics available to agents. Manage authors the minimum capability/context graph without requiring direct catalog-file editing. A bottom application menu shows the installed version; Tools & agents contains runtime connection settings, while installation remains in canonical documentation.
 
 ## Hosted boundary
 

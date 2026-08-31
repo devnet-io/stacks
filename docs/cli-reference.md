@@ -118,6 +118,49 @@ stacks component bind acme/customer-portal app --path /work/customer-portal
 
 For a Git component, a missing bound destination may be cloned. Existing repositories are inspected conservatively. A changed path appends a `component.binding.changed` Activity event attributed to `stacks-cli`; rebinding to the same path does not add a duplicate.
 
+### `stacks component provide`
+
+Upserts one capability exported by a component. An optional component-relative context path identifies the bounded guide or index that explains how consumers should use it.
+
+```text
+stacks component provide <namespace/name> <id> <capability>
+  [--context <path>] [--description <text>]
+  [--strength required|preferred|reference] [--priority <number>] [--json]
+```
+
+```bash
+stacks component provide acme/customer-portal shared-ui ui.react.components --context docs/components.md --strength required
+```
+
+Saving the same component and capability replaces that export instead of creating a duplicate. A state change writes only the portable Stack definition and appends a `component.configuration.changed` event; an identical upsert is an event no-op. It never modifies the component repository.
+
+### `stacks component consume`
+
+Upserts one capability requirement. `--from` identifies the authoritative provider; without it context resolution succeeds only when exactly one provider exists.
+
+```text
+stacks component consume <namespace/name> <id> <capability>
+  [--from <component-id>] [--optional] [--json]
+```
+
+```bash
+stacks component consume acme/customer-portal app ui.react.components --from shared-ui
+```
+
+### `stacks component guidance`
+
+Upserts one component-relative guidance path. The path remains ordinary repository content; Stacks stores only its descriptor and never creates or edits the file.
+
+```text
+stacks component guidance <namespace/name> <id> --path <path>
+  [--description <text>] [--strength required|preferred|reference]
+  [--priority <number>] [--applies-to <capability-a,capability-b>] [--json]
+```
+
+```bash
+stacks component guidance acme/customer-portal standards --path engineering.md --strength required
+```
+
 ## Inspection and context
 
 ### `stacks locate`

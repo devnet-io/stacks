@@ -1,13 +1,26 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { STACKS_MCP_RESOURCES, STACKS_MCP_TOOL_NAMES } from "../src/mcp/catalog.ts";
+import { addRegisteredComponent, createRegisteredStack } from "../src/core/catalog.ts";
 
 test("stdio MCP exposes instructions and documented tools/resources without stdout diagnostics", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-mcp-authoring-"));
+  const directories = { config: path.join(root, "config"), state: path.join(root, "state") };
+  const knowledge = path.join(root, "knowledge");
+  const product = path.join(root, "product");
+  await mkdir(knowledge, { recursive: true });
+  await mkdir(product, { recursive: true });
+  await writeFile(path.join(knowledge, "engineering.md"), "# Engineering\n", "utf8");
+  await createRegisteredStack("tests/mcp-authoring", directories);
+  await addRegisteredComponent("tests/mcp-authoring", { id: "knowledge", path: knowledge }, directories);
+  await addRegisteredComponent("tests/mcp-authoring", { id: "product", path: product }, directories);
   const child = spawn(process.execPath, ["--experimental-strip-types", path.resolve("src/cli.ts"), "mcp"], {
     cwd: path.resolve("."), stdio: ["pipe", "pipe", "pipe"], windowsHide: true,
+    env: { ...process.env, STACKS_CONFIG_HOME: directories.config, STACKS_STATE_HOME: directories.state },
   });
   let stdout = "";
   let stderr = "";
@@ -46,11 +59,22 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     const instructions = await response(5);
     const structured = (instructions.result as { structuredContent: { resources: Array<{ uri: string }> } }).structuredContent;
     assert.ok(structured.resources.some((resource) => resource.uri === "stacks://reference/cli"));
+
+    send({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "capability_provide", arguments: { stack: "tests/mcp-authoring", componentId: "knowledge", capability: "practice.engineering", contextPath: "engineering.md", strength: "required" } } });
+    assert.equal((await response(6)).result !== undefined, true);
+    send({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "capability_consume", arguments: { stack: "tests/mcp-authoring", componentId: "product", capability: "practice.engineering", from: "knowledge" } } });
+    assert.equal((await response(7)).result !== undefined, true);
+    send({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "guidance_configure", arguments: { stack: "tests/mcp-authoring", componentId: "product", path: "AGENTS.md", strength: "preferred" } } });
+    assert.equal((await response(8)).result !== undefined, true);
+    send({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "context_resolve", arguments: { stack: "tests/mcp-authoring", target: "product" } } });
+    const resolved = (await response(9)).result as { structuredContent: { items: Array<{ componentId: string; path: string }> } };
+    assert.deepEqual(resolved.structuredContent.items.map((item) => [item.componentId, item.path]), [["knowledge", "engineering.md"], ["product", "AGENTS.md"]]);
     assert.match(stderr, /^Stacks MCP server is listening for the machine catalog/u);
     assert.ok(stdout.split("\n").filter(Boolean).every((line) => (JSON.parse(line) as { jsonrpc?: string }).jsonrpc === "2.0"));
   } finally {
     child.stdin.end();
     child.kill();
+    await rm(root, { recursive: true, force: true });
   }
 
   async function response(id: number): Promise<Record<string, unknown>> {

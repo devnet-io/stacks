@@ -1,8 +1,8 @@
 import path from "node:path";
-import type { EventActor, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
-import { addRegisteredComponent, bindRegisteredComponent, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
+import type { CapabilityExport, CapabilityRequirement, EventActor, Guidance, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
+import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
-import { completeTurn, completeWork, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordStackCreated, startTurn as startCoreTurn, startWork } from "../core/events.ts";
+import { completeTurn, completeWork, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordComponentConfigurationChanged, recordStackCreated, startTurn as startCoreTurn, startWork } from "../core/events.ts";
 import { syncComponent } from "../core/git.ts";
 import { initializeStack } from "../core/init.ts";
 import { writeLockSnapshot } from "../core/lock.ts";
@@ -72,6 +72,8 @@ export interface ComponentMutationOutput extends StackDefinitionOutput {
 
 export interface TurnStartOutput {
   schemaVersion: "0.1";
+  sessionId: string;
+  turnId: string;
   turn: StackEvent;
   context: ReturnType<typeof resolveContext>;
 }
@@ -84,6 +86,9 @@ export interface StacksApplication {
   getComponent(stack: string, componentId: string): Promise<ComponentOutput>;
   addComponent(input: AddComponentInput): Promise<ComponentMutationOutput>;
   bindComponent(stack: string, componentId: string, localPath: string, options?: BindComponentOptions): Promise<ComponentMutationOutput>;
+  configureCapabilityExport(stack: string, componentId: string, value: CapabilityExport, options?: MutationOptions): Promise<ComponentOutput>;
+  configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirement, options?: MutationOptions): Promise<ComponentOutput>;
+  configureGuidance(stack: string, componentId: string, value: Guidance, options?: MutationOptions): Promise<ComponentOutput>;
   getStack(reference: StackReference): Promise<StackDefinitionOutput>;
   initializeLegacyStack(root: string, namespace: string, name: string): Promise<InitOutput>;
   validateStack(reference: StackReference): Promise<ValidateOutput>;
@@ -187,6 +192,34 @@ export class LocalStacksApplication implements StacksApplication {
     return { ...definition(loaded), sync: await syncComponent(loaded, component, options.materialize === false ? { dryRun: true } : {}) };
   }
 
+  private async configuredComponent(
+    loaded: LoadedStack,
+    changed: boolean,
+    componentId: string,
+    configuration: "capability-export" | "capability-requirement" | "guidance",
+    subject: string,
+    actor?: EventActor,
+  ): Promise<ComponentOutput> {
+    if (changed) await recordComponentConfigurationChanged(loaded, { componentId, configuration, subject, ...(actor === undefined ? {} : { actor }) });
+    const component = loaded.manifest.components.find((candidate) => candidate.id === componentId)!;
+    return { schemaVersion: "0.1", stack: stackIdentity(loaded.manifest), component, ...(loaded.bindings?.[componentId] ? { binding: loaded.bindings[componentId] } : {}) };
+  }
+
+  async configureCapabilityExport(stack: string, componentId: string, value: CapabilityExport, options: MutationOptions = {}): Promise<ComponentOutput> {
+    const configured = await configureRegisteredCapabilityExport(stack, componentId, value, this.options.catalogDirectories);
+    return this.configuredComponent(configured.stack, configured.changed, componentId, "capability-export", value.capability, options.actor);
+  }
+
+  async configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirement, options: MutationOptions = {}): Promise<ComponentOutput> {
+    const configured = await configureRegisteredCapabilityRequirement(stack, componentId, value, this.options.catalogDirectories);
+    return this.configuredComponent(configured.stack, configured.changed, componentId, "capability-requirement", value.capability, options.actor);
+  }
+
+  async configureGuidance(stack: string, componentId: string, value: Guidance, options: MutationOptions = {}): Promise<ComponentOutput> {
+    const configured = await configureRegisteredGuidance(stack, componentId, value, this.options.catalogDirectories);
+    return this.configuredComponent(configured.stack, configured.changed, componentId, "guidance", value.path, options.actor);
+  }
+
   async getStack(reference: StackReference): Promise<StackDefinitionOutput> {
     return definition(await this.load(reference));
   }
@@ -243,7 +276,7 @@ export class LocalStacksApplication implements StacksApplication {
       sessionId: input.sessionId,
       context: { generatedAt: context.generatedAt, items: context.items.length, warnings: context.warnings.length, errors: context.errors.length },
     });
-    return { schemaVersion: "0.1", turn, context };
+    return { schemaVersion: "0.1", sessionId: input.sessionId, turnId: turn.turnId!, turn, context };
   }
 
   async completeTurn(reference: StackReference, input: Parameters<typeof completeTurn>[1]): ReturnType<typeof completeTurn> {

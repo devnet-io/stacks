@@ -3,6 +3,7 @@ import type { StackIntegrations } from '../../../src/application/integrations.ts
 import type { StackGraph } from '../../../src/application/graph.ts';
 import type { StackActivity } from '../../../src/application/activity.ts';
 import type { SyncResult } from '../../../src/core/types.ts';
+import type { ComponentListOutput, ComponentOutput } from '../../../src/application/stacks-application.ts';
 
 export function localApiOrigin(): string {
   return typeof window === 'undefined' ? '' : window.location.origin;
@@ -33,7 +34,7 @@ export interface ComponentMutationResponse {
 async function mutation<T>(
   path: string,
   method: 'POST' | 'PUT',
-  input: Record<string, string | undefined>,
+  input: Record<string, unknown>,
 ): Promise<T> {
   const response = await fetch(endpoint(path), {
     method,
@@ -79,6 +80,55 @@ export async function bindComponent(input: {
   path: string;
 }): Promise<ComponentMutationResponse> {
   return mutation('/api/v0.1/component-binding', 'PUT', input);
+}
+
+export async function configureCapabilityProvider(input: {
+  stack: string;
+  componentId: string;
+  capability: string;
+  description?: string;
+  contextPath?: string;
+  strength?: 'required' | 'preferred' | 'reference';
+  priority?: number;
+}): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/capability-provider', 'PUT', input);
+}
+
+export async function configureCapabilityRequirement(input: {
+  stack: string;
+  componentId: string;
+  capability: string;
+  from?: string;
+  optional?: boolean;
+}): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/capability-requirement', 'PUT', input);
+}
+
+export async function configureComponentGuidance(input: {
+  stack: string;
+  componentId: string;
+  path: string;
+  description?: string;
+  strength?: 'required' | 'preferred' | 'reference';
+  priority?: number;
+  appliesTo?: string[];
+}): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/component-guidance', 'PUT', input);
+}
+
+export async function fetchComponents(
+  stack: string,
+  signal?: AbortSignal,
+): Promise<ComponentListOutput> {
+  const response = await fetch(endpoint('/api/v0.1/components', stack), {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const body = (await response.json()) as ComponentListOutput | { error?: string };
+  if (!response.ok)
+    throw new Error('error' in body && body.error ? body.error : `Local API returned ${response.status}.`);
+  if (!('components' in body)) throw new Error('The local API returned an unsupported component contract.');
+  return body;
 }
 
 export async function fetchStacks(

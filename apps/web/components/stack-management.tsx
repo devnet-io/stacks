@@ -13,6 +13,7 @@ import {
   useState,
 } from 'react';
 import type { StackOverview } from '../../../src/application/overview.ts';
+import type { ComponentListOutput } from '../../../src/application/stacks-application.ts';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +29,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   addComponent,
   bindComponent,
+  configureCapabilityProvider,
+  configureCapabilityRequirement,
+  configureComponentGuidance,
   createStack,
+  fetchComponents,
   fetchOverview,
 } from '@/lib/stacks-api';
 
@@ -40,18 +45,25 @@ export function StackManagement({
   onCatalogChanged(stack?: string): Promise<void>;
 }) {
   const [overview, setOverview] = useState<StackOverview>();
+  const [components, setComponents] = useState<ComponentListOutput>();
   const [loading, setLoading] = useState(Boolean(stack));
   const [loadError, setLoadError] = useState<string>();
   const load = useCallback(async () => {
     if (!stack) {
       setOverview(undefined);
+      setComponents(undefined);
       setLoading(false);
       return;
     }
     setLoading(true);
     setLoadError(undefined);
     try {
-      setOverview(await fetchOverview(stack));
+      const [nextOverview, nextComponents] = await Promise.all([
+        fetchOverview(stack),
+        fetchComponents(stack),
+      ]);
+      setOverview(nextOverview);
+      setComponents(nextComponents);
     } catch (error) {
       setLoadError(message(error));
     } finally {
@@ -91,18 +103,28 @@ export function StackManagement({
             Retry
           </Button>
         </Alert>
-      ) : overview ? (
-        <div className="grid gap-6 xl:grid-cols-2">
-          <AddComponentForm
+      ) : overview && components ? (
+        <div className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-2">
+            <AddComponentForm
+              stack={stack}
+              onChanged={async () => {
+                await load();
+                await onCatalogChanged(stack);
+              }}
+            />
+            <BindingForm
+              stack={stack}
+              overview={overview}
+              onChanged={async () => {
+                await load();
+                await onCatalogChanged(stack);
+              }}
+            />
+          </div>
+          <ContextConfiguration
             stack={stack}
-            onChanged={async () => {
-              await load();
-              await onCatalogChanged(stack);
-            }}
-          />
-          <BindingForm
-            stack={stack}
-            overview={overview}
+            components={components}
             onChanged={async () => {
               await load();
               await onCatalogChanged(stack);
@@ -112,6 +134,114 @@ export function StackManagement({
       ) : null}
     </div>
   );
+}
+
+function ContextConfiguration({
+  stack,
+  components,
+  onChanged,
+}: {
+  stack: string;
+  components: ComponentListOutput;
+  onChanged(): Promise<void>;
+}) {
+  const [componentId, setComponentId] = useState(components.components[0]?.component.id ?? '');
+  useEffect(() => {
+    if (!components.components.some((item) => item.component.id === componentId)) {
+      setComponentId(components.components[0]?.component.id ?? '');
+    }
+  }, [componentId, components]);
+  const selected = components.components.find((item) => item.component.id === componentId)?.component;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Context and capabilities</CardTitle>
+        <CardDescription>
+          Declare what a component provides, what it consumes, and which component-relative guidance agents should inspect.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {components.components.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Add a component before configuring agent context.</p>
+        ) : (
+          <>
+            <Field label="Component to configure" htmlFor="context-component">
+              <select id="context-component" value={componentId} onChange={(event) => setComponentId(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm sm:max-w-md">
+                {components.components.map(({ component }) => <option key={component.id} value={component.id}>{component.name ?? component.id} ({component.id})</option>)}
+              </select>
+            </Field>
+            <div className="grid gap-6 xl:grid-cols-3">
+              <CapabilityProviderForm key={`provider-${componentId}`} stack={stack} componentId={componentId} onChanged={onChanged} />
+              <CapabilityRequirementForm key={`requirement-${componentId}`} stack={stack} componentId={componentId} components={components} onChanged={onChanged} />
+              <GuidanceForm key={`guidance-${componentId}`} stack={stack} componentId={componentId} onChanged={onChanged} />
+            </div>
+            {selected && (
+              <div className="grid gap-4 border-t pt-5 text-sm md:grid-cols-3">
+                <ConfigurationSummary label="Provides" values={(selected.provides ?? []).map((item) => item.capability)} />
+                <ConfigurationSummary label="Consumes" values={(selected.consumes ?? []).map((item) => `${item.capability}${item.from ? ` from ${item.from}` : ''}`)} />
+                <ConfigurationSummary label="Guidance" values={(selected.guidance ?? []).map((item) => `${item.path} · ${item.strength ?? 'reference'}`)} />
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CapabilityProviderForm({ stack, componentId, onChanged }: { stack: string; componentId: string; onChanged(): Promise<void> }) {
+  const [capability, setCapability] = useState('');
+  const [contextPath, setContextPath] = useState('');
+  const [description, setDescription] = useState('');
+  const [strength, setStrength] = useState<'required' | 'preferred' | 'reference'>('reference');
+  const operation = useOperation();
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); operation.start();
+    try {
+      await configureCapabilityProvider({ stack, componentId, capability: capability.trim(), contextPath: contextPath.trim() || undefined, description: description.trim() || undefined, strength });
+      await onChanged(); setCapability(''); setContextPath(''); setDescription(''); operation.succeed('Capability provider saved.');
+    } catch (error) { operation.fail(error); }
+  };
+  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Provides</h3><p className="text-xs text-muted-foreground">Publish an authoritative capability and its usage guide.</p><Field label="Capability" htmlFor="provider-capability"><Input id="provider-capability" required placeholder="ui.react.components" value={capability} onChange={(event) => setCapability(event.target.value)} /></Field><Field label="Context path" htmlFor="provider-context"><Input id="provider-context" placeholder="docs/components.md" value={contextPath} onChange={(event) => setContextPath(event.target.value)} /></Field><Field label="Description" htmlFor="provider-description"><Input id="provider-description" value={description} onChange={(event) => setDescription(event.target.value)} /></Field><StrengthSelect id="provider-strength" value={strength} onChange={setStrength} /><Button type="submit" size="sm" disabled={operation.pending || !componentId || !capability.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save provider</Button><OperationMessage operation={operation} /></form>;
+}
+
+function CapabilityRequirementForm({ stack, componentId, components, onChanged }: { stack: string; componentId: string; components: ComponentListOutput; onChanged(): Promise<void> }) {
+  const [capability, setCapability] = useState('');
+  const [from, setFrom] = useState('');
+  const [optional, setOptional] = useState(false);
+  const operation = useOperation();
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); operation.start();
+    try {
+      await configureCapabilityRequirement({ stack, componentId, capability: capability.trim(), from: from || undefined, optional });
+      await onChanged(); setCapability(''); setFrom(''); setOptional(false); operation.succeed('Capability requirement saved.');
+    } catch (error) { operation.fail(error); }
+  };
+  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Consumes</h3><p className="text-xs text-muted-foreground">Connect this component to an authoritative provider.</p><Field label="Capability" htmlFor="consumer-capability"><Input id="consumer-capability" required placeholder="ui.react.components" value={capability} onChange={(event) => setCapability(event.target.value)} /></Field><Field label="Provider" htmlFor="consumer-provider"><select id="consumer-provider" value={from} onChange={(event) => setFrom(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="">Infer only if unique</option>{components.components.filter((item) => item.component.id !== componentId).map(({ component }) => <option key={component.id} value={component.id}>{component.name ?? component.id}</option>)}</select></Field><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={optional} onChange={(event) => setOptional(event.target.checked)} />Optional requirement</label><Button type="submit" size="sm" disabled={operation.pending || !componentId || !capability.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save requirement</Button><OperationMessage operation={operation} /></form>;
+}
+
+function GuidanceForm({ stack, componentId, onChanged }: { stack: string; componentId: string; onChanged(): Promise<void> }) {
+  const [guidancePath, setGuidancePath] = useState('');
+  const [description, setDescription] = useState('');
+  const [strength, setStrength] = useState<'required' | 'preferred' | 'reference'>('required');
+  const operation = useOperation();
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); operation.start();
+    try {
+      await configureComponentGuidance({ stack, componentId, path: guidancePath.trim(), description: description.trim() || undefined, strength });
+      await onChanged(); setGuidancePath(''); setDescription(''); operation.succeed('Guidance saved.');
+    } catch (error) { operation.fail(error); }
+  };
+  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Guidance</h3><p className="text-xs text-muted-foreground">Expose a readable file relative to this component.</p><Field label="Relative path" htmlFor="guidance-path"><Input id="guidance-path" required placeholder="docs/engineering.md" value={guidancePath} onChange={(event) => setGuidancePath(event.target.value)} /></Field><Field label="Description" htmlFor="guidance-description"><Input id="guidance-description" value={description} onChange={(event) => setDescription(event.target.value)} /></Field><StrengthSelect id="guidance-strength" value={strength} onChange={setStrength} /><Button type="submit" size="sm" disabled={operation.pending || !componentId || !guidancePath.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save guidance</Button><OperationMessage operation={operation} /></form>;
+}
+
+function StrengthSelect({ id, value, onChange }: { id: string; value: 'required' | 'preferred' | 'reference'; onChange(value: 'required' | 'preferred' | 'reference'): void }) {
+  return <Field label="Strength" htmlFor={id}><select id={id} value={value} onChange={(event) => onChange(event.target.value as 'required' | 'preferred' | 'reference')} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="required">Required</option><option value="preferred">Preferred</option><option value="reference">Reference</option></select></Field>;
+}
+
+function ConfigurationSummary({ label, values }: { label: string; values: string[] }) {
+  return <div><p className="font-medium">{label}</p>{values.length ? <ul className="mt-2 space-y-1 text-muted-foreground">{values.map((value) => <li key={value} className="break-all">{value}</li>)}</ul> : <p className="mt-2 text-muted-foreground">None configured</p>}</div>;
 }
 
 function CreateStackForm({

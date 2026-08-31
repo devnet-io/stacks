@@ -158,6 +158,22 @@ export async function recordComponentBindingChanged(
   });
 }
 
+export async function recordComponentConfigurationChanged(
+  stack: LoadedStack,
+  input: { componentId: string; configuration: "capability-export" | "capability-requirement" | "guidance"; subject: string; actor?: EventActor },
+): Promise<StackEvent> {
+  return appendEvent(stack, {
+    type: "component.configuration.changed",
+    componentId: input.componentId,
+    ...(input.actor === undefined ? {} : { actor: input.actor }),
+    data: {
+      summary: `Configured ${input.configuration} ${input.subject} for ${input.componentId}.`,
+      configuration: input.configuration,
+      subject: input.subject,
+    },
+  });
+}
+
 function requireComponent(stack: LoadedStack, componentId: string): void {
   if (!componentById(stack.manifest, componentId)) throw new Error(`Unknown component: ${componentId}.`);
 }

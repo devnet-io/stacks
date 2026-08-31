@@ -61,7 +61,7 @@ stacks ui
 
 Loading a registered Stack validates its definition, so routine use does not require a separate validation command. `status` reports component paths and Git state without changing repositories.
 
-The UI is global. It normally opens at `http://localhost:3210/`; if that port belongs to another application, Stacks selects the next free port and prints the URL. The packaged UI and local API share that one address, so there is no API URL to configure. Choose a Stack in the selector, then use Overview, Graph, Activity, Manage, Tools & agents, or Documentation. Activity shows Stack changes, agent check-ins, work sessions, token usage, and provenance-labeled costs. Manage can create Stacks, add components, and change bindings. No background service is required outside the time you use the UI.
+The UI is global. It normally opens at `http://localhost:3210/`; if that port belongs to another application, Stacks selects the next free port and prints the URL. The packaged UI and local API share that one address, so there is no API URL to configure. Choose a Stack in the selector, then use Overview, Graph, Activity, Manage, Tools & agents, or Documentation. Activity shows Stack changes, configuration events, agent check-ins, work sessions, token usage, and provenance-labeled costs. Manage can create Stacks, add components, change bindings, and configure capability providers, consumer relationships, and component-relative guidance. No background service is required outside the time you use the UI.
 
 ## 5. Connect an agent
 
@@ -91,7 +91,16 @@ stacks context app --stack your-name/my-stack --task "Describe the change I am a
 
 ## What is editable today?
 
-The CLI and Manage UI create Stacks and attach components. Capability exports, requirements, guidance, and richer metadata are still edited in the readable definition file shown by Overview. The UI does not yet provide those richer definition forms. Directory-based `stack.json` examples remain available as compatibility fixtures, but they are not the recommended setup for a new Stack.
+The CLI, MCP, and Manage UI can configure the minimum context graph without editing catalog files directly. For example:
+
+```bash
+stacks component provide your-name/my-stack shared-ui ui.react.components --context docs/components.md --strength required
+stacks component consume your-name/my-stack app ui.react.components --from shared-ui
+stacks component guidance your-name/my-stack standards --path engineering.md --strength required
+stacks context app --stack your-name/my-stack
+```
+
+These operations update readable portable definition data and never modify the referenced repository files. The current forms upsert one export per capability, one requirement per capability, and one guidance descriptor per path. Directory-based `stack.json` examples remain available as compatibility fixtures, but they are not the recommended setup for a new Stack.
 
 To see whether the current directory is part of one or more Stacks:
 

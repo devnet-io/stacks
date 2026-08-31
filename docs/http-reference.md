@@ -26,6 +26,10 @@ Internal lifecycle endpoint used only by `npm run install:local`. It exists only
 
 Lists registered Stack identities.
 
+### `GET /api/v0.1/components`
+
+Requires `?stack=namespace%2Fname`. Returns complete portable component declarations plus their explicit machine-local bindings for the Manage interface.
+
 ## Stack views
 
 These routes accept `?stack=namespace%2Fname`. Without it, the first catalog entry is selected for compatibility with the local UI bootstrap.
@@ -86,6 +90,50 @@ Returns `201` with the immutable identity. It creates catalog state only; it doe
 ```
 
 Changes only the machine-local binding. Stacks never moves the repository. A non-Git component path must exist; a missing Git path may be cloned. Returns Stack identity, the resulting binding, and synchronization result. A changed path appends a `component.binding.changed` Activity event attributed to `stacks-web`; the same path is an event no-op.
+
+## Configure context and capabilities
+
+These idempotent mutations update the portable Stack definition and append a `component.configuration.changed` Activity event attributed to `stacks-web` only when state changes. An identical upsert is an event no-op. They never create or modify files in component repositories.
+
+### `PUT /api/v0.1/capability-provider`
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "componentId": "shared-ui",
+  "capability": "ui.react.components",
+  "description": "Shared React components",
+  "contextPath": "docs/components.md",
+  "strength": "required",
+  "priority": 1000
+}
+```
+
+Upserts by component and capability. `description`, `contextPath`, `strength`, and `priority` are optional.
+
+### `PUT /api/v0.1/capability-requirement`
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components", "from": "shared-ui", "optional": false }
+```
+
+Upserts by component and capability. `from` and `optional` are optional.
+
+### `PUT /api/v0.1/component-guidance`
+
+```json
+{
+  "stack": "acme/customer-portal",
+  "componentId": "standards",
+  "path": "engineering.md",
+  "description": "Required engineering rules",
+  "strength": "required",
+  "priority": 1000,
+  "appliesTo": ["practice.engineering"]
+}
+```
+
+Upserts by component and path. Every path is component-relative; the referenced content remains repository-owned.
 
 ## Not yet exposed
 

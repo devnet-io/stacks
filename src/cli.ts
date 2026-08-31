@@ -114,7 +114,7 @@ function printJson(value: unknown): void {
 function help(topic?: string): void {
   const topics: Record<string, string> = {
     stack: `Create and list Stacks in this machine's catalog.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n`,
-    component: `View components or attach them to registered Stacks. Paths are always explicit. Kind is optional and defaults to component.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n`,
+    component: `View, attach, and configure components in registered Stacks. Configuration operations upsert by capability or path.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path>] [--description <text>] [--strength <strength>] [--priority <number>] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component>] [--optional] [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text>] [--strength <strength>] [--priority <number>] [--applies-to <a,b>] [--json]\n`,
     locate: `Find every Stack component whose explicit binding contains a directory. Multiple matches are returned instead of guessing.\n\n  stacks locate [directory] [--json]\n`,
     agent: `Manage only the delimited Stacks activation block in a repository AGENTS.md. Existing instructions are preserved; malformed markers are refused.\n\n  stacks agent print [--path <directory>] [--json]\n  stacks agent check [--path <directory>] [--json]\n  stacks agent install [--path <directory>] [--json]\n  stacks agent remove [--path <directory>] [--json]\n`,
     status: `Inspect registered Stack component paths and Git state without changing repositories. With no selector, inspect every registered Stack. Loading a Stack also validates its definition.\n\n  stacks status [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
@@ -124,7 +124,7 @@ function help(topic?: string): void {
     mcp: `Run the machine-level MCP adapter over stdio. Agent clients start this command when needed; do not run it as a daemon.\n\n  stacks mcp\n`,
     checkin: `Append turn-based agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn-start --stack <namespace/name> --session <id> --task <text> [--json]\n  stacks checkin turn-complete --stack <namespace/name> --session <id> --turn <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [token/cost options] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
     usage: `Import delayed usage data or report recorded usage. Live agent telemetry belongs on turn completion. Monetary values require reported, estimated, or allocated provenance.\n\n  stacks usage import --stack <namespace/name> --provider <name> --model <name> [--session <id>] [--turn <id>] [token/cost options] [--json]\n  stacks usage report --stack <namespace/name> [--json]\n`,
-    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind        View or attach components and paths\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn-start|turn-complete|complete\n                                      Append turn-based work lifecycle events\n  usage import|report                Import delayed usage or report totals\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
+    commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind|...    View, attach, and configure components\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn-start|turn-complete|complete\n                                      Append turn-based work lifecycle events\n  usage import|report                Import delayed usage or report totals\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
     lock: `Write stack.lock.json with the current component revisions.\n\n  stacks lock --stack <namespace/name> [--json]\n`,
     init: `Create a legacy directory-based Stack manifest. New Stacks should normally use stacks stack create.\n\n  stacks init --namespace <namespace> --name <name> [--root <dir>] [--json]\n`,
     validate: `Validate a standalone or legacy Stack definition. Registered Stacks are validated whenever they are loaded, including by stacks status.\n\n  stacks validate [--stack <namespace/name> | --root <dir>] [--json]\n`,
@@ -441,7 +441,7 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
   const operation = parsed.positionals[1];
   const selector = parsed.positionals[2];
   const id = parsed.positionals[3];
-  if (!selector || !operation) throw new Error("Usage: stacks component list|get|add|bind <namespace/name> ...");
+  if (!selector || !operation) throw new Error("Usage: stacks component list|get|add|bind|provide|consume|guidance <namespace/name> ...");
   if (operation === "list") {
     const output = await application.listComponents(selector);
     if (booleanOption(parsed, "json")) printJson(output);
@@ -456,7 +456,53 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
     else process.stdout.write(`${output.component.id} (${output.component.kind ?? "component"})\nStack: ${output.stack.namespace}/${output.stack.name}\nPath: ${output.binding ?? "unbound"}\n`);
     return;
   }
-  if (!id) throw new Error("Usage: stacks component add|bind <namespace/name> <id> --path <dir> ...");
+  if (!id) throw new Error("Usage: stacks component add|bind|provide|consume|guidance <namespace/name> <id> ...");
+  if (operation === "provide") {
+    const capability = parsed.positionals[4];
+    if (!capability) throw new Error("Usage: stacks component provide <namespace/name> <id> <capability> ...");
+    const contextPath = stringOption(parsed, "context");
+    const strength = stringOption(parsed, "strength") as "required" | "preferred" | "reference" | undefined;
+    if (strength && !["required", "preferred", "reference"].includes(strength)) throw new Error("Invalid --strength.");
+    const priority = numericOption(parsed, "priority");
+    const output = await application.configureCapabilityExport(selector, id, {
+      capability,
+      ...(stringOption(parsed, "description") === undefined ? {} : { description: stringOption(parsed, "description")! }),
+      ...(contextPath === undefined ? {} : { context: [{ path: contextPath, ...(strength === undefined ? {} : { strength }), ...(priority === undefined ? {} : { priority }) }] }),
+    }, { actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Configured ${id} as a provider of ${capability}.\n`);
+    return;
+  }
+  if (operation === "consume") {
+    const capability = parsed.positionals[4];
+    if (!capability) throw new Error("Usage: stacks component consume <namespace/name> <id> <capability> ...");
+    const from = stringOption(parsed, "from");
+    const output = await application.configureCapabilityRequirement(selector, id, {
+      capability,
+      ...(from === undefined ? {} : { from }),
+      ...(booleanOption(parsed, "optional") ? { optional: true } : {}),
+    }, { actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Configured ${id} to consume ${capability}${from ? ` from ${from}` : ""}.\n`);
+    return;
+  }
+  if (operation === "guidance") {
+    const guidancePath = requiredOption(parsed, "path");
+    const strength = (stringOption(parsed, "strength") ?? "reference") as "required" | "preferred" | "reference";
+    if (!["required", "preferred", "reference"].includes(strength)) throw new Error("Invalid --strength.");
+    const priority = numericOption(parsed, "priority");
+    const appliesTo = listOption(parsed, "applies-to");
+    const output = await application.configureGuidance(selector, id, {
+      path: guidancePath,
+      strength,
+      ...(stringOption(parsed, "description") === undefined ? {} : { description: stringOption(parsed, "description")! }),
+      ...(priority === undefined ? {} : { priority }),
+      ...(appliesTo === undefined ? {} : { appliesTo }),
+    }, { actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Configured guidance ${guidancePath} for ${id}.\n`);
+    return;
+  }
   const localPath = requiredOption(parsed, "path");
   if (operation === "bind") {
     const changed = await application.bindComponent(selector, id, localPath, { actor: { client: "stacks-cli" } });
@@ -526,6 +572,10 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   }
   const parsed = parseArguments(args);
   const command = parsed.positionals[0] ?? "help";
+  if (booleanOption(parsed, "help") && command !== "help") {
+    help(command);
+    return;
+  }
   switch (command) {
     case "help":
     case "--help":
