@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { CapabilityExport, CapabilityRequirement, ContextBriefing, ContextPlan, EventActor, Guidance, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
+import type { CapabilityExport, CapabilityRequirement, ComponentDescriptorReport, ContextBriefing, ContextPlan, EventActor, Guidance, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
 import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
 import { materializeContextBriefing, type BriefingOptions } from "../core/briefing.ts";
@@ -16,6 +16,7 @@ import { buildStackOverview, type StackOverview } from "./overview.ts";
 import { buildActivityTurnDetail, buildActivityWorkDetail, buildStackActivity, type ActivityTurnDetail, type ActivityWorkDetail, type StackActivity } from "./activity.ts";
 import { buildCapabilityRequestDetail, buildCapabilityRequestList, relevantCapabilityRequests, type CapabilityRequestDetail, type CapabilityRequestList, type CapabilityRequestSummary } from "./capability-requests.ts";
 import { initOutput, lockOutput, stackIdentity, statusOutput, syncOutput, validateOutput, type InitOutput, type LockOutput, type StackIdentity, type StatusOutput, type SyncOutput, type ValidateOutput } from "./contracts.ts";
+import { resolveComponentDescriptors, type ComponentDescriptorResolution } from "../core/component-descriptor.ts";
 
 export type StackReference = { stack: string; root?: never } | { root: string; stack?: never };
 
@@ -23,7 +24,9 @@ export interface StackDefinitionOutput {
   schemaVersion: "0.1";
   definitionPath: string;
   manifest: StackManifest;
+  effectiveManifest: StackManifest;
   bindings: Record<string, string>;
+  descriptors: Record<string, ComponentDescriptorReport>;
 }
 
 export interface CatalogStatusOutput {
@@ -36,12 +39,13 @@ export interface ComponentOutput {
   stack: StackIdentity;
   component: StackManifest["components"][number];
   binding?: string;
+  descriptor: ComponentDescriptorReport;
 }
 
 export interface ComponentListOutput {
   schemaVersion: "0.1";
   stack: StackIdentity;
-  components: Array<{ component: StackManifest["components"][number]; binding?: string }>;
+  components: Array<{ component: StackManifest["components"][number]; binding?: string; descriptor: ComponentDescriptorReport }>;
 }
 
 export interface MembershipOutput {
@@ -125,8 +129,14 @@ export interface LocalStacksApplicationOptions {
   hostedMcp?: HostedMcpConfiguration;
 }
 
-function definition(stack: LoadedStack): StackDefinitionOutput {
-  return { schemaVersion: "0.1", definitionPath: stack.manifestPath, manifest: stack.manifest, bindings: stack.bindings ?? {} };
+function definition(declared: LoadedStack, resolution: ComponentDescriptorResolution): StackDefinitionOutput {
+  return { schemaVersion: "0.1", definitionPath: declared.manifestPath, manifest: declared.manifest, effectiveManifest: resolution.stack.manifest, bindings: declared.bindings ?? {}, descriptors: resolution.reports };
+}
+
+function descriptorDiagnostics(reports: Record<string, ComponentDescriptorReport>): string[] {
+  return Object.values(reports).flatMap((report) => report.status === "invalid" || report.status === "unavailable"
+    ? report.errors.map((error) => `Component ${report.componentId} descriptor ${report.status}: ${error}`)
+    : []);
 }
 
 export class LocalStacksApplication implements StacksApplication {
@@ -136,10 +146,19 @@ export class LocalStacksApplication implements StacksApplication {
     this.options = options;
   }
 
-  private load(reference: StackReference): Promise<LoadedStack> {
+  private rawLoad(reference: StackReference): Promise<LoadedStack> {
     return "stack" in reference
       ? loadRegisteredStack(reference.stack, this.options.catalogDirectories)
       : loadStack(reference.root);
+  }
+
+  private async resolved(reference: StackReference): Promise<{ declared: LoadedStack; resolution: ComponentDescriptorResolution }> {
+    const declared = await this.rawLoad(reference);
+    return { declared, resolution: await resolveComponentDescriptors(declared) };
+  }
+
+  private async load(reference: StackReference): Promise<LoadedStack> {
+    return (await this.resolved(reference)).resolution.stack;
   }
 
   async listStacks(): Promise<StackIdentity[]> {
@@ -163,19 +182,21 @@ export class LocalStacksApplication implements StacksApplication {
   }
 
   async listComponents(stack: string): Promise<ComponentListOutput> {
-    const loaded = await loadRegisteredStack(stack, this.options.catalogDirectories);
+    const { resolution } = await this.resolved({ stack });
+    const loaded = resolution.stack;
     return {
       schemaVersion: "0.1",
       stack: stackIdentity(loaded.manifest),
-      components: loaded.manifest.components.map((component) => ({ component, ...(loaded.bindings?.[component.id] ? { binding: loaded.bindings[component.id] } : {}) })),
+      components: loaded.manifest.components.map((component) => ({ component, ...(loaded.bindings?.[component.id] ? { binding: loaded.bindings[component.id] } : {}), descriptor: resolution.reports[component.id]! })),
     };
   }
 
   async getComponent(stack: string, componentId: string): Promise<ComponentOutput> {
-    const loaded = await loadRegisteredStack(stack, this.options.catalogDirectories);
+    const { resolution } = await this.resolved({ stack });
+    const loaded = resolution.stack;
     const component = loaded.manifest.components.find((candidate) => candidate.id === componentId);
     if (!component) throw new Error(`Unknown component ${componentId} in ${loaded.manifest.metadata.namespace}/${loaded.manifest.metadata.name}.`);
-    return { schemaVersion: "0.1", stack: stackIdentity(loaded.manifest), component, ...(loaded.bindings?.[componentId] ? { binding: loaded.bindings[componentId] } : {}) };
+    return { schemaVersion: "0.1", stack: stackIdentity(loaded.manifest), component, ...(loaded.bindings?.[componentId] ? { binding: loaded.bindings[componentId] } : {}), descriptor: resolution.reports[componentId]! };
   }
 
   async addComponent(input: AddComponentInput): Promise<ComponentMutationOutput> {
@@ -189,7 +210,7 @@ export class LocalStacksApplication implements StacksApplication {
       sourceType: added.source.type === "git" ? "git" : "local",
       ...(actor === undefined ? {} : { actor }),
     });
-    return { ...definition(loaded), sync: await syncComponent(loaded, added) };
+    return { ...definition(loaded, await resolveComponentDescriptors(loaded)), sync: await syncComponent(loaded, added) };
   }
 
   async bindComponent(stack: string, componentId: string, localPath: string, options: BindComponentOptions = {}): Promise<ComponentMutationOutput> {
@@ -206,7 +227,7 @@ export class LocalStacksApplication implements StacksApplication {
         ...(options.actor === undefined ? {} : { actor: options.actor }),
       });
     }
-    return { ...definition(loaded), sync: await syncComponent(loaded, component, options.materialize === false ? { dryRun: true } : {}) };
+    return { ...definition(loaded, await resolveComponentDescriptors(loaded)), sync: await syncComponent(loaded, component, options.materialize === false ? { dryRun: true } : {}) };
   }
 
   private async configuredComponent(
@@ -218,8 +239,9 @@ export class LocalStacksApplication implements StacksApplication {
     actor?: EventActor,
   ): Promise<ComponentOutput> {
     if (changed) await recordComponentConfigurationChanged(loaded, { componentId, configuration, subject, ...(actor === undefined ? {} : { actor }) });
-    const component = loaded.manifest.components.find((candidate) => candidate.id === componentId)!;
-    return { schemaVersion: "0.1", stack: stackIdentity(loaded.manifest), component, ...(loaded.bindings?.[componentId] ? { binding: loaded.bindings[componentId] } : {}) };
+    const resolution = await resolveComponentDescriptors(loaded);
+    const component = resolution.stack.manifest.components.find((candidate) => candidate.id === componentId)!;
+    return { schemaVersion: "0.1", stack: stackIdentity(loaded.manifest), component, ...(loaded.bindings?.[componentId] ? { binding: loaded.bindings[componentId] } : {}), descriptor: resolution.reports[componentId]! };
   }
 
   async configureCapabilityExport(stack: string, componentId: string, value: CapabilityExport, options: MutationOptions = {}): Promise<ComponentOutput> {
@@ -238,7 +260,8 @@ export class LocalStacksApplication implements StacksApplication {
   }
 
   async getStack(reference: StackReference): Promise<StackDefinitionOutput> {
-    return definition(await this.load(reference));
+    const { declared, resolution } = await this.resolved(reference);
+    return definition(declared, resolution);
   }
 
   async initializeLegacyStack(root: string, namespace: string, name: string): Promise<InitOutput> {
@@ -248,15 +271,21 @@ export class LocalStacksApplication implements StacksApplication {
 
   async validateStack(reference: StackReference): Promise<ValidateOutput> {
     if ("stack" in reference) {
-      const stack = await this.load(reference);
-      return validateOutput({ manifestPath: stack.manifestPath, parsed: stack.manifest, valid: true, errors: [] });
+      const { declared, resolution } = await this.resolved(reference);
+      const errors = descriptorDiagnostics(resolution.reports);
+      return validateOutput({ manifestPath: declared.manifestPath, parsed: declared.manifest, valid: errors.length === 0, errors });
     }
     return validateOutput(await inspectManifest(reference.root));
   }
 
   async getStatus(reference: StackReference): Promise<StatusOutput> {
-    const stack = await this.load(reference);
-    return statusOutput(stack, getComponentStatuses(stack));
+    const { resolution } = await this.resolved(reference);
+    const statuses = getComponentStatuses(resolution.stack);
+    for (const status of statuses) {
+      const report = resolution.reports[status.id]!;
+      if (report.status === "invalid" || report.status === "unavailable") status.issues.push(...report.errors.map((error) => `Component descriptor ${report.status}: ${error}`));
+    }
+    return statusOutput(resolution.stack, statuses);
   }
 
   async getCatalogStatus(): Promise<CatalogStatusOutput> {
@@ -276,8 +305,10 @@ export class LocalStacksApplication implements StacksApplication {
   }
 
   async resolveContext(reference: StackReference, target: string, task?: string, options: BriefingOptions = {}): Promise<ResolvedContext> {
-    const stack = await this.load(reference);
+    const { resolution } = await this.resolved(reference);
+    const stack = resolution.stack;
     const plan = resolveContext(stack, target, task);
+    plan.warnings.push(...descriptorDiagnostics(resolution.reports));
     const requests = await buildCapabilityRequestList(stack);
     return { ...plan, briefing: await materializeContextBriefing(stack, plan, options), capabilityRequests: relevantCapabilityRequests(requests.requests, target) };
   }
@@ -287,12 +318,14 @@ export class LocalStacksApplication implements StacksApplication {
   }
 
   async startTurn(reference: StackReference, input: { sessionId: string; task: string; maxBytes?: number }): Promise<TurnStartOutput> {
-    const stack = await this.load(reference);
+    const { resolution } = await this.resolved(reference);
+    const stack = resolution.stack;
     const history = await readEvents(stack);
     const session = history.events.find((event) => event.type === "work.started" && event.sessionId === input.sessionId);
     if (!session?.componentId) throw new Error(`No component-scoped work.started event found for session ${input.sessionId}.`);
     const previousTurns = history.events.filter((event) => event.type === "turn.started" && event.sessionId === input.sessionId).length;
     const plan = resolveContext(stack, session.componentId, input.task);
+    plan.warnings.push(...descriptorDiagnostics(resolution.reports));
     const briefing = await materializeContextBriefing(stack, plan, {
       mode: previousTurns === 0 ? "orientation" : "refresh",
       ...(input.maxBytes === undefined ? {} : { maxBytes: input.maxBytes }),

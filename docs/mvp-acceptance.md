@@ -7,14 +7,14 @@ This document records the continuously verified local MVP path supported by the 
 `npm run check` packs Stacks, installs that package into an isolated npm prefix, and verifies that the installed package is a copy rather than a link to the source checkout. The gate then creates an isolated machine catalog and three independent component directories:
 
 - `knowledge`, with required engineering guidance;
-- `ui-library`, initially providing `ui.button` and `ui.paged-data-list`; and
+- `ui-library`, publishing `ui.button` and `ui.paged-data-list` from its bounded provider descriptor; and
 - `product`, consuming those authoritative capabilities and carrying its own repository instructions.
 
 The component directories are explicit bindings. They are not placed inside a hidden Stacks workspace and Stacks writes no ownership marker into them.
 
 ## Exercised agent journey
 
-The copied CLI creates the Stack, adds all three components, declares providers and consumers, configures bounded Markdown resources, and installs the managed Stacks block into the product's existing `AGENTS.md`. The check confirms that repository-owned instructions survive activation.
+The copied CLI creates the Stack, adds all three components, declares Stack-owned knowledge and consumer relationships, composes the UI provider descriptor, configures bounded Markdown resources, and installs the managed Stacks block into the product's existing `AGENTS.md`. The check confirms that repository-owned instructions survive activation.
 
 A live `stacks mcp` stdio process from the copied package then performs the agent-facing workflow:
 
@@ -24,7 +24,7 @@ A live `stacks mcp` stdio process from the copied package then performs the agen
 4. Complete that turn and begin a compact refresh turn for a dialog task.
 5. Inspect existing requests, declare the product's missing `ui.dialog` requirement, record its cross-component request, and close the product turn as blocked.
 6. Start separate provider work in `ui-library`; observe the request in provider context; and append the `in-progress` transition.
-7. Publish bounded dialog documentation, declare the provider's `ui.dialog` export, and report provider completion with evidence.
+7. Publish bounded dialog documentation, add the provider-owned `ui.dialog` export to `.stack/component.json`, and report provider completion with evidence.
 8. Resume the original product work. The refresh contains both the provider-complete request and the newly authoritative dialog documentation.
 9. Append separate consumer verification, finish the product turn, and complete the logical work.
 10. Read back a consumer-verified request with newest-first append-only transitions and completed product work containing three turns.
@@ -51,6 +51,6 @@ Run `npm run check` before delivery. That complete gate also validates documenta
 ## Current limitations
 
 - Turn refresh is a smaller deterministic current-plan briefing, not a change-aware delta.
-- Capability and resource declarations are Stack-managed. Optional provider-owned self-description is the next roadmap item.
+- Consumer relationships and Stack overrides remain Stack-managed; provider descriptors intentionally cannot declare them.
 - The acceptance client uses live stdio MCP but is deterministic automation rather than a vendor-specific agent harness.
 - Remote application and Streamable HTTP MCP transports remain future work.

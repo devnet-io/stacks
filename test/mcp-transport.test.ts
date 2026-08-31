@@ -105,6 +105,10 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     assert.equal(requestDetail.structuredContent.transitions.length, 1);
     send({ jsonrpc: "2.0", id: 20, method: "tools/call", params: { name: "work_complete", arguments: { stack: "tests/mcp-authoring", sessionId, summary: "Logical work complete" } } });
     assert.equal((await response(20)).result !== undefined, true);
+    send({ jsonrpc: "2.0", id: 21, method: "tools/call", params: { name: "component_get", arguments: { stack: "tests/mcp-authoring", componentId: "product" } } });
+    const describedComponent = (await response(21)).result as { structuredContent: { descriptor: { status: string; path: string } } };
+    assert.equal(describedComponent.structuredContent.descriptor.status, "absent");
+    assert.match(describedComponent.structuredContent.descriptor.path, /\.stack[/\\]component\.json$/u);
     assert.match(stderr, /^Stacks MCP server is listening for the machine catalog/u);
     assert.ok(stdout.split("\n").filter(Boolean).every((line) => (JSON.parse(line) as { jsonrpc?: string }).jsonrpc === "2.0"));
   } finally {

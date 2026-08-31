@@ -36,6 +36,15 @@ test("does not retain unused pre-milestone interfaces at the expense of a clear 
   assert.match(doc("architecture.md"), /never silently rewritten, corrupted, or discarded/u);
 });
 
+test("documents bounded provider descriptors and explicit Stack precedence", () => {
+  assert.match(doc("architecture.md"), /strict `\.stack\/component\.json`/u);
+  assert.match(doc("user-guide.md"), /Provider-owned component descriptors/u);
+  assert.match(doc("user-guide.md"), /replaces the descriptor entry completely/u);
+  assert.match(doc("adr/0013-provider-descriptors-are-bounded-inputs.md"), /Consumer requirements remain Stack-owned and explicit/u);
+  assert.match(doc("http-reference.md"), /schemas\/http-components\.schema\.json/u);
+  assert.doesNotMatch(doc("09-open-questions.md"), /Should reusable components publish/u);
+});
+
 test("documents canonical Markdown as the web documentation source", () => {
   assert.match(doc("README.md"), /Markdown files remain the prose source of truth/u);
   assert.match(doc("user-guide.md"), /do not maintain a second copy/u);

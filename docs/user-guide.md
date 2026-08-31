@@ -41,7 +41,30 @@ stacks ui
 
 Stacks serves the static Vite application and `/api/v0.1/*` from the same Node process. The default address is `http://localhost:3210/`. If port 3210 is unavailable, Stacks tries successive ports and prints the selected address. Passing `--port` requests an exact port and reports a conflict instead of silently changing it. Re-running `npm run install:local` gracefully stops registered UI processes before replacing the installed snapshot; restart with `stacks ui` afterward.
 
-The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity separates logical work from Stack changes and links to work/turn details, Requests provides paginated request creation/list/detail/transition views, Manage creates Stacks, binds components, and configures capability providers, requirements, and guidance paths, Tools & agents contains runtime connection instructions, and Documentation renders every canonical Markdown file under `docs/`. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
+The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity separates logical work from Stack changes and links to work/turn details, Requests provides paginated request creation/list/detail/transition views, Manage creates Stacks, binds components, configures Stack-owned context, and displays provider-descriptor provenance and validation failures, Tools & agents contains runtime connection instructions, and Documentation renders every canonical Markdown file under `docs/`. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
+
+## Provider-owned component descriptors
+
+A reusable component may publish `.stack/component.json` in its own repository:
+
+```json
+{
+  "schemaVersion": "0.1",
+  "provides": [
+    {
+      "capability": "ui.dialog",
+      "description": "Accessible shared dialog",
+      "context": [
+        { "path": "docs/dialog.md", "strength": "preferred" }
+      ]
+    }
+  ]
+}
+```
+
+This file is optional and provider-owned. It may publish only capabilities and bounded context paths; it cannot identify the component, bind directories, declare consumers or dependencies, install instructions, or execute anything. Stacks reads at most 64 KiB from the fixed location after the component is explicitly bound. A Stack-owned provider declaration with the same capability replaces the descriptor entry completely. Consumer requirements always remain explicit Stack data.
+
+Manage shows whether the descriptor is absent, valid, invalid, or unavailable, along with published, applied, and overridden capabilities. Invalid descriptors are ignored without changing the Stack definition. Edit and review the descriptor in the component repository through its normal Git workflow; Stacks does not create or update it.
 
 Documentation is grouped by purpose. Selecting a document reveals its second- and third-level headings as nested navigation. The current section, document, and heading are encoded in the URL as `view`, `document`, and `heading`, so bookmarks and shared local links reopen the same location. Links between canonical Markdown documents remain inside the documentation interface.
 

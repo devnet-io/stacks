@@ -14,6 +14,7 @@ import {
 } from 'react';
 import type { StackOverview } from '../../../src/application/overview.ts';
 import type { ComponentListOutput } from '../../../src/application/stacks-application.ts';
+import type { ComponentDescriptorReport } from '../../../src/core/types.ts';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -151,7 +152,8 @@ function ContextConfiguration({
       setComponentId(components.components[0]?.component.id ?? '');
     }
   }, [componentId, components]);
-  const selected = components.components.find((item) => item.component.id === componentId)?.component;
+  const selectedEntry = components.components.find((item) => item.component.id === componentId);
+  const selected = selectedEntry?.component;
 
   return (
     <Card>
@@ -171,6 +173,7 @@ function ContextConfiguration({
                 {components.components.map(({ component }) => <option key={component.id} value={component.id}>{component.name ?? component.id} ({component.id})</option>)}
               </select>
             </Field>
+            {selectedEntry ? <DescriptorSummary descriptor={selectedEntry.descriptor} /> : null}
             <div className="grid gap-6 xl:grid-cols-3">
               <CapabilityProviderForm key={`provider-${componentId}`} stack={stack} componentId={componentId} onChanged={onChanged} />
               <CapabilityRequirementForm key={`requirement-${componentId}`} stack={stack} componentId={componentId} components={components} onChanged={onChanged} />
@@ -188,6 +191,16 @@ function ContextConfiguration({
       </CardContent>
     </Card>
   );
+}
+
+function DescriptorSummary({ descriptor }: { descriptor: ComponentDescriptorReport }) {
+  if (descriptor.status === 'invalid' || descriptor.status === 'unavailable') {
+    return <Alert variant="destructive"><AlertCircle /><AlertTitle>Provider descriptor {descriptor.status}</AlertTitle><AlertDescription><p className="break-all">{descriptor.path}</p><ul className="mt-2 list-disc space-y-1 pl-4">{descriptor.errors.map((error) => <li key={error}>{error}</li>)}</ul><p className="mt-2">Stacks ignored the descriptor and kept explicit Stack declarations active.</p></AlertDescription></Alert>;
+  }
+  if (descriptor.status === 'absent') {
+    return <div className="rounded-lg border border-dashed p-4 text-sm"><p className="font-medium">No provider descriptor</p><p className="mt-1 text-muted-foreground">Optional descriptor: <span className="break-all font-mono text-xs">{descriptor.path}</span>. Explicit Stack declarations remain the complete source for this component.</p></div>;
+  }
+  return <div className="rounded-lg border bg-muted/20 p-4 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">Provider descriptor</p><span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">valid</span></div><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{descriptor.path}</p><div className="mt-3 grid gap-3 sm:grid-cols-3"><ConfigurationSummary label="Published" values={descriptor.publishedCapabilities} /><ConfigurationSummary label="Applied" values={descriptor.appliedCapabilities} /><ConfigurationSummary label="Stack overrides" values={descriptor.overriddenCapabilities} /></div></div>;
 }
 
 function CapabilityProviderForm({ stack, componentId, onChanged }: { stack: string; componentId: string; onChanged(): Promise<void> }) {

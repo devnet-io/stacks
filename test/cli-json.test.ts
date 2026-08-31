@@ -27,8 +27,9 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
   const env = { ...process.env, STACKS_CONFIG_HOME: path.join(root, "config", "stacks"), STACKS_STATE_HOME: path.join(root, "state", "stacks") };
   try {
     await mkdir(component, { recursive: true });
-    await mkdir(knowledge, { recursive: true });
+    await mkdir(path.join(knowledge, ".stack"), { recursive: true });
     await writeFile(path.join(knowledge, "engineering.md"), "# Engineering\n", "utf8");
+    await writeFile(path.join(knowledge, ".stack", "component.json"), JSON.stringify({ schemaVersion: "0.1", provides: [{ capability: "practice.published", context: [{ path: "engineering.md" }] }] }), "utf8");
     const created = runJson(["stack", "create", "tests/global-cli"], 0, env);
     const identity = object(created.stack);
     assert.equal(identity.namespace, "tests");
@@ -60,6 +61,9 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     assert.equal(object(object((components.components as unknown[])[0]).component).id, "app");
     const inspected = runJson(["component", "get", "tests/global-cli", "app"], 0, env);
     assert.equal(object(inspected.component).kind, "product");
+    const described = runJson(["component", "get", "tests/global-cli", "knowledge"], 0, env);
+    assert.equal(object(described.descriptor).status, "valid");
+    assert.deepEqual(object(described.descriptor).appliedCapabilities, ["practice.published"]);
     const located = runJson(["locate", component], 0, env);
     assert.equal(located.resolution, "component");
     assert.equal(object((located.memberships as unknown[])[0]).relativePath, ".");

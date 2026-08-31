@@ -3,6 +3,7 @@ import path from "node:path";
 import test from "node:test";
 import { resolveContext } from "../src/core/context.ts";
 import { loadStack } from "../src/core/manifest.ts";
+import { resolveComponentDescriptors } from "../src/core/component-descriptor.ts";
 import { getComponentStatuses } from "../src/core/status.ts";
 
 test("the foundational example is complete and resolves every declared context path", async () => {
@@ -20,6 +21,10 @@ test("the foundational example is complete and resolves every declared context p
 
 test("the Stacks repository dogfoods its manifest and resolves implementation context", async () => {
   const stack = await loadStack(path.resolve("."));
+  const described = await resolveComponentDescriptors(stack);
+  assert.equal(described.reports["stacks-core"]?.status, "valid");
+  assert.deepEqual(described.reports["stacks-core"]?.appliedCapabilities, ["protocol.stacks.mcp"]);
+  assert.deepEqual(described.reports["stacks-core"]?.overriddenCapabilities, ["tool.stacks.core"]);
   assert.equal(stack.manifest.metadata.name, "stacks-development");
 
   const plan = resolveContext(stack, "stacks-core", "Complete Milestone 1");

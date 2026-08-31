@@ -78,6 +78,10 @@ Returns `201` with the immutable identity. It creates catalog state only; it doe
 
 ## Add a component
 
+### `GET /api/v0.1/components?stack=namespace/name`
+
+Returns every effective component with its explicit machine binding and provider-descriptor report. The descriptor report includes `path`, `status` (`absent`, `valid`, `invalid`, or `unavailable`), `publishedCapabilities`, `appliedCapabilities`, `overriddenCapabilities`, and `errors`. Valid provider exports are composed beneath explicit Stack exports; invalid input contributes nothing. This route is read-only, performs no repository writes, and follows `schemas/http-components.schema.json`.
+
 ### `POST /api/v0.1/components`
 
 ```json

@@ -30,12 +30,13 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | Admin Activity vertical slice | Per-Stack cross-process writer serialization protects append-only JSONL events. The projection models logical work separately from child turns, preserves opening and completion summaries, aggregates provenance-labeled usage, and separates Stack changes from lifecycle noise. Versioned overview/work/turn HTTP contracts back paginated Work and Stack changes views plus deep-linked work and turn detail pages with responsive loading/empty/error/success states. Application, HTTP, lifecycle, concurrency, and UI build/browser checks cover the slice. |
 | Cross-component capability requests | Stable request IDs link missing capabilities to active requester work and expected providers. Role-checked append-only transitions distinguish requested, in-progress, provider-complete, consumer-verified, rejected, and superseded states. CLI, MCP, HTTP, structured context, and the responsive Requests list/create/detail/transition UI share the application contract. Stacks records evidence and blocking relationships but never assigns or schedules work. |
 | Three-component MVP acceptance | The copied-package gate creates independent knowledge, UI-library, and product directories in an isolated global catalog; preserves product-owned `AGENTS.md` content during activation; and drives a live stdio MCP client through discovery, orientation, compact refresh, authoritative UI reuse, a missing dialog request, separate provider work/publication/completion, consumer verification, resumed product work, and final activity inspection. |
+| Provider-owned component descriptors | An optional strict `.stack/component.json` publishes only bounded capability exports. Safe loading confines the descriptor to an explicitly bound root, rejects oversized/unknown/duplicate/escaping input, composes valid exports beneath complete-entry Stack overrides, and leaves consumer relationships Stack-owned. Component, Stack, graph, status, validation, context, CLI, MCP, HTTP, Manage UI, focused tests, and the copied-package acceptance workflow expose effective behavior and provenance. |
 
 ## Proposed
 
 - Hosted Stack snapshots, web access, and authenticated Streamable HTTP MCP.
 - Change-aware refresh deltas and optional model-specific token budgeting beyond the implemented deterministic byte-bounded briefings.
-- Optional provider-owned component self-description and later ingestion proposals after the explicit MVP workflow is proven.
+- Ingestion observations and adoption proposals now that explicit declarations and bounded provider descriptors are proven.
 
 ## Current validation
 

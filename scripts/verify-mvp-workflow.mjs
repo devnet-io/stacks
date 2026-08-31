@@ -21,6 +21,16 @@ export async function verifyMvpWorkflow({ packageRoot, root, run }) {
   await Promise.all([mkdir(knowledge, { recursive: true }), mkdir(ui, { recursive: true }), mkdir(product, { recursive: true })]);
   await writeFile(path.join(knowledge, "engineering.md"), "# Engineering rules\n\nReuse authoritative shared capabilities. Verify accessibility and tests before completion.\n", "utf8");
   await writeFile(path.join(ui, "components.md"), "# Shared UI capabilities\n\n- `ui.button`: accessible actions\n- `ui.paged-data-list`: paginated administrative data\n", "utf8");
+  await mkdir(path.join(ui, ".stack"), { recursive: true });
+  const uiDescriptor = (includeDialog = false) => ({
+    schemaVersion: "0.1",
+    provides: [
+      { capability: "ui.button", description: "Accessible shared actions", context: [{ path: "components.md", strength: "preferred" }] },
+      { capability: "ui.paged-data-list", description: "Paginated administrative data", context: [{ path: "components.md", strength: "preferred" }] },
+      ...(includeDialog ? [{ capability: "ui.dialog", description: "Accessible shared dialog", context: [{ path: "dialog.md", strength: "preferred" }] }] : []),
+    ],
+  });
+  await writeFile(path.join(ui, ".stack", "component.json"), `${JSON.stringify(uiDescriptor(), null, 2)}\n`, "utf8");
   await writeFile(path.join(product, "product.md"), "# Product constraints\n\nDo not introduce product-local substitutes for capabilities owned by the shared UI library.\n", "utf8");
   await writeFile(path.join(product, "AGENTS.md"), "# Product-owned agent instructions\n\nPreserve this text.\n", "utf8");
 
@@ -35,8 +45,6 @@ export async function verifyMvpWorkflow({ packageRoot, root, run }) {
   await cli(["component", "add", stack, "ui-library", "--path", ui, "--kind", "library"]);
   await cli(["component", "add", stack, "product", "--path", product, "--kind", "product"]);
   await cli(["component", "provide", stack, "knowledge", "practice.engineering", "--context", "engineering.md", "--strength", "required"]);
-  await cli(["component", "provide", stack, "ui-library", "ui.button", "--context", "components.md", "--strength", "preferred"]);
-  await cli(["component", "provide", stack, "ui-library", "ui.paged-data-list", "--context", "components.md", "--strength", "preferred"]);
   await cli(["component", "consume", stack, "product", "practice.engineering", "--from", "knowledge"]);
   await cli(["component", "consume", stack, "product", "ui.button", "--from", "ui-library"]);
   await cli(["component", "consume", stack, "product", "ui.paged-data-list", "--from", "ui-library"]);
@@ -55,6 +63,9 @@ export async function verifyMvpWorkflow({ packageRoot, root, run }) {
     assert.equal(memberships.memberships[0]?.stack.namespace, "verification");
     assert.equal(memberships.memberships[0]?.component.id, "product");
     assert.equal((await mcp.call("component_get", { stack, componentId: "product" })).component.kind, "product");
+    const uiComponent = await mcp.call("component_get", { stack, componentId: "ui-library" });
+    assert.equal(uiComponent.descriptor.status, "valid");
+    assert.deepEqual(uiComponent.descriptor.appliedCapabilities, ["ui.button", "ui.paged-data-list"]);
     assert.equal((await mcp.call("stack_status", { stack })).components.length, 3);
 
     const productWork = await mcp.call("work_start", { stack, componentId: "product", summary: "Build the administration section", agent: "acceptance-agent" });
@@ -88,7 +99,7 @@ export async function verifyMvpWorkflow({ packageRoot, root, run }) {
     assert.equal(providerTurn.context.capabilityRequests[0]?.requestId, requestId);
     await mcp.call("capability_request_transition", { stack, requestId, componentId: "ui-library", status: "in-progress", summary: "Dialog implementation started." });
     await writeFile(path.join(ui, "dialog.md"), "# Dialog\n\n`ui.dialog` provides an accessible modal surface with focus management.\n", "utf8");
-    await mcp.call("capability_provide", { stack, componentId: "ui-library", capability: "ui.dialog", contextPath: "dialog.md", strength: "preferred" });
+    await writeFile(path.join(ui, ".stack", "component.json"), `${JSON.stringify(uiDescriptor(true), null, 2)}\n`, "utf8");
     await mcp.call("capability_request_transition", { stack, requestId, componentId: "ui-library", status: "provider-complete", summary: "Accessible dialog published.", evidence: "dialog.md" });
     await mcp.call("turn_complete", { stack, sessionId: providerWork.sessionId, turnId: providerTurn.turnId, summary: "Published and documented ui.dialog.", status: "complete", changedPaths: ["dialog.md"] });
     await mcp.call("work_complete", { stack, sessionId: providerWork.sessionId, summary: "Dialog capability is ready for consumer verification." });

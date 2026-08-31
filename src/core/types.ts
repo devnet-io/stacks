@@ -21,6 +21,23 @@ export interface CapabilityExport {
   context?: ContextPath[];
 }
 
+export interface ComponentDescriptor {
+  schemaVersion: "0.1";
+  provides: CapabilityExport[];
+}
+
+export type ComponentDescriptorStatus = "absent" | "valid" | "invalid" | "unavailable";
+
+export interface ComponentDescriptorReport {
+  componentId: string;
+  path: string;
+  status: ComponentDescriptorStatus;
+  publishedCapabilities: string[];
+  appliedCapabilities: string[];
+  overriddenCapabilities: string[];
+  errors: string[];
+}
+
 export interface CapabilityRequirement {
   capability: string;
   from?: string;

@@ -22,8 +22,9 @@ test("global local API lists and explicitly selects registered Stacks", async ()
   const knowledge = path.join(root, "knowledge");
   const rebound = path.join(root, "rebound-app");
   await mkdir(component, { recursive: true });
-  await mkdir(knowledge, { recursive: true });
+  await mkdir(path.join(knowledge, ".stack"), { recursive: true });
   await writeFile(path.join(knowledge, "engineering.md"), "# Engineering\n", "utf8");
+  await writeFile(path.join(knowledge, ".stack", "component.json"), JSON.stringify({ schemaVersion: "0.1", provides: [{ capability: "practice.published", context: [{ path: "engineering.md" }] }] }), "utf8");
   await mkdir(rebound, { recursive: true });
   await createRegisteredStack("acme/one", directories);
   await createRegisteredStack("acme/two", directories);
@@ -69,8 +70,10 @@ test("global local API lists and explicitly selects registered Stacks", async ()
       body: JSON.stringify({ stack: "acme/three", componentId: "app", path: "AGENTS.md", strength: "preferred" }),
     });
     assert.equal(guidance.status, 200, await guidance.text());
-    const configuredComponents = await (await fetch(`${api.origin}/api/v0.1/components?stack=acme%2Fthree`)).json() as { components: Array<{ component: { id: string; consumes?: unknown[] } }> };
+    const configuredComponents = await (await fetch(`${api.origin}/api/v0.1/components?stack=acme%2Fthree`)).json() as { components: Array<{ component: { id: string; consumes?: unknown[] }; descriptor: { status: string } }> };
     assert.equal(configuredComponents.components.find((item) => item.component.id === "app")?.component.consumes?.length, 1);
+    assert.equal(configuredComponents.components.find((item) => item.component.id === "app")?.descriptor.status, "absent");
+    assert.equal(configuredComponents.components.find((item) => item.component.id === "knowledge")?.descriptor.status, "valid");
 
     const registered = await loadRegisteredStack("acme/three", directories);
     const requestWork = await startWork(registered, { componentId: "app", summary: "Need shared modal" });

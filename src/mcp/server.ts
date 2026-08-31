@@ -60,17 +60,17 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
   }, async ({ path }) => result(await application.findMemberships(path ?? process.cwd()) as unknown as Record<string, unknown>));
 
   server.registerTool("stack_get", {
-    title: "Get Stack", description: "Return one registered Stack definition and component bindings.", inputSchema: z.object({ stack: selector }),
+    title: "Get Stack", description: "Return one declared Stack definition, its effective provider-descriptor composition, descriptor provenance, and component bindings.", inputSchema: z.object({ stack: selector }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector }) => result(await application.getStack({ stack: stackSelector }) as unknown as Record<string, unknown>));
 
   server.registerTool("component_list", {
-    title: "List components", description: "List component definitions and explicit machine bindings for one Stack.", inputSchema: z.object({ stack: selector }),
+    title: "List components", description: "List effective component definitions, provider-descriptor provenance, and explicit machine bindings for one Stack.", inputSchema: z.object({ stack: selector }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector }) => result(await application.listComponents(stackSelector) as unknown as Record<string, unknown>));
 
   server.registerTool("component_get", {
-    title: "Get component", description: "Return one component definition and its explicit machine binding.",
+    title: "Get component", description: "Return one effective component definition, provider-descriptor status and precedence, and its explicit machine binding.",
     inputSchema: z.object({ stack: selector, componentId: z.string().min(1) }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector, componentId }) => result(await application.getComponent(stackSelector, componentId) as unknown as Record<string, unknown>));

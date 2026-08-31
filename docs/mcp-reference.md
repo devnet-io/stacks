@@ -98,7 +98,7 @@ Side effects: none; read-only and idempotent. It does not inspect repository nam
 
 ### `stack_get`
 
-Returns one effective registered Stack definition plus machine-local component bindings.
+Returns one registered Stack definition plus its effective descriptor-composed view and machine-local component bindings.
 
 Input:
 
@@ -106,13 +106,13 @@ Input:
 { "stack": "acme/customer-portal" }
 ```
 
-Output: `manifest` and `bindings`. Bindings contain local absolute paths and are not portable definition data.
+Output: `manifest` is the declared durable Stack definition, `effectiveManifest` composes valid provider descriptor exports beneath explicit Stack exports, `descriptors` contains per-component provenance and diagnostics, and `bindings` contains local absolute paths. Bindings and descriptor paths are machine-local and are not portable definition data.
 
 Side effects: none; read-only and idempotent.
 
 ### `component_list`
 
-Lists every component declaration and explicit machine binding for one Stack.
+Lists every effective component declaration, explicit machine binding, and provider-descriptor report for one Stack. A report includes the fixed descriptor path, status, published/applied/overridden capabilities, and errors. Invalid or unavailable descriptors are ignored rather than partially applied.
 
 ```json
 { "stack": "acme/customer-portal" }
@@ -122,7 +122,7 @@ Side effects: none; read-only and idempotent.
 
 ### `component_get`
 
-Returns one complete component declaration and its explicit binding.
+Returns one effective component declaration, its explicit binding, and the same provider-descriptor provenance. Valid `.stack/component.json` exports appear in `component.provides`; a same-capability explicit Stack entry replaces the descriptor entry completely. Consumer requirements are never read from descriptors.
 
 ```json
 { "stack": "acme/customer-portal", "componentId": "shared-ui" }

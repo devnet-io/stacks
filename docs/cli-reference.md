@@ -66,7 +66,7 @@ stacks stack list --json
 
 ### `stacks component list`
 
-Lists every component in one Stack with its kind and explicit local binding.
+Lists every effective component in one Stack with its kind, explicit local binding, and structured provider-descriptor provenance under `--json`.
 
 ```text
 stacks component list <namespace/name> [--json]
@@ -78,7 +78,7 @@ stacks component list acme/customer-portal --json
 
 ### `stacks component get`
 
-Returns one complete component declaration plus its machine-local binding.
+Returns one effective component declaration plus its machine-local binding and provider-descriptor report. Human output identifies descriptor status and any applied or Stack-overridden capabilities; `--json` includes the fixed path, `absent|valid|invalid|unavailable` status, published/applied/overridden capability lists, and validation errors.
 
 ```text
 stacks component get <namespace/name> <id> [--json]
@@ -133,6 +133,8 @@ stacks component provide acme/customer-portal shared-ui ui.react.components --co
 ```
 
 Saving the same component and capability replaces that export instead of creating a duplicate. A state change writes only the portable Stack definition and appends a `component.configuration.changed` event; an identical upsert is an event no-op. It never modifies the component repository.
+
+An explicit Stack export also replaces the complete provider-owned `.stack/component.json` entry for the same capability. Other valid descriptor exports remain effective. See [Provider-owned component descriptors](user-guide.md#provider-owned-component-descriptors).
 
 ### `stacks component consume`
 

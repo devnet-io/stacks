@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-components.schema.json",
+  "title": "Stacks component list response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stack", "components"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "namespace", "name"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "namespace": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "descriptor"],
+        "properties": {
+          "component": { "$ref": "stack.schema.json#/$defs/component" },
+          "binding": { "type": "string", "minLength": 1 },
+          "descriptor": { "$ref": "#/$defs/descriptorReport" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "descriptorReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["componentId", "path", "status", "publishedCapabilities", "appliedCapabilities", "overriddenCapabilities", "errors"],
+      "properties": {
+        "componentId": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["absent", "valid", "invalid", "unavailable"] },
+        "publishedCapabilities": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "appliedCapabilities": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "overriddenCapabilities": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "errors": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  }
+}

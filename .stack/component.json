@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "0.1",
+  "provides": [
+    {
+      "capability": "tool.stacks.core",
+      "description": "Local-first Stack composition, context, and activity interfaces.",
+      "context": [
+        {
+          "path": "docs/product.md",
+          "strength": "required",
+          "priority": 1000
+        }
+      ]
+    },
+    {
+      "capability": "protocol.stacks.mcp",
+      "description": "Agent-facing Stacks stdio MCP protocol and operating guidance.",
+      "context": [
+        {
+          "path": "docs/mcp-reference.md",
+          "strength": "reference",
+          "priority": 700
+        }
+      ]
+    }
+  ]
+}

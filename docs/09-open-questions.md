@@ -14,12 +14,6 @@ These are deliberately deferred. Codex should not silently lock them in without 
 - Should comments live in sidecar Markdown rather than JSONC/YAML?
 - How should `apiVersion` migrations work?
 
-## Component self-description
-
-- Should reusable components publish `.stack/component.json`?
-- Which fields can a stack overlay, and which are component-owned?
-- How are untrusted self-descriptions validated before context exposure?
-
 ## Workspace and Git
 
 - Should active components track branches while references pin commits?
