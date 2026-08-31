@@ -48,7 +48,9 @@ MCP may add an existing local component and change its binding, but Git cloning 
 
 ## Skills and clients
 
-The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, start each participating turn, use its returned bounded context, close the same turn with known telemetry, preserve component-local instructions, and append the final work outcome. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
+The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, start each participating turn, use its returned context plan, close the same turn with known telemetry, preserve component-local instructions, and append the final work outcome. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
+
+This is instruction-driven participation, not enforcement by the core. A client may not expose a reliable per-turn hook, and the current turn-start result is a plan of pointers rather than a materialized briefing. Its event records counts but no stable plan digest, so exact historical briefing reconstruction remains proposed work.
 
 Not every client exposes tokens, model identity, tool calls, or stable sessions. Adapters record partial facts and never fabricate values. Cost remains `reported`, `estimated`, or `allocated`.
 

@@ -1,6 +1,12 @@
 # MVP agent workflow vision
 
-This document captures an illustrative target workflow for Stacks. It refines the product vision but does not claim that every behavior is implemented. See [Project status](project-status.md) for delivery evidence.
+This document captures an illustrative target workflow for Stacks. It refines the product vision but does not claim that every behavior is implemented.
+
+## Status and authority
+
+This is a proposed workflow, not current-state documentation and not an accepted technical design. The enduring product commitments belong in [Product](product.md), implemented behavior and limitations belong in [Current architecture](architecture.md), delivery evidence belongs in [Project status](project-status.md), and the implementation order belongs in the [Roadmap](08-roadmap.md). [ADR 0010](adr/0010-turns-are-first-class-protocol-boundaries.md) records the first implemented slice from this vision: explicit turn boundaries and turn-linked telemetry.
+
+The vision is useful as the end-to-end acceptance scenario for the local MVP. Individual representations—guidance cadence, briefing budgets, context-plan identity, capability-request states, and component self-description—still require focused decisions before implementation. Implementing one of those decisions must update the current-state documents; editing this vision alone never makes it shipped behavior.
 
 ## Purpose
 

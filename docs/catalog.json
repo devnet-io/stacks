@@ -15,7 +15,7 @@
     { "path": "docs/08-roadmap.md", "id": "roadmap", "category": "current", "lifecycle": "current", "order": 40, "summary": "Milestones and the agreed active implementation sequence." },
     { "path": "docs/project-status.md", "id": "project-status", "category": "current", "lifecycle": "current", "order": 50, "summary": "Evidence-backed implemented, proposed, and validation state." },
     { "path": "docs/09-open-questions.md", "id": "open-questions", "category": "current", "lifecycle": "proposed", "order": 60 },
-    { "path": "docs/11-mvp-agent-workflow-vision.md", "id": "mvp-agent-workflow-vision", "category": "current", "lifecycle": "proposed", "order": 70, "summary": "Illustrative MVP workflow for layered guidance, capability reuse, and cross-component requests." },
+    { "path": "docs/11-mvp-agent-workflow-vision.md", "id": "mvp-agent-workflow-vision", "category": "decisions", "lifecycle": "proposed", "order": 190, "summary": "Proposed MVP acceptance workflow for layered guidance, capability reuse, and cross-component requests." },
     { "path": "docs/10-validation-and-handoff.md", "id": "validation-and-handoff", "category": "archive", "lifecycle": "archive", "order": 90 },
 
     { "path": "docs/adr/README.md", "id": "adr-index", "category": "decisions", "lifecycle": "current", "order": 0, "summary": "Index of accepted architecture decisions and their relationship to current architecture." },

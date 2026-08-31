@@ -275,9 +275,12 @@ function RecentEvents({ events }: { events: ActivityEvent[] }) {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {event.summary ?? usageSummary(event) ?? event.componentId ?? 'Stack event'}
                 </p>
-                {(event.componentId || event.actor?.client || event.actor?.agent) && (
+                {(event.componentId || event.turnId || event.actor?.client || event.actor?.agent) && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {event.componentId && <Badge variant="outline">{event.componentId}</Badge>}
+                    {event.turnId && (
+                      <Badge variant="outline" title={event.turnId}>Turn {event.turnId.slice(0, 8)}</Badge>
+                    )}
                     {(event.actor?.agent || event.actor?.client) && (
                       <Badge variant="secondary">{event.actor.agent ?? event.actor.client}</Badge>
                     )}
@@ -304,6 +307,7 @@ function eventLabel(type: string): string {
     'component.added': 'Component added',
     'component.binding.changed': 'Component binding changed',
     'work.started': 'Work started',
+    'turn.started': 'Turn started',
     'turn.completed': 'Turn completed',
     'work.completed': 'Work completed',
     'usage.recorded': 'Usage recorded',

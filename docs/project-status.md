@@ -8,8 +8,8 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 | --- | --- |
 | Manifest and context spike | Existing unit tests validate manifests and resolve layered capability context. |
 | Conservative Git operations | Temporary-repository integration test covers clone, fetch, dirty preservation, and lock observation. |
-| Stack, agent, turn, and usage events | Application, HTTP, lifecycle, and aggregation tests cover Stack creation, component addition and rebinding, work sessions, first-class turn starts/completions, turn-linked live telemetry, delayed usage imports, and work completion with adapter provenance. |
-| Foundation example | Example test verifies materialized paths and selected context. |
+| Stack, agent, turn, and usage events | Application, HTTP, lifecycle, and aggregation tests cover Stack creation, component addition and rebinding, work sessions, first-class turn starts/completions, turn-linked live telemetry, delayed usage imports, and work completion with adapter provenance. Turn start returns a context plan but durably records only its generation time and aggregate counts. |
+| Foundation example | Example test verifies declared context paths and deterministic capability-based selection. It does not materialize a briefing. |
 | npm workspace and copied installation | Root workspaces include local web and reserved cloud applications. `install:local` gracefully retires registered UI processes, then packs and globally installs a copied CLI plus static web artifact; the quality gate verifies an isolated non-symlink installation and starts its unified UI/API process. |
 | Stable Stack identity | Manifests require immutable ID, namespace, and name; events and plans use the immutable ID. |
 | Documentation truth model | Product, current architecture, user guide, RFC, decision, archive, and status sources are distinct. `docs/catalog.json` is the shared lifecycle/navigation registry; `npm run docs:check` rejects uncataloged or missing documents, duplicate metadata, invalid lifecycle values, and broken relative Markdown links. |
@@ -32,7 +32,10 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 ## Proposed
 
 - Hosted Stack snapshots, web access, and authenticated Streamable HTTP MCP.
-- Context materialization under explicit byte/token budgets.
+- Authorable capability relationships, guidance, and bounded resource exports through the shared application adapters and Manage UI.
+- Session-orientation and turn-refresh briefings with deterministic task-sensitive selection, explicit byte/token budgets, provenance, omissions, and a durable plan revision or digest.
+- Append-only cross-component capability requests with provider and consumer views, evidence, blocking relationships, and consumer verification—but no agent assignment or scheduling.
+- Optional provider-owned component self-description and later ingestion proposals after the explicit MVP workflow is proven.
 
 ## Current validation
 

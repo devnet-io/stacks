@@ -12,6 +12,8 @@ Stacks needs a client-neutral turn boundary without assuming that every client d
 
 A work session is an umbrella for one component and may contain multiple turns. Each new participating turn starts explicitly and receives a stable `turnId`. Starting a turn requires an active session and a concise task description, resolves the target component's current context plan, appends `turn.started`, and returns the event plus that plan. The task informs the transient context result but is not copied into the durable activity event.
 
+The current `turn.started` record stores the plan generation time and aggregate item/warning/error counts, not the selected paths, content, or task. A stable plan revision or digest is required before activity history can identify the exact returned plan; that is intentionally deferred with briefing materialization rather than approximated from later Stack state.
+
 Only one turn may be open in a session. Completing a turn requires its `sessionId` and `turnId`, refuses unknown or already completed turns, and appends `turn.completed`. Known provider/model/token/duration/tool/cost facts may be supplied with completion. When present, Stacks appends a linked `usage.recorded` event under the same writer lock and sync operation. Both events carry the same session and turn identities.
 
 Delayed provider exports and external measurements use an explicitly named usage-import operation. Imported usage may link to a known turn or session when that identity is available, but it is not presented as live turn completion. Reports continue to aggregate both live and imported `usage.recorded` events while preserving cost provenance.

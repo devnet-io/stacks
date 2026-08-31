@@ -42,33 +42,33 @@ Add:
 
 Exit condition: the CLI, local web UI, and MCP use the same application services, and pure graph/context selection has no Node filesystem dependency.
 
-## Milestone 3: self-describing components and ingestion proposals
+## Milestone 3: dependable MVP agent workflow
 
-Add:
+Complete the proposed [MVP agent workflow](11-mvp-agent-workflow-vision.md) with the smallest explicit mechanisms:
+
+- authorable capability providers, consumer relationships, guidance, and bounded resource exports through shared application adapters;
+- distinct session-orientation, compact turn-refresh, and on-demand context products;
+- deterministic task-sensitive selection before optional semantic ranking;
+- hard byte budgets, safe file materialization, provenance, omissions, and a stable context-plan revision or digest;
+- append-only cross-component capability requests with provider completion and separate consumer verification;
+- full CLI, MCP, HTTP, Activity, and Manage UI slices for the implemented operations;
+- one exercised three-component Stack using curated Markdown indexes and explicit declarations.
+
+Exit condition: an activated product agent can discover its Stack, receive a bounded briefing, reuse an authoritative UI capability, record a missing capability request, observe provider completion, verify it, and resume—without Stacks assigning or scheduling agents.
+
+## Milestone 4: self-description, ingestion, and richer retrieval
+
+Add after the explicit MVP workflow is proven:
 
 - optional `.stack/component.json` published by reusable components;
 - stack-level overlays with explicit precedence;
-- ingestion source registry;
-- read-only acquisition and inventory;
-- observation and adoption-proposal schemas;
-- approval/disposition records;
+- ingestion source registry, read-only acquisition, and inventory;
+- observation and adoption-proposal schemas with approval/disposition records;
 - provenance links to resulting commits/docs;
-- a simple activity/usage report command.
+- glob expansion and Markdown/source chunking within authorized exports;
+- optional semantic ranking and a cached local index, potentially SQLite/FTS.
 
-Exit condition: a reference project can be safely inspected and produce reviewable target-specific improvement proposals.
-
-## Milestone 4: bounded context materialization
-
-Add:
-
-- byte/token budgets;
-- glob expansion under verified roots;
-- Markdown/source chunking with provenance;
-- deterministic selectors and optional semantic ranking within authorized exports;
-- cached local index, potentially SQLite/FTS;
-- generated agent briefings and component instruction overlays.
-
-Exit condition: agents receive useful task-specific context at controlled size, with clear omissions and reasons.
+Exit condition: reusable components can safely publish bounded descriptions, and a reference project can produce reviewable target-specific proposals without changing canonical targets automatically.
 
 ## Milestone 5: ecosystem/layout adapters
 
@@ -109,15 +109,19 @@ This is the agreed delivery order after the first global catalog, UI, and MCP sl
 
 Before expanding into component descriptors, remote transports, collections, or ingestion, the copied installation must support one reliable loop: create a Stack, attach existing component directories, inspect and manage it in the global UI, activate a component's `AGENTS.md`, restart/connect an agent client, discover membership through MCP, resolve context, and record work. `npm run check` must verify the packed CLI, MCP tool/resource contract, and web runtime. Friction in this loop takes priority over later milestones.
 
-1. Finish global CLI migration. Global commands use the machine catalog; single-Stack commands require `--stack`; directory manifests are reached only through explicit legacy `--root` or `init` behavior.
-2. Establish one `StacksApplication` use-case boundary and move CLI, MCP, and HTTP orchestration behind it. Keep an in-process implementation as the default.
-3. Complete write-operation parity for Stack/component management through the application boundary, versioned HTTP API, CLI, MCP, and full UI editing slices. Membership discovery and local add/bind parity are complete; capability and guidance editing remains.
+1. **Complete:** global CLI migration. Global commands use the machine catalog; single-Stack commands require `--stack`; directory manifests are reached only through explicit legacy `--root` or `init` behavior.
+2. **Complete:** establish one `StacksApplication` use-case boundary for CLI, MCP, and HTTP orchestration, with an in-process implementation as the default.
+3. Complete write-operation parity for Stack/component management through the application boundary, versioned HTTP API, CLI, MCP, and full UI editing slices. Membership discovery and local add/bind parity are complete; capability, relationship, guidance, and resource-export editing remains.
 4. **Complete:** add opt-in agent activation. The adapter manages only a delimited Stacks block in `AGENTS.md`, with print/check/install/remove modes; it preserves user-owned instructions and uses membership discovery rather than hard-coding one Stack.
-5. Define the provider-owned self-description contract for capabilities and bounded resource exports, while keeping consumer relationships in the Stack definition. Record the context-precedence decision in an ADR.
-6. Add remote transports together: an HTTP application client plus global `--endpoint` and `STACKS_ENDPOINT` selection for the CLI, and a Streamable HTTP MCP endpoint backed by the same `StacksApplication` and authentication boundary. Local in-process CLI execution and local stdio MCP remain the defaults; `stacks mcp --endpoint` may bridge stdio-only clients to a remote application. Non-loopback exposure requires authentication.
-7. Define a portable Stack collection format. A collection versions Stack definitions but excludes machine bindings, credentials, caches, and local activity state.
-8. Implement generic Git-backed collection add, list, sync, remove, and explicit publish workflows using existing Git authentication.
-9. Build the Collections admin section as a complete vertical slice, including divergence and conflict states.
-10. Add optional GitHub conveniences—OAuth or GitHub App connection, repository selection/creation, permissions, and pull-request publishing—without embedding GitHub in the core model.
+5. **Complete:** make turns first-class protocol boundaries. `turn_start` returns the current context plan, `turn_complete` records progress and known live telemetry under the same turn identity, and delayed measurements use `usage_import`. Exact plan identity and briefing materialization remain later steps.
+6. Add capability, authoritative-provider, guidance, and bounded-resource authoring through the application boundary and a complete Manage slice. Explicit Stack declarations come before provider self-description.
+7. Build the minimum dependable briefing: session orientation and compact turn refresh, deterministic task-sensitive selection, hard byte budgets, safe excerpts, provenance, explicit omissions, and a durable plan revision or digest.
+8. Add cross-component capability requests as a complete vertical slice: create, list, inspect, transition, provider-complete, consumer-verify, and link blocked work through append-only events. Stacks records the protocol but never assigns agents or schedules execution.
+9. Exercise the complete [three-component MVP workflow](11-mvp-agent-workflow-vision.md) through a copied installation and real agent activation before expanding the platform boundary.
+10. Define optional provider-owned self-description for capabilities and bounded exports, with consumer relationships remaining in the Stack definition and precedence recorded in an ADR.
+11. Add remote transports together: an HTTP application client plus global `--endpoint` and `STACKS_ENDPOINT` selection for the CLI, and a Streamable HTTP MCP endpoint backed by the same `StacksApplication` and authentication boundary. Local in-process CLI execution and local stdio MCP remain the defaults; `stacks mcp --endpoint` may bridge stdio-only clients to a remote application. Non-loopback exposure requires authentication.
+12. Define and implement a portable, generic Git-backed Stack collection format and explicit add/list/sync/remove/publish workflows. Collections exclude machine bindings, credentials, caches, and local activity state.
+13. Build the Collections admin section as a complete vertical slice, including divergence and conflict states.
+14. Add optional GitHub conveniences—OAuth or GitHub App connection, repository selection/creation, permissions, and pull-request publishing—without embedding GitHub in the core model.
 
 Each numbered item must update tests, schemas, interface references, current architecture, and project status in the same change. The REST and MCP HTTP surfaces share application semantics, service origin, Stack authorization, and credential policy rather than becoming separate hosted systems. Generic Git collections precede GitHub-specific integration.

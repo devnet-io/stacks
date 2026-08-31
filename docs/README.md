@@ -13,6 +13,7 @@ Every Markdown document is registered once in `catalog.json` with a stable ID, n
 | Interface references | [CLI commands](cli-reference.md), [MCP server](mcp-reference.md), and [local HTTP API](http-reference.md) | Exhaustive current command, tool, resource, endpoint, input, output, side-effect, and example documentation. |
 | Installation and deployment | [Current contract](deployment.md) | Copied package installation, runtime-derived instructions, and secret handling supported now. |
 | Delivery plan | [Roadmap](08-roadmap.md) and [open questions](09-open-questions.md) | The ordered implementation sequence and unresolved product decisions. |
+| Workflow vision | [MVP agent workflow](11-mvp-agent-workflow-vision.md) | A proposed end-to-end acceptance scenario. It guides planning but is neither current-state evidence nor a settled technical design. |
 | Architecture decisions | [ADR index](adr/README.md) | Accepted decisions that explain why the current architecture has its shape. |
 | Change proposals | [RFC index](rfcs/README.md) | Proposed or accepted-but-not-yet-implemented direction. Acceptance is not implementation. |
 | Delivery evidence | [Project status](project-status.md) | What is implemented, in progress, proposed, or blocked, with validation evidence. |

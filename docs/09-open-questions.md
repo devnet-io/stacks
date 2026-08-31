@@ -33,6 +33,16 @@ These are deliberately deferred. Codex should not silently lock them in without 
 - How should conflicting required guidance be surfaced?
 - How should target-specific preferences override general stack guidance without erasing it?
 - What budget unit is most portable across model providers?
+- Which guidance cadence vocabulary best represents session orientation, turn refresh, and on-demand consultation without coupling the core to one client?
+- What stable revision or digest is sufficient to identify the exact context plan returned for a turn without storing prompts or sensitive content?
+- How should deterministic task selection work before optional semantic ranking exists?
+
+## Cross-component capability requests
+
+- Is a capability request a Stack-native domain object, an event-derived projection, or a portable file plus append-only transitions?
+- Which minimal states preserve provider completion and separate consumer verification without turning Stacks into an issue tracker?
+- How should a blocked work session reference a request, and how should later turns discover relevant changes?
+- What evidence may be attached safely, and which evidence remains a path or external reference rather than copied content?
 
 ## Events and analytics
 

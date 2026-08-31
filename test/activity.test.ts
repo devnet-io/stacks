@@ -39,6 +39,7 @@ test("builds a bounded activity view with session and cost provenance", async ()
     ]);
     assert.equal(activity.sessions.find((session) => session.status === "success")?.turns, 1);
     assert.equal(activity.recentEvents[0]?.type, "work.started");
+    assert.equal(activity.recentEvents.find((event) => event.type === "turn.started")?.turnId, turn.turnId);
     assert.equal(activity.recentEvents.find((event) => event.type === "component.added")?.actor?.client, "stacks-test");
     assert.equal(activity.sessionLimit, 100);
     assert.equal(activity.recentEventLimit, 100);

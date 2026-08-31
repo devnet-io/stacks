@@ -9,6 +9,8 @@ Build **Stacks** as a local-first, portable, agent-agnostic composition and cont
 
 Read `docs/00-input-synthesis.md` and the current-state documentation named below before making architectural changes.
 
+For work on the local agent MVP, also read `docs/11-mvp-agent-workflow-vision.md` and the active sequence in `docs/08-roadmap.md`. The workflow vision is a proposed acceptance scenario, not implementation evidence; use current architecture and project status to determine what actually exists.
+
 ## Documentation truth policy
 
 - Read `docs/README.md`, `docs/product.md`, `docs/architecture.md`, and `docs/project-status.md` before changing product or architecture behavior.
@@ -57,12 +59,15 @@ Read `docs/00-input-synthesis.md` and the current-state documentation named belo
 
 ## Working sequence
 
-1. Run `npm test`.
-2. Validate and inspect the example stack.
-3. Implement the smallest coherent milestone from `docs/08-roadmap.md`.
-4. Add or update tests and schemas.
-5. Run `npm run check` before considering a milestone complete.
-6. Update current documentation and `docs/project-status.md` before considering the work complete.
+1. Inspect `git status`, the latest commits, and active documentation before acting; parallel tasks may have advanced the checkout since an earlier conversation summary.
+2. Run `npm test`.
+3. Validate and inspect the example stack.
+4. Implement the smallest coherent milestone from the active sequence in `docs/08-roadmap.md`. Close exercised local-MVP friction before moving to remote transports, Collections, GitHub conveniences, or ingestion.
+5. Add or update tests and schemas.
+6. Run `npm run check` before considering a milestone complete.
+7. Update current documentation and `docs/project-status.md` before considering the work complete.
+8. For a product delivery intended for local evaluation, refresh the copied installation with `npm run install:local`, verify the installed version, and leave the global UI running again. MCP contract changes also require the agent client to be fully restarted before its live tool registry can be evaluated.
+9. The user expects each completed coherent delivery in this workspace to be committed and pushed. Preserve unrelated work, stage explicit files when necessary, and report the commit and push result.
 
 ## Admin UI vertical slices
 
