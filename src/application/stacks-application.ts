@@ -1,7 +1,8 @@
 import path from "node:path";
-import type { CapabilityExport, CapabilityRequirement, EventActor, Guidance, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
+import type { CapabilityExport, CapabilityRequirement, ContextBriefing, ContextPlan, EventActor, Guidance, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
 import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
+import { materializeContextBriefing, type BriefingOptions } from "../core/briefing.ts";
 import { completeTurn, completeWork, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordComponentConfigurationChanged, recordStackCreated, startTurn as startCoreTurn, startWork } from "../core/events.ts";
 import { syncComponent } from "../core/git.ts";
 import { initializeStack } from "../core/init.ts";
@@ -45,6 +46,7 @@ export interface ComponentListOutput {
 export interface MembershipOutput {
   schemaVersion: "0.1";
   path: string;
+  resolution: "component" | "ancestor" | "none";
   memberships: ComponentMembership[];
 }
 
@@ -75,8 +77,10 @@ export interface TurnStartOutput {
   sessionId: string;
   turnId: string;
   turn: StackEvent;
-  context: ReturnType<typeof resolveContext>;
+  context: ResolvedContext;
 }
+
+export interface ResolvedContext extends ContextPlan { briefing: ContextBriefing }
 
 export interface StacksApplication {
   listStacks(): Promise<StackIdentity[]>;
@@ -96,9 +100,9 @@ export interface StacksApplication {
   getCatalogStatus(): Promise<CatalogStatusOutput>;
   sync(reference: StackReference, options: { dryRun: boolean; update: boolean }): Promise<SyncOutput>;
   lock(reference: StackReference): Promise<LockOutput>;
-  resolveContext(reference: StackReference, target: string, task?: string): Promise<ReturnType<typeof resolveContext>>;
+  resolveContext(reference: StackReference, target: string, task?: string, options?: BriefingOptions): Promise<ResolvedContext>;
   startWork(reference: StackReference, input: { componentId: string; summary: string; workId?: string; actor?: EventActor }): Promise<StackEvent>;
-  startTurn(reference: StackReference, input: { sessionId: string; task: string }): Promise<TurnStartOutput>;
+  startTurn(reference: StackReference, input: { sessionId: string; task: string; maxBytes?: number }): Promise<TurnStartOutput>;
   completeTurn(reference: StackReference, input: { sessionId: string; turnId: string; summary: string; status?: "progress" | "blocked" | "failed" | "complete"; changedPaths?: string[]; nextStep?: string; usage?: UsageData }): ReturnType<typeof completeTurn>;
   completeWork(reference: StackReference, input: { sessionId: string; summary: string; outcome?: "success" | "partial" | "failed" | "cancelled"; remaining?: string[] }): Promise<StackEvent>;
   importUsage(reference: StackReference, input: { sessionId?: string; turnId?: string; componentId?: string; workId?: string; actor?: EventActor; usage: UsageData }): Promise<StackEvent>;
@@ -142,7 +146,13 @@ export class LocalStacksApplication implements StacksApplication {
   }
 
   async findMemberships(directory: string): Promise<MembershipOutput> {
-    return { schemaVersion: "0.1", path: path.resolve(directory), memberships: await findRegisteredComponentMemberships(directory, this.options.catalogDirectories) };
+    const memberships = await findRegisteredComponentMemberships(directory, this.options.catalogDirectories);
+    return {
+      schemaVersion: "0.1",
+      path: path.resolve(directory),
+      resolution: memberships[0]?.relationship ?? "none",
+      memberships,
+    };
   }
 
   async listComponents(stack: string): Promise<ComponentListOutput> {
@@ -258,23 +268,42 @@ export class LocalStacksApplication implements StacksApplication {
     return lockOutput(stack, await writeLockSnapshot(stack));
   }
 
-  async resolveContext(reference: StackReference, target: string, task?: string): Promise<ReturnType<typeof resolveContext>> {
-    return resolveContext(await this.load(reference), target, task);
+  async resolveContext(reference: StackReference, target: string, task?: string, options: BriefingOptions = {}): Promise<ResolvedContext> {
+    const stack = await this.load(reference);
+    const plan = resolveContext(stack, target, task);
+    return { ...plan, briefing: await materializeContextBriefing(stack, plan, options) };
   }
 
   async startWork(reference: StackReference, input: Parameters<typeof startWork>[1]): Promise<StackEvent> {
     return startWork(await this.load(reference), input);
   }
 
-  async startTurn(reference: StackReference, input: { sessionId: string; task: string }): Promise<TurnStartOutput> {
+  async startTurn(reference: StackReference, input: { sessionId: string; task: string; maxBytes?: number }): Promise<TurnStartOutput> {
     const stack = await this.load(reference);
     const history = await readEvents(stack);
     const session = history.events.find((event) => event.type === "work.started" && event.sessionId === input.sessionId);
     if (!session?.componentId) throw new Error(`No component-scoped work.started event found for session ${input.sessionId}.`);
-    const context = resolveContext(stack, session.componentId, input.task);
+    const previousTurns = history.events.filter((event) => event.type === "turn.started" && event.sessionId === input.sessionId).length;
+    const plan = resolveContext(stack, session.componentId, input.task);
+    const briefing = await materializeContextBriefing(stack, plan, {
+      mode: previousTurns === 0 ? "orientation" : "refresh",
+      ...(input.maxBytes === undefined ? {} : { maxBytes: input.maxBytes }),
+    });
+    const context: ResolvedContext = { ...plan, briefing };
     const turn = await startCoreTurn(stack, {
       sessionId: input.sessionId,
-      context: { generatedAt: context.generatedAt, items: context.items.length, warnings: context.warnings.length, errors: context.errors.length },
+      context: {
+        generatedAt: context.generatedAt,
+        items: context.items.length,
+        warnings: context.warnings.length,
+        errors: context.errors.length,
+        briefingDigest: briefing.digest,
+        briefingMode: briefing.mode,
+        briefingItems: briefing.items.length,
+        briefingOmissions: briefing.omissions.length,
+        briefingBytes: briefing.budget.usedBytes,
+        briefingBudgetBytes: briefing.budget.maxBytes,
+      },
     });
     return { schemaVersion: "0.1", sessionId: input.sessionId, turnId: turn.turnId!, turn, context };
   }

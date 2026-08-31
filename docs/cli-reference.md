@@ -165,7 +165,7 @@ stacks component guidance acme/customer-portal standards --path engineering.md -
 
 ### `stacks locate`
 
-Finds every registered component whose explicit binding contains the supplied directory. It defaults to the current directory and returns all matches because the same directory may belong to multiple Stacks.
+Finds Stack relationships for the supplied directory and defaults to the current directory. A direct result has `relationship: "component"` and means the path is the component root or lies inside it. When no direct result exists, Stacks returns descendant bindings with `relationship: "ancestor"`, meaning the queried workspace contains those components rather than belonging to any one of them. Multiple results are never auto-selected.
 
 ```text
 stacks locate [directory] [--json]
@@ -176,7 +176,7 @@ stacks locate
 stacks locate /work/customer-portal/src --json
 ```
 
-This command is read-only. A zero-match result is successful discovery with an empty `memberships` array; it does not guess from repository names or write membership markers.
+Output includes `resolution: "component" | "ancestor" | "none"`. Direct matches take precedence, so opening one component does not also return unrelated sibling components merely because their common parent is an ancestor. This command is read-only. A zero-match result is successful discovery with an empty `memberships` array; it does not guess from repository names or write membership markers.
 
 ## Agent activation
 
@@ -234,18 +234,19 @@ stacks status --stack acme/customer-portal
 
 ### `stacks context`
 
-Builds a deterministic, provenance-rich context plan for one target component. It reports selected guidance, provider chains, warnings, and errors; it does not concatenate every repository or execute discovered content.
+Builds a deterministic, provenance-rich context plan and safely materializes its declared regular text files into a bounded briefing. It never searches undeclared repository contents or executes discovered content.
 
 ```text
 stacks context <target-component> (--stack <namespace/name> | --root <directory>)
-  [--task <description>] [--json]
+  [--task <description>] [--mode orientation|refresh]
+  [--max-bytes <1..262144>] [--json]
 ```
 
 ```bash
-stacks context app --stack acme/customer-portal --task "Add account recovery" --json
+stacks context app --stack acme/customer-portal --task "Add account recovery" --max-bytes 32768 --json
 ```
 
-The command exits with code `2` when the plan contains resolution errors such as missing or ambiguous providers.
+`orientation` is the default and uses 32 KiB unless overridden; `refresh` defaults to 8 KiB. Selection ranks required guidance first, then task matches within the same strength, declared priority, target locality, and stable ties. Output includes materialized content, content/source byte counts, hashes, truncation state, provenance, explicit omissions, and a briefing digest. The hard byte budget is exact; Stacks does not claim model-specific token precision. The command exits with code `2` when the plan contains resolution errors such as missing or ambiguous providers.
 
 ## Repository synchronization
 
@@ -333,18 +334,18 @@ stacks checkin start --stack acme/customer-portal --component app --summary "Imp
 
 ### `stacks checkin turn-start`
 
-Opens one turn in an active session and returns its `turnId` plus the target component's current context plan.
+Opens one turn in an active session and returns its `turnId` plus the target component's current plan and materialized briefing.
 
 ```text
 stacks checkin turn-start (--stack <namespace/name> | --root <directory>)
-  --session <id> --task <text> [--json]
+  --session <id> --task <text> [--max-bytes <1..262144>] [--json]
 ```
 
 ```bash
 stacks checkin turn-start --stack acme/customer-portal --session <id> --task "Add account recovery" --json
 ```
 
-Only one turn may be open in a session. The task is returned in the transient context plan but is not copied into the durable activity event.
+Only one turn may be open in a session. The first turn receives a 32 KiB orientation by default; later turns receive an 8 KiB refresh. `--max-bytes` overrides that turn's default. The task and materialized contents remain transient. Activity records only the briefing digest, mode, budget/count evidence, and existing plan counts.
 
 ### `stacks checkin turn-complete`
 

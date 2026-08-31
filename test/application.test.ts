@@ -42,12 +42,18 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     assert.equal(components.components[0]?.binding, path.resolve(component));
     assert.equal((await application.getComponent("tests/application", "app")).component.kind, "product");
     const memberships = await application.findMemberships(component);
+    assert.equal(memberships.resolution, "component");
     assert.equal(memberships.memberships[0]?.component.id, "app");
+    const ancestorMemberships = await application.findMemberships(path.join(root, "components"));
+    assert.equal(ancestorMemberships.resolution, "ancestor");
+    assert.deepEqual(ancestorMemberships.memberships.map((item) => item.component.id), ["app", "knowledge"]);
     const context = await application.resolveContext({ stack: "tests/application" }, "app", "Follow shared engineering rules");
     assert.deepEqual(context.items.map((item) => [item.componentId, item.path, item.exists]), [
       ["knowledge", "engineering.md", true],
       ["app", "AGENTS.md", false],
     ]);
+    assert.equal(context.briefing.items[0]?.content, "# Engineering rules\n");
+    assert.equal(context.briefing.omissions[0]?.reason, "missing");
 
     const remote = path.join(root, "components", "remote");
     const rebound = path.join(root, "components", "remote-bound");

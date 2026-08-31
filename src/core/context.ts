@@ -40,6 +40,16 @@ function guidanceApplies(guidance: Guidance, capability?: string): boolean {
   return capability !== undefined && guidance.appliesTo.includes(capability);
 }
 
+function taskTokens(task: string | undefined): Set<string> {
+  return new Set((task?.toLowerCase().match(/[a-z0-9][a-z0-9._-]{2,}/gu) ?? []).filter((token) => !["and", "the", "for", "with", "from", "this", "that"].includes(token)));
+}
+
+function taskScore(descriptor: ContextPath, reason: string, capability: string | undefined, tokens: Set<string>): number {
+  if (tokens.size === 0) return 0;
+  const searchable = [descriptor.path, descriptor.description ?? "", ...(descriptor.tags ?? []), reason, capability ?? ""].join(" ").toLowerCase();
+  return [...tokens].filter((token) => searchable.includes(token)).length;
+}
+
 export function resolveContext(stack: LoadedStack, targetComponentId: string, task?: string): ContextPlan {
   const components = new Map(stack.manifest.components.map((component) => [component.id, component]));
   const providers = new Map<string, StackComponent[]>();
@@ -54,6 +64,7 @@ export function resolveContext(stack: LoadedStack, targetComponentId: string, ta
   const warnings: string[] = [];
   const errors: string[] = [];
   const merged = new Map<string, ContextPlanItem>();
+  const tokens = taskTokens(task);
 
   const addItem = (
     ownerId: string,
@@ -72,6 +83,7 @@ export function resolveContext(stack: LoadedStack, targetComponentId: string, ta
     }
     const strength = normalizeStrength(descriptor.strength);
     const observed = evidence(absolutePath);
+    const relevance = taskScore(descriptor, reason, capability, tokens);
     const key = `${ownerId}\u0000${absolutePath}`;
     const existing = merged.get(key);
     if (existing) {
@@ -84,6 +96,9 @@ export function resolveContext(stack: LoadedStack, targetComponentId: string, ta
       if (observed.estimatedBytes !== undefined) {
         existing.estimatedBytes = Math.max(existing.estimatedBytes ?? 0, observed.estimatedBytes);
       }
+      for (const tag of descriptor.tags ?? []) if (!existing.tags.includes(tag)) existing.tags.push(tag);
+      existing.taskScore = Math.max(existing.taskScore, relevance);
+      if (existing.description === undefined && descriptor.description !== undefined) existing.description = descriptor.description;
       return;
     }
     merged.set(key, {
@@ -96,6 +111,9 @@ export function resolveContext(stack: LoadedStack, targetComponentId: string, ta
       capabilities: capability ? [capability] : [],
       chains: [chain],
       exists: observed.exists,
+      ...(descriptor.description === undefined ? {} : { description: descriptor.description }),
+      tags: [...(descriptor.tags ?? [])],
+      taskScore: relevance,
       ...(observed.estimatedBytes === undefined ? {} : { estimatedBytes: observed.estimatedBytes }),
     });
   };
@@ -200,9 +218,12 @@ export function resolveContext(stack: LoadedStack, targetComponentId: string, ta
   visit(target, [target.id], `target guidance for ${target.id}`);
 
   const items = [...merged.values()].sort((left, right) => {
-    if (right.priority !== left.priority) return right.priority - left.priority;
     const strengthDifference = STRENGTH_PRIORITY[right.strength] - STRENGTH_PRIORITY[left.strength];
     if (strengthDifference !== 0) return strengthDifference;
+    if (right.taskScore !== left.taskScore) return right.taskScore - left.taskScore;
+    if (right.priority !== left.priority) return right.priority - left.priority;
+    const targetDifference = Number(right.componentId === targetComponentId) - Number(left.componentId === targetComponentId);
+    if (targetDifference !== 0) return targetDifference;
     const componentDifference = left.componentId.localeCompare(right.componentId);
     if (componentDifference !== 0) return componentDifference;
     return left.path.localeCompare(right.path);

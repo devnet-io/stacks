@@ -99,6 +99,41 @@ export interface ContextPlanItem {
   chains: string[][];
   exists: boolean;
   estimatedBytes?: number;
+  description?: string;
+  tags: string[];
+  taskScore: number;
+}
+
+export type ContextOmissionReason = "missing" | "unreadable" | "not-file" | "unsafe-path" | "binary" | "budget";
+
+export interface ContextBriefingItem {
+  componentId: string;
+  path: string;
+  absolutePath: string;
+  strength: GuidanceStrength;
+  reasons: string[];
+  capabilities: string[];
+  content: string;
+  contentBytes: number;
+  sourceBytes: number;
+  truncated: boolean;
+  contentSha256: string;
+}
+
+export interface ContextBriefingOmission {
+  componentId: string;
+  path: string;
+  reason: ContextOmissionReason;
+  detail: string;
+}
+
+export interface ContextBriefing {
+  schemaVersion: "0.1";
+  mode: "orientation" | "refresh";
+  digest: string;
+  budget: { maxBytes: number; usedBytes: number; remainingBytes: number };
+  items: ContextBriefingItem[];
+  omissions: ContextBriefingOmission[];
 }
 
 export interface ContextPlan {
@@ -110,6 +145,7 @@ export interface ContextPlan {
   items: ContextPlanItem[];
   warnings: string[];
   errors: string[];
+  briefing?: ContextBriefing;
 }
 
 export interface GitStatus {

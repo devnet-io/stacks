@@ -73,7 +73,7 @@ codex mcp add stacks -- stacks mcp
 
 Then fully quit and reopen Codex. Codex loads callable MCP tools when its host starts, so opening only a new task may retain an older registry after registration or an upgrade. Run `stacks doctor` to inspect the installed contract and use Codex's MCP settings or `/mcp` view to confirm that Stacks loaded.
 
-This is a stdio MCP adapter. Codex launches it as a subprocess when needed and communicates over stdin/stdout, so there is no MCP URL, token, fixed port, or daemon for local use. The server supplies operating instructions during initialization; agents can also call `instructions_get` or read `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli`. Start with `stack_memberships` for the current workspace. If it finds one match, use that Stack and component; if it finds multiple, choose explicitly. After `work_start`, each participating agent turn uses `turn_start` to receive a context plan and closes the returned `turnId` with `turn_complete`, including only telemetry the client actually knows.
+This is a stdio MCP adapter. Codex launches it as a subprocess when needed and communicates over stdin/stdout, so there is no MCP URL, token, fixed port, or daemon for local use. The server supplies operating instructions during initialization; agents can also call `instructions_get` or read `stacks://instructions`, `stacks://reference/mcp`, and `stacks://reference/cli`. Start with `stack_memberships` for the current workspace. A direct `component` result identifies the current component. An `ancestor` result means the workspace contains descendant components, so choose the intended target explicitly; never guess among multiple results. After `work_start`, the first `turn_start` returns a bounded orientation briefing and later turns return compact refreshes. Review explicit omissions and close the returned `turnId` with `turn_complete`, including only telemetry the client actually knows.
 
 For reliable repository-level activation, run this once inside each component where you want agents to consult Stacks automatically:
 
@@ -88,6 +88,8 @@ For direct CLI use:
 ```bash
 stacks context app --stack your-name/my-stack --task "Describe the change I am about to make"
 ```
+
+The command safely includes only declared regular text files, defaults to a 32 KiB hard content budget, and reports truncations or omissions. Use `--max-bytes` for a different budget; Stacks does not scan entire repositories.
 
 ## What is editable today?
 

@@ -13,7 +13,9 @@ export interface ComponentMembership {
   stack: { id: string; namespace: string; name: string };
   component: { id: string; name: string; kind: string };
   root: string;
-  relativePath: string;
+  relationship: "component" | "ancestor";
+  relativePath?: string;
+  componentPath?: string;
 }
 
 export function platformDirectories(
@@ -172,7 +174,8 @@ export async function findRegisteredComponentMemberships(
 ): Promise<ComponentMembership[]> {
   const target = await canonicalDirectory(directory);
   const catalog = await listRegisteredStacks(directories);
-  const matches: ComponentMembership[] = [];
+  const componentMatches: ComponentMembership[] = [];
+  const ancestorMatches: ComponentMembership[] = [];
   for (const entry of catalog) {
     const stack = await loadRegisteredStack(entry.id, directories);
     for (const component of stack.manifest.components) {
@@ -180,15 +183,18 @@ export async function findRegisteredComponentMemberships(
       if (!binding) continue;
       const root = await canonicalDirectory(binding);
       const relativePath = containsPath(root, target);
-      if (relativePath === undefined) continue;
-      matches.push({
+      const componentPath = containsPath(target, root);
+      if (relativePath === undefined && componentPath === undefined) continue;
+      const membership = {
         stack: { id: entry.id, namespace: entry.namespace, name: entry.name },
         component: { id: component.id, name: component.name ?? component.id, kind: component.kind ?? "component" },
         root,
-        relativePath,
-      });
+      };
+      if (relativePath !== undefined) componentMatches.push({ ...membership, relationship: "component", relativePath });
+      else ancestorMatches.push({ ...membership, relationship: "ancestor", componentPath: componentPath! });
     }
   }
+  const matches = componentMatches.length > 0 ? componentMatches : ancestorMatches;
   return matches.toSorted((left, right) =>
     `${left.stack.namespace}/${left.stack.name}:${left.component.id}`.localeCompare(`${right.stack.namespace}/${right.stack.name}:${right.component.id}`),
   );

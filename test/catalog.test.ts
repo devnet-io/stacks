@@ -56,8 +56,18 @@ test("directory membership discovery returns every matching Stack without guessi
     const memberships = await findRegisteredComponentMemberships(nested, directories);
     assert.deepEqual(memberships.map((item) => `${item.stack.namespace}/${item.stack.name}:${item.component.id}`), ["tests/first:shared", "tests/second:other-name"]);
     assert.ok(memberships.every((item) => item.relativePath === path.join("src", "feature")));
+    assert.ok(memberships.every((item) => item.relationship === "component"));
     assert.equal(memberships[0]?.component.kind, "component");
-    assert.deepEqual(await findRegisteredComponentMemberships(root, directories), []);
+    const ancestors = await findRegisteredComponentMemberships(root, directories);
+    assert.deepEqual(ancestors.map((item) => `${item.stack.namespace}/${item.stack.name}:${item.component.id}`), ["tests/first:shared", "tests/second:other-name"]);
+    assert.ok(ancestors.every((item) => item.relationship === "ancestor" && item.componentPath === "shared"));
+
+    const sibling = path.join(root, "sibling");
+    await mkdir(sibling);
+    await addRegisteredComponent("tests/first", { id: "sibling", path: sibling }, directories);
+    const directTakesPrecedence = await findRegisteredComponentMemberships(shared, directories);
+    assert.ok(directTakesPrecedence.every((item) => item.relationship === "component"));
+    assert.ok(directTakesPrecedence.every((item) => item.component.id !== "sibling"));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

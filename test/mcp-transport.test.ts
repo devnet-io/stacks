@@ -67,8 +67,10 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     send({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "guidance_configure", arguments: { stack: "tests/mcp-authoring", componentId: "product", path: "AGENTS.md", strength: "preferred" } } });
     assert.equal((await response(8)).result !== undefined, true);
     send({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "context_resolve", arguments: { stack: "tests/mcp-authoring", target: "product" } } });
-    const resolved = (await response(9)).result as { structuredContent: { items: Array<{ componentId: string; path: string }> } };
+    const resolved = (await response(9)).result as { structuredContent: { items: Array<{ componentId: string; path: string }>; briefing: { items: Array<{ content: string }>; omissions: Array<{ reason: string }> } } };
     assert.deepEqual(resolved.structuredContent.items.map((item) => [item.componentId, item.path]), [["knowledge", "engineering.md"], ["product", "AGENTS.md"]]);
+    assert.equal(resolved.structuredContent.briefing.items[0]?.content, "# Engineering\n");
+    assert.equal(resolved.structuredContent.briefing.omissions[0]?.reason, "missing");
     assert.match(stderr, /^Stacks MCP server is listening for the machine catalog/u);
     assert.ok(stdout.split("\n").filter(Boolean).every((line) => (JSON.parse(line) as { jsonrpc?: string }).jsonrpc === "2.0"));
   } finally {

@@ -115,14 +115,14 @@ function help(topic?: string): void {
   const topics: Record<string, string> = {
     stack: `Create and list Stacks in this machine's catalog.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n`,
     component: `View, attach, and configure components in registered Stacks. Configuration operations upsert by capability or path.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path>] [--description <text>] [--strength <strength>] [--priority <number>] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component>] [--optional] [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text>] [--strength <strength>] [--priority <number>] [--applies-to <a,b>] [--json]\n`,
-    locate: `Find every Stack component whose explicit binding contains a directory. Multiple matches are returned instead of guessing.\n\n  stacks locate [directory] [--json]\n`,
+    locate: `Find direct Stack component membership or descendant components under an ancestor workspace. Direct matches take precedence; multiple matches are never guessed.\n\n  stacks locate [directory] [--json]\n`,
     agent: `Manage only the delimited Stacks activation block in a repository AGENTS.md. Existing instructions are preserved; malformed markers are refused.\n\n  stacks agent print [--path <directory>] [--json]\n  stacks agent check [--path <directory>] [--json]\n  stacks agent install [--path <directory>] [--json]\n  stacks agent remove [--path <directory>] [--json]\n`,
     status: `Inspect registered Stack component paths and Git state without changing repositories. With no selector, inspect every registered Stack. Loading a Stack also validates its definition.\n\n  stacks status [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
     sync: `Clone missing Git components to their explicit paths. Add --update to fetch existing repositories; Stacks never resets, cleans, merges, or rebases.\n\n  stacks sync --stack <namespace/name> [--dry-run] [--update] [--json]\n`,
-    context: `Resolve bounded, provenance-rich context for one target component.\n\n  stacks context <target> --stack <namespace/name> [--task <text>] [--json]\n`,
+    context: `Resolve and safely materialize bounded, provenance-rich context for one target component.\n\n  stacks context <target> --stack <namespace/name> [--task <text>] [--mode orientation|refresh] [--max-bytes <number>] [--json]\n`,
     ui: `Open the machine-level Stacks UI. It serves the UI and API together on port 3210, automatically choosing the next free port when needed.\n\n  stacks ui [--port <number>] [--no-open]\n`,
     mcp: `Run the machine-level MCP adapter over stdio. Agent clients start this command when needed; do not run it as a daemon.\n\n  stacks mcp\n`,
-    checkin: `Append turn-based agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn-start --stack <namespace/name> --session <id> --task <text> [--json]\n  stacks checkin turn-complete --stack <namespace/name> --session <id> --turn <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [token/cost options] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
+    checkin: `Append turn-based agent work lifecycle events.\n\n  stacks checkin start --stack <namespace/name> --component <id> --summary <text> [--work <id>] [actor options] [--json]\n  stacks checkin turn-start --stack <namespace/name> --session <id> --task <text> [--max-bytes <number>] [--json]\n  stacks checkin turn-complete --stack <namespace/name> --session <id> --turn <id> --summary <text> [--status <status>] [--files <a,b>] [--next <text>] [token/cost options] [--json]\n  stacks checkin complete --stack <namespace/name> --session <id> --summary <text> [--outcome <outcome>] [--remaining <a,b>] [--json]\n`,
     usage: `Import delayed usage data or report recorded usage. Live agent telemetry belongs on turn completion. Monetary values require reported, estimated, or allocated provenance.\n\n  stacks usage import --stack <namespace/name> --provider <name> --model <name> [--session <id>] [--turn <id>] [token/cost options] [--json]\n  stacks usage report --stack <namespace/name> [--json]\n`,
     commands: `All commands\n\n  stack create|list                  Create or list catalog definitions\n  component list|get|add|bind|...    View, attach, and configure components\n  locate                             Find Stack membership for a directory\n  agent print|check|install|remove   Manage repository agent activation\n  status                             Inspect component and Git state\n  context                            Resolve bounded context for a target\n  sync                               Clone or fetch Git components safely\n  ui                                 Open the local management UI\n  mcp                                Run the stdio MCP adapter\n  checkin start|turn-start|turn-complete|complete\n                                      Append turn-based work lifecycle events\n  usage import|report                Import delayed usage or report totals\n  lock                               Write a revision snapshot\n  init                               Create a legacy directory manifest\n  validate                           Validate a standalone or legacy definition\n  doctor                             Troubleshoot runtime and adapter installation\n\nRun stacks help <command> for usage. Directory-based --root forms remain available for legacy manifests.\n`,
     lock: `Write stack.lock.json with the current component revisions.\n\n  stacks lock --stack <namespace/name> [--json]\n`,
@@ -217,7 +217,13 @@ async function commandContext(parsed: ParsedArgs): Promise<void> {
   const target = parsed.positionals[1];
   if (!target) throw new Error("Usage: stacks context <target-component>.");
   const reference = stackReference(parsed);
-  const plan = await application.resolveContext(reference, target, stringOption(parsed, "task"));
+  const mode = stringOption(parsed, "mode") as "orientation" | "refresh" | undefined;
+  if (mode && mode !== "orientation" && mode !== "refresh") throw new Error("--mode must be orientation or refresh.");
+  const maxBytes = numericOption(parsed, "max-bytes");
+  const plan = await application.resolveContext(reference, target, stringOption(parsed, "task"), {
+    ...(mode === undefined ? {} : { mode }),
+    ...(maxBytes === undefined ? {} : { maxBytes }),
+  });
   if (booleanOption(parsed, "json")) {
     printJson(plan);
   } else {
@@ -227,6 +233,9 @@ async function commandContext(parsed: ParsedArgs): Promise<void> {
       process.stdout.write(`- [${item.strength}] ${item.componentId}:${item.path}\n`);
       process.stdout.write(`    ${item.reasons.join("; ")}\n`);
     }
+    process.stdout.write(`Briefing: ${plan.briefing.items.length} materialized, ${plan.briefing.budget.usedBytes}/${plan.briefing.budget.maxBytes} bytes, digest ${plan.briefing.digest}\n`);
+    for (const item of plan.briefing.items) process.stdout.write(`- materialized ${item.componentId}:${item.path}${item.truncated ? " (truncated)" : ""}\n`);
+    for (const omitted of plan.briefing.omissions) process.stdout.write(`OMITTED [${omitted.reason}] ${omitted.componentId}:${omitted.path} - ${omitted.detail}\n`);
     for (const warning of plan.warnings) process.stdout.write(`WARNING: ${warning}\n`);
     for (const error of plan.errors) process.stdout.write(`ERROR: ${error}\n`);
   }
@@ -284,12 +293,14 @@ async function commandCheckin(parsed: ParsedArgs): Promise<void> {
     return;
   }
   if (operation === "turn-start") {
+    const maxBytes = numericOption(parsed, "max-bytes");
     const output = await application.startTurn(reference, {
       sessionId: requiredOption(parsed, "session"),
       task: requiredOption(parsed, "task"),
+      ...(maxBytes === undefined ? {} : { maxBytes }),
     });
     if (booleanOption(parsed, "json")) printJson(output);
-    else process.stdout.write(`Started turn ${output.turn.turnId} for session ${output.turn.sessionId} with ${output.context.items.length} context items\n`);
+    else process.stdout.write(`Started turn ${output.turn.turnId} for session ${output.turn.sessionId} with ${output.context.briefing.items.length} briefing items (${output.context.briefing.mode})\n`);
     return;
   }
   if (operation === "turn-complete") {
@@ -534,7 +545,8 @@ async function commandLocate(parsed: ParsedArgs): Promise<void> {
     return;
   }
   for (const membership of output.memberships) {
-    process.stdout.write(`${membership.stack.namespace}/${membership.stack.name}\t${membership.component.id}\t${membership.root}\t${membership.relativePath}\n`);
+    const location = membership.relationship === "component" ? membership.relativePath : membership.componentPath;
+    process.stdout.write(`${membership.stack.namespace}/${membership.stack.name}\t${membership.component.id}\t${membership.relationship}\t${membership.root}\t${location}\n`);
   }
 }
 

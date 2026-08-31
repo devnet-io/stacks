@@ -53,7 +53,7 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
   }, async () => result({ schemaVersion: "0.1", stacks: await application.listStacks() }));
 
   server.registerTool("stack_memberships", {
-    title: "Find Stack memberships", description: "Find every registered Stack component whose explicit binding contains a directory. Returns multiple matches instead of guessing.",
+    title: "Find Stack memberships", description: "Find direct component memberships, or descendant components when the path is their shared ancestor. Direct matches take precedence and ambiguity is returned rather than guessed.",
     inputSchema: z.object({ path: z.string().min(1).optional().describe("Directory to locate; defaults to the MCP process working directory") }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async ({ path }) => result(await application.findMemberships(path ?? process.cwd()) as unknown as Record<string, unknown>));
@@ -124,10 +124,13 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
   }, async ({ stack: stackSelector }) => result(await application.getStatus({ stack: stackSelector }) as unknown as Record<string, unknown>));
 
   server.registerTool("context_resolve", {
-    title: "Resolve component context", description: "Build a bounded, explainable context plan for one target component.",
-    inputSchema: z.object({ stack: selector, target: z.string().min(1), task: z.string().optional() }),
+    title: "Resolve component context", description: "Build an explainable plan and safely materialize a task-sensitive briefing under a hard byte budget.",
+    inputSchema: z.object({ stack: selector, target: z.string().min(1), task: z.string().optional(), mode: z.enum(["orientation", "refresh"]).optional(), maxBytes: z.number().int().positive().optional() }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-  }, async ({ stack: stackSelector, target, task }) => result(await application.resolveContext({ stack: stackSelector }, target, task) as unknown as Record<string, unknown>));
+  }, async ({ stack: stackSelector, target, task, mode, maxBytes }) => result(await application.resolveContext({ stack: stackSelector }, target, task, {
+    ...(mode === undefined ? {} : { mode }),
+    ...(maxBytes === undefined ? {} : { maxBytes }),
+  }) as unknown as Record<string, unknown>));
 
   server.registerTool("work_start", {
     title: "Start Stack work session", description: "Append a work-start event for a component.",
@@ -139,10 +142,10 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
   });
 
   server.registerTool("turn_start", {
-    title: "Start agent turn", description: "Open one turn in an active work session and return its context plan.",
-    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), task: z.string().min(1) }),
+    title: "Start agent turn", description: "Open one turn and return a materialized orientation or compact refresh briefing with a durable digest.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), task: z.string().min(1), maxBytes: z.number().int().positive().optional() }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-  }, async ({ stack: stackSelector, sessionId, task }) => result(await application.startTurn({ stack: stackSelector }, { sessionId, task }) as unknown as Record<string, unknown>));
+  }, async ({ stack: stackSelector, sessionId, task, maxBytes }) => result(await application.startTurn({ stack: stackSelector }, { sessionId, task, ...(maxBytes === undefined ? {} : { maxBytes }) }) as unknown as Record<string, unknown>));
 
   server.registerTool("turn_complete", {
     title: "Complete agent turn", description: "Close one started turn and append its progress plus optional observed telemetry.",

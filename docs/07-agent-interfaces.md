@@ -45,15 +45,15 @@ Current tools are:
 - `usage_import`
 - `usage_report`
 
-`stack_memberships` maps an explicit workspace path to zero, one, or multiple bound Stack components. It never guesses when a directory is shared. Every subsequent Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
+`stack_memberships` maps an explicit workspace path to zero, one, or multiple bound Stack components. Direct `component` matches take precedence. When there is no direct match, `ancestor` matches let an agent opened at a shared parent discover descendant components without claiming the parent belongs to one of them. Multiple results always require explicit target selection. Every subsequent Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
 
 MCP may add an existing local component, change its binding, and author capability/provider relationships plus guidance descriptors. Git cloning and repository synchronization remain absent because those filesystem/network mutations are better initiated explicitly through the CLI.
 
 ## Skills and clients
 
-The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, explicitly resolve ambiguity, inspect the target component, start each participating turn, use its returned context plan, close the same turn with known telemetry, preserve component-local instructions, and append the final work outcome. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
+The bundled Skill and MCP initialization instructions tell agents to discover membership from the current workspace, distinguish direct and ancestor results, explicitly resolve ambiguity, inspect the target component, start each participating turn, use its returned briefing, review omissions, close the same turn with known telemetry, preserve component-local instructions, and append the final work outcome. The opt-in `stacks agent install` adapter adds or refreshes only a delimited activation block in a component repository's `AGENTS.md`; it never owns or overwrites the rest of the file. The block contains concise activation behavior and links agents back to runtime MCP instructions rather than duplicating the full manuals.
 
-This is instruction-driven participation, not enforcement by the core. A client may not expose a reliable per-turn hook, and the current turn-start result is a plan of pointers rather than a materialized briefing. Its event records counts but no stable plan digest, so exact historical briefing reconstruction remains proposed work.
+This is instruction-driven participation, not enforcement by the core. A client may not expose a reliable per-turn hook. The first participating turn returns a 32 KiB orientation and later turns an 8 KiB refresh, with caller overrides up to 256 KiB. Briefings contain only declared regular text files whose canonical paths remain in component roots, plus provenance, hashes, truncations, and omissions. The turn event records a digest and aggregate budget evidence, not task text or file contents. Refresh is currently size-based rather than a change-aware delta.
 
 Not every client exposes tokens, model identity, tool calls, or stable sessions. Adapters record partial facts and never fabricate values. Cost remains `reported`, `estimated`, or `allocated`.
 

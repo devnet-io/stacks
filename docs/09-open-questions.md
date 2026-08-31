@@ -32,10 +32,9 @@ These are deliberately deferred. Codex should not silently lock them in without 
 - Are capabilities sufficient, or are named relationship types also needed?
 - How should conflicting required guidance be surfaced?
 - How should target-specific preferences override general stack guidance without erasing it?
-- What budget unit is most portable across model providers?
-- Which guidance cadence vocabulary best represents session orientation, turn refresh, and on-demand consultation without coupling the core to one client?
-- What stable revision or digest is sufficient to identify the exact context plan returned for a turn without storing prompts or sensitive content?
-- How should deterministic task selection work before optional semantic ranking exists?
+- Which model-specific tokenizers, if any, should supplement the portable hard byte budget?
+- What change evidence should make a later refresh a delta rather than a smaller current-plan briefing?
+- When is optional semantic ranking justified within declared context boundaries?
 
 ## Cross-component capability requests
 
@@ -46,8 +45,6 @@ These are deliberately deferred. Codex should not silently lock them in without 
 
 ## Events and analytics
 
-- Is one shared JSONL file adequate under concurrent local agents?
-- Should each session append to its own file and a report merge them?
 - Which event fields are safe to commit in sanitized exports?
 - How are provider price changes versioned for estimates?
 
@@ -59,8 +56,6 @@ These are deliberately deferred. Codex should not silently lock them in without 
 
 ## Security
 
-- How are symlinks and filesystem roots validated across platforms?
-- Should MCP expose file contents directly or only resource links/plans until client trust is explicit?
 - What approval behavior can be assumed across Codex and other MCP hosts?
 
 ## Vaultar integration

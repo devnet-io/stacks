@@ -52,7 +52,10 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     const inspected = runJson(["component", "get", "tests/global-cli", "app"], 0, env);
     assert.equal(object(inspected.component).kind, "product");
     const located = runJson(["locate", component], 0, env);
+    assert.equal(located.resolution, "component");
     assert.equal(object((located.memberships as unknown[])[0]).relativePath, ".");
+    const locatedAncestor = runJson(["locate", path.join(root, "ordinary-project-location")], 0, env);
+    assert.equal(locatedAncestor.resolution, "ancestor");
     assert.equal(runJson(["agent", "check", "--path", component], 2, env).status, "absent");
     assert.equal(runJson(["agent", "install", "--path", component], 0, env).status, "current");
     assert.equal(runJson(["agent", "check", "--path", component], 0, env).status, "current");
@@ -136,6 +139,8 @@ test("CLI JSON contracts cover the five-minute Stack lifecycle", async () => {
     assert.equal(context.stackId, identity.id);
     assert.equal(context.targetComponentId, "app");
     assert.equal((context.items as unknown[]).length, 1);
+    assert.equal(object(context.briefing).mode, "orientation");
+    assert.equal((object(context.briefing).items as unknown[]).length, 1);
 
     const started = runJson(["checkin", "start", "--component", "app", "--summary", "Start evaluation", "--root", root]);
     assert.equal(started.schemaVersion, "0.1");
@@ -149,6 +154,7 @@ test("CLI JSON contracts cover the five-minute Stack lifecycle", async () => {
     const turnId = String(object(turnStarted.turn).turnId);
     assert.equal(turnStarted.turnId, turnId);
     assert.equal(turnStarted.sessionId, started.sessionId);
+    assert.equal(object(object(turnStarted.context).briefing).mode, "orientation");
 
     const completed = runJson([
       "checkin", "turn-complete", "--session", String(started.sessionId), "--turn", turnId, "--summary", "Evaluation complete",
@@ -158,6 +164,11 @@ test("CLI JSON contracts cover the five-minute Stack lifecycle", async () => {
     assert.equal(object(completed.turn).type, "turn.completed");
     assert.equal(object(completed.usage).turnId, turnId);
     assert.equal(object(object(completed.usage).data).costKind, "reported");
+
+    const refreshed = runJson(["checkin", "turn-start", "--session", String(started.sessionId), "--task", "Continue evaluation", "--root", root]);
+    assert.equal(object(object(refreshed.context).briefing).mode, "refresh");
+    assert.equal(object(object(refreshed.turn).data).briefingDigest, object(object(refreshed.context).briefing).digest);
+    runJson(["checkin", "turn-complete", "--session", String(started.sessionId), "--turn", String(refreshed.turnId), "--summary", "Refresh complete", "--root", root]);
 
     const finished = runJson(["checkin", "complete", "--session", String(started.sessionId), "--summary", "Done", "--root", root]);
     assert.equal(finished.type, "work.completed");

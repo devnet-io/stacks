@@ -239,7 +239,18 @@ export async function startTurn(
   stack: LoadedStack,
   input: {
     sessionId: string;
-    context: { generatedAt: string; items: number; warnings: number; errors: number };
+    context: {
+      generatedAt: string;
+      items: number;
+      warnings: number;
+      errors: number;
+      briefingDigest?: string;
+      briefingMode?: "orientation" | "refresh";
+      briefingItems?: number;
+      briefingOmissions?: number;
+      briefingBytes?: number;
+      briefingBudgetBytes?: number;
+    };
   },
 ): Promise<StackEvent> {
   return withEventAppendLock(stack, async () => {
@@ -259,6 +270,12 @@ export async function startTurn(
         contextItems: input.context.items,
         contextWarnings: input.context.warnings,
         contextErrors: input.context.errors,
+        ...(input.context.briefingDigest === undefined ? {} : { briefingDigest: input.context.briefingDigest }),
+        ...(input.context.briefingMode === undefined ? {} : { briefingMode: input.context.briefingMode }),
+        ...(input.context.briefingItems === undefined ? {} : { briefingItems: input.context.briefingItems }),
+        ...(input.context.briefingOmissions === undefined ? {} : { briefingOmissions: input.context.briefingOmissions }),
+        ...(input.context.briefingBytes === undefined ? {} : { briefingBytes: input.context.briefingBytes }),
+        ...(input.context.briefingBudgetBytes === undefined ? {} : { briefingBudgetBytes: input.context.briefingBudgetBytes }),
       },
     });
     await writeEvents(stack, [turn]);

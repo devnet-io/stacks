@@ -18,7 +18,7 @@ test("keeps the MVP workflow proposed while aligning product and delivery direct
   assert.match(vision, /proposed workflow, not current-state documentation/u);
   assert.match(catalog, /"id": "mvp-agent-workflow-vision", "category": "decisions", "lifecycle": "proposed"/u);
   assert.match(doc("product.md"), /authoritative providers/u);
-  assert.match(doc("architecture.md"), /exact returned plan cannot yet be reconstructed/u);
+  assert.match(doc("architecture.md"), /returned briefing has a stable digest/u);
   assert.match(doc("08-roadmap.md"), /minimum dependable briefing/u);
   assert.match(doc("08-roadmap.md"), /cross-component capability requests as a complete vertical slice/u);
   assert.match(agents, /proposed acceptance scenario, not implementation evidence/u);

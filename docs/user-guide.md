@@ -68,7 +68,7 @@ Fully quit and reopen Codex after registration, and after installing any Stacks 
 
 `stacks agent print|check|install|remove` manages repository activation separately from the global MCP connection. Install and remove touch only the delimited Stacks block, preserve all other `AGENTS.md` content, refuse malformed markers and symlinks, and never hard-code one Stack selection.
 
-`stack_memberships` accepts a workspace path and returns every matching Stack/component binding; `stack_list` remains the fallback when there is no match. `component_list`, `component_get`, `component_add`, and `component_bind` provide structured local component management. Selected-Stack, context, lifecycle, and usage tools require `stack: "namespace/name"`. Git cloning and synchronization are intentionally not exposed through MCP.
+`stack_memberships` accepts a workspace path. Direct `component` results mean the path is inside a binding. If there are no direct matches, `ancestor` results identify bound components below a shared parent and require an explicit target choice. `stack_list` remains the fallback when there is no relationship. `component_list`, `component_get`, `component_add`, and `component_bind` provide structured local component management. Selected-Stack, context, lifecycle, and usage tools require `stack: "namespace/name"`. Git cloning and synchronization are intentionally not exposed through MCP.
 
 ## Work and usage events
 
@@ -77,7 +77,7 @@ The Activity section presents Stack creation, component additions, changed bindi
 | Command | Purpose |
 | --- | --- |
 | `stacks checkin start` | Append the start of a work session and return its session ID. |
-| `stacks checkin turn-start` | Open a turn and return its ID plus current context plan. |
+| `stacks checkin turn-start` | Open a turn and return its ID plus a bounded orientation or refresh briefing. |
 | `stacks checkin turn-complete` | Close that turn with status, changed paths, next step, and optional known telemetry. |
 | `stacks checkin complete` | Append completion and outcome without rewriting earlier events. |
 | `stacks usage import` | Import delayed provider or external telemetry not available at turn completion. |
@@ -94,6 +94,8 @@ stacks usage report --stack my-team/my-stack
 ```
 
 Only one turn may be open in a session, and work completion refuses an open turn. Usage amounts require `--cost-kind reported|estimated|allocated`.
+
+The first turn in a session defaults to a 32 KiB orientation; later turns default to an 8 KiB refresh. `--max-bytes` overrides the hard content budget. Returned context includes hashes, provenance, truncations, omissions, and the same digest recorded on `turn.started`; task text and materialized content are not stored in Activity.
 
 ## Structured output
 

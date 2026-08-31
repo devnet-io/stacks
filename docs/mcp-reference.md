@@ -23,10 +23,10 @@ Every Stack-specific tool takes `stack` in `namespace/name` form. Use `stack_mem
 ## Recommended agent sequence
 
 1. Read the server instructions or call `instructions_get`.
-2. Call `stack_memberships` with the workspace directory. If there is no match, call `stack_list`; if there are multiple matches, select explicitly.
+2. Call `stack_memberships` with the workspace directory. A `component` result is direct; an `ancestor` result means the workspace contains descendant components and requires explicit target selection. If there is no match, call `stack_list`; never guess among multiple matches.
 3. Call `component_get` and `stack_status` for the target component.
 4. Call `work_start` before material work and retain the returned `sessionId`.
-5. At the beginning of every participating turn, call `turn_start` with the session and current task. Retain its `turnId` and follow the returned context plan.
+5. At the beginning of every participating turn, call `turn_start` with the session and current task. Retain its `turnId`, use the materialized briefing, and review its omissions and truncations.
 6. Close that exact turn with `turn_complete`, including only telemetry the client actually observes.
 7. Use `usage_import` only for delayed provider exports or external measurements.
 8. Call `work_complete` with the outcome and remaining work after all turns are closed.
@@ -85,13 +85,13 @@ Side effects: none; read-only and idempotent.
 
 ### `stack_memberships`
 
-Finds every component binding that contains a directory. `path` is optional and defaults to the MCP process working directory; agents should pass their workspace path explicitly when available.
+Finds direct component membership or, as a fallback, components below an ancestor workspace. `path` is optional and defaults to the MCP process working directory; agents should pass their workspace path explicitly when available.
 
 ```json
 { "path": "/work/customer-portal/src" }
 ```
 
-Output includes the canonical queried path and a `memberships` array. Each membership contains Stack identity, component identity/name/kind, the component root, and the path relative to that root. Zero or multiple matches are valid results.
+Output includes the canonical queried path, `resolution`, and a `memberships` array. `resolution: "component"` means the query is the component root or lies below it; each result includes `relativePath`. Only when no direct match exists, `resolution: "ancestor"` returns components below the query with `componentPath`. Direct results suppress unrelated descendants. Zero or multiple matches are valid, and ancestor results never choose which descendant component is the work target.
 
 Side effects: none; read-only and idempotent. It does not inspect repository names, guess a Stack, or write markers.
 
@@ -217,7 +217,7 @@ Side effects: none; read-only and idempotent.
 
 ### `context_resolve`
 
-Builds a deterministic, explainable context plan for one target component and optional task.
+Builds a deterministic, explainable context plan and safely materializes declared regular text files into a hard-budget briefing.
 
 Input:
 
@@ -225,11 +225,15 @@ Input:
 {
   "stack": "acme/customer-portal",
   "target": "app",
-  "task": "Add account recovery"
+  "task": "Add account recovery",
+  "mode": "orientation",
+  "maxBytes": 32768
 }
 ```
 
-Output: selected context items with owning component, path, strength, reasons, provider chain, warnings, and errors. The plan is bounded selection and provenance, not permission to read outside component roots or concatenate every repository.
+`mode` is optional (`orientation` by default); `maxBytes` is optional and must be from 1 through 262144. Orientation defaults to 32768 bytes and refresh to 8192 bytes. Task keywords match declared path, description, tags, capabilities, and selection reasons within each strength tier.
+
+Output includes the plan plus `briefing`: safely read content, source/included byte counts, SHA-256 content hashes, truncation state, provenance, omissions, exact budget use, and a SHA-256 digest. Missing, unreadable, directory, unsafe symlink escape, binary, and budget exclusions are explicit. The tool never scans undeclared paths. Side effects: none; read-only and idempotent.
 
 Side effects: none; read-only and idempotent.
 
@@ -257,11 +261,11 @@ Optional input: `workId`, `agent`, `client`, `model`.
 
 ### `turn_start`
 
-Opens one turn in an active work session, appends `turn.started`, and returns top-level `sessionId` and `turnId` fields together with the target component's current context plan and underlying event. Only one turn may be open in a session.
+Opens one turn in an active work session, appends `turn.started`, and returns top-level `sessionId` and `turnId` fields together with the target component's current plan, materialized briefing, and underlying event. Only one turn may be open in a session.
 
-Required input: `stack`, `sessionId`, `task`.
+Required input: `stack`, `sessionId`, `task`. Optional `maxBytes` overrides the cadence default from 1 through 262144.
 
-The task is used in the transient context result but is not copied into the durable activity event.
+The first turn is an `orientation` with a 32768-byte default. Later turns are `refresh` briefings with an 8192-byte default. Refresh currently re-materializes the ranked current plan under the smaller budget; it is not yet a change-aware delta. Task text and file contents are transient. The durable event records the briefing digest, mode, bytes, budget, and aggregate counts.
 
 ```json
 {
