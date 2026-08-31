@@ -41,7 +41,7 @@ stacks ui
 
 Stacks serves the static Vite application and `/api/v0.1/*` from the same Node process. The default address is `http://localhost:3210/`. If port 3210 is unavailable, Stacks tries successive ports and prints the selected address. Passing `--port` requests an exact port and reports a conflict instead of silently changing it. Re-running `npm run install:local` gracefully stops registered UI processes before replacing the installed snapshot; restart with `stacks ui` afterward.
 
-The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity shows append-only configuration and work events plus provenance-labeled usage, Manage creates Stacks, binds components, and configures capability providers, requirements, and guidance paths, Tools & agents contains runtime connection instructions, and Documentation renders every canonical Markdown file under `docs/`. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
+The UI is machine-level. A subdued Stack selector sits directly below the sidebar header and applies to every operational section. Overview shows component health, Graph shows provider and dependency relationships, Activity separates logical work from Stack changes and links to work/turn details, Manage creates Stacks, binds components, and configures capability providers, requirements, and guidance paths, Tools & agents contains runtime connection instructions, and Documentation renders every canonical Markdown file under `docs/`. The bottom application menu displays the installed version and reserves space for future account/settings controls. Installation instructions live in Documentation rather than the operational tabs.
 
 Documentation is grouped by purpose. Selecting a document reveals its second- and third-level headings as nested navigation. The current section, document, and heading are encoded in the URL as `view`, `document`, and `heading`, so bookmarks and shared local links reopen the same location. Links between canonical Markdown documents remain inside the documentation interface.
 
@@ -54,7 +54,7 @@ Read-only endpoints:
 - `GET /api/v0.1/integrations?stack=namespace/name`
 - `GET /api/v0.1/health`
 
-Contracts are stored in `schemas/http-overview.schema.json`, `schemas/http-graph.schema.json`, and `schemas/http-integrations.schema.json`. Canonical documentation remains in `docs/`; do not maintain a second copy in frontend components.
+Contracts are stored in `schemas/`, including separate Activity overview, logical-work detail, and turn-detail schemas. Canonical documentation remains in `docs/`; do not maintain a second copy in frontend components.
 
 ## Local MCP
 
@@ -72,7 +72,9 @@ Fully quit and reopen Codex after registration, and after installing any Stacks 
 
 ## Work and usage events
 
-The Activity section presents Stack creation, component additions, changed bindings, agent work, and usage without exposing the raw JSONL file. New management operations are recorded automatically whether they use the CLI, web UI, or MCP; Stacks does not fabricate entries for changes made before this behavior existed. Session and recent-event lists are each bounded to 100 records, while aggregate counts cover the complete readable event history. Independent local writers serialize appends with a per-Stack lock; earlier events are never rewritten.
+The Activity section has separate Work and Stack changes views. Each Work row is one logical unit started by `work_start`, preserves its original title, reports its completion result and turn count, and opens a deep-linked detail page. Work detail lists child turns; turn detail shows status, briefing evidence, changed paths, next step, and usage. Stack changes contains catalog/configuration activity without interleaving every work lifecycle record. Lists and detail event evidence are bounded while aggregate counts cover the complete readable history. Independent local writers serialize appends with a per-Stack lock; earlier events are never rewritten.
+
+A `sessionId` groups logical work; it is not a Codex chat ID. Keep it active across clarification, retries, and multiple agent turns, and call `work_complete` only when that work is actually done. One agent chat may complete multiple logical work items.
 
 | Command | Purpose |
 | --- | --- |

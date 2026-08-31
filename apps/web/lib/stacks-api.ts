@@ -1,7 +1,7 @@
 import type { StackOverview } from '../../../src/application/overview.ts';
 import type { StackIntegrations } from '../../../src/application/integrations.ts';
 import type { StackGraph } from '../../../src/application/graph.ts';
-import type { StackActivity } from '../../../src/application/activity.ts';
+import type { ActivityTurnDetail, ActivityWorkDetail, StackActivity } from '../../../src/application/activity.ts';
 import type { SyncResult } from '../../../src/core/types.ts';
 import type { ComponentListOutput, ComponentOutput } from '../../../src/application/stacks-application.ts';
 
@@ -197,9 +197,39 @@ export async function fetchActivity(
   if (
     !('schemaVersion' in body) ||
     body.schemaVersion !== '0.1' ||
-    !('recentEvents' in body)
+    !('work' in body)
   )
     throw new Error('The local API returned an unsupported activity contract.');
+  return body;
+}
+
+export async function fetchActivityWork(
+  stack: string,
+  sessionId: string,
+  signal?: AbortSignal,
+): Promise<ActivityWorkDetail> {
+  const url = new URL(endpoint('/api/v0.1/activity/work', stack));
+  url.searchParams.set('session', sessionId);
+  const response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+  const body = (await response.json()) as ActivityWorkDetail | { error?: string };
+  if (!response.ok) throw new Error('error' in body && body.error ? body.error : `Local API returned ${response.status}.`);
+  if (!('work' in body) || !('turns' in body)) throw new Error('The local API returned an unsupported work detail contract.');
+  return body;
+}
+
+export async function fetchActivityTurn(
+  stack: string,
+  sessionId: string,
+  turnId: string,
+  signal?: AbortSignal,
+): Promise<ActivityTurnDetail> {
+  const url = new URL(endpoint('/api/v0.1/activity/turn', stack));
+  url.searchParams.set('session', sessionId);
+  url.searchParams.set('turn', turnId);
+  const response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+  const body = (await response.json()) as ActivityTurnDetail | { error?: string };
+  if (!response.ok) throw new Error('error' in body && body.error ? body.error : `Local API returned ${response.status}.`);
+  if (!('work' in body) || !('turn' in body)) throw new Error('The local API returned an unsupported turn detail contract.');
   return body;
 }
 

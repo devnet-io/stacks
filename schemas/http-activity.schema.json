@@ -1,95 +1,68 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://stacks.dev/schemas/http-activity.schema.json",
-  "title": "Stacks activity response",
+  "title": "Stacks activity overview response",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "generatedAt", "stack", "summary", "sessions", "sessionLimit", "recentEvents", "recentEventLimit", "warnings"],
+  "required": ["schemaVersion", "generatedAt", "stack", "summary", "work", "workLimit", "recentChanges", "recentChangeLimit", "warnings"],
   "properties": {
     "schemaVersion": { "const": "0.1" },
     "generatedAt": { "type": "string", "format": "date-time" },
-    "stack": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "namespace", "name"],
-      "properties": {
-        "id": { "type": "string" },
-        "namespace": { "type": "string" },
-        "name": { "type": "string" }
-      }
-    },
+    "stack": { "$ref": "#/$defs/stack" },
     "summary": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["events", "activeSessions", "completedSessions", "usageEvents", "inputTokens", "outputTokens", "costs"],
+      "type": "object", "additionalProperties": false,
+      "required": ["events", "activeWork", "completedWork", "turns", "usage"],
       "properties": {
         "events": { "type": "integer", "minimum": 0 },
-        "activeSessions": { "type": "integer", "minimum": 0 },
-        "completedSessions": { "type": "integer", "minimum": 0 },
-        "usageEvents": { "type": "integer", "minimum": 0 },
-        "inputTokens": { "type": "number", "minimum": 0 },
-        "outputTokens": { "type": "number", "minimum": 0 },
-        "costs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["amount", "currency", "costKind"],
-            "properties": {
-              "amount": { "type": "number" },
-              "currency": { "type": "string" },
-              "costKind": { "enum": ["reported", "estimated", "allocated"] }
-            }
-          }
-        }
+        "activeWork": { "type": "integer", "minimum": 0 },
+        "completedWork": { "type": "integer", "minimum": 0 },
+        "turns": { "type": "integer", "minimum": 0 },
+        "usage": { "$ref": "#/$defs/usage" }
       }
     },
-    "sessions": {
-      "type": "array",
-      "maxItems": 100,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["sessionId", "status", "turns"],
-        "properties": {
-          "sessionId": { "type": "string" },
-          "componentId": { "type": "string" },
-          "workId": { "type": "string" },
-          "actor": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": { "agent": { "type": "string" }, "client": { "type": "string" }, "model": { "type": "string" } }
-          },
-          "startedAt": { "type": "string", "format": "date-time" },
-          "completedAt": { "type": "string", "format": "date-time" },
-          "status": { "enum": ["active", "success", "partial", "failed", "cancelled"] },
-          "summary": { "type": "string" },
-          "turns": { "type": "integer", "minimum": 0 }
-        }
-      }
-    },
-    "sessionLimit": { "const": 100 },
-    "recentEvents": {
-      "type": "array",
-      "maxItems": 100,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "timestamp", "type"],
-        "properties": {
-          "id": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" }, "type": { "type": "string" },
-          "componentId": { "type": "string" }, "sessionId": { "type": "string" }, "turnId": { "type": "string" }, "summary": { "type": "string" }, "status": { "type": "string" }, "outcome": { "type": "string" },
-          "actor": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": { "agent": { "type": "string" }, "client": { "type": "string" }, "model": { "type": "string" } }
-          },
-          "provider": { "type": "string" }, "model": { "type": "string" }, "inputTokens": { "type": "number" }, "outputTokens": { "type": "number" },
-          "amount": { "type": "number" }, "currency": { "type": "string" }, "costKind": { "enum": ["reported", "estimated", "allocated"] }
-        }
-      }
-    },
-    "recentEventLimit": { "const": 100 },
+    "work": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/work" } },
+    "workLimit": { "const": 50 },
+    "recentChanges": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/event" } },
+    "recentChangeLimit": { "const": 30 },
     "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "stack": {
+      "type": "object", "additionalProperties": false, "required": ["id", "namespace", "name"],
+      "properties": { "id": { "type": "string" }, "namespace": { "type": "string" }, "name": { "type": "string" }, "version": { "type": "string" } }
+    },
+    "actor": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "agent": { "type": "string" }, "client": { "type": "string" }, "model": { "type": "string" } }
+    },
+    "cost": {
+      "type": "object", "additionalProperties": false, "required": ["amount", "currency", "costKind"],
+      "properties": { "amount": { "type": "number" }, "currency": { "type": "string" }, "costKind": { "enum": ["reported", "estimated", "allocated"] } }
+    },
+    "usage": {
+      "type": "object", "additionalProperties": false, "required": ["events", "inputTokens", "outputTokens", "costs"],
+      "properties": {
+        "events": { "type": "integer", "minimum": 0 }, "inputTokens": { "type": "number", "minimum": 0 }, "outputTokens": { "type": "number", "minimum": 0 },
+        "costs": { "type": "array", "items": { "$ref": "#/$defs/cost" } }
+      }
+    },
+    "work": {
+      "type": "object", "additionalProperties": false, "required": ["sessionId", "status", "turnCount", "usage"],
+      "properties": {
+        "sessionId": { "type": "string" }, "componentId": { "type": "string" }, "workId": { "type": "string" }, "actor": { "$ref": "#/$defs/actor" },
+        "startedAt": { "type": "string", "format": "date-time" }, "completedAt": { "type": "string", "format": "date-time" },
+        "status": { "enum": ["active", "success", "partial", "failed", "cancelled"] }, "title": { "type": "string" }, "resultSummary": { "type": "string" },
+        "turnCount": { "type": "integer", "minimum": 0 }, "openTurnId": { "type": "string" }, "usage": { "$ref": "#/$defs/usage" }
+      }
+    },
+    "event": {
+      "type": "object", "additionalProperties": false, "required": ["id", "timestamp", "type"],
+      "properties": {
+        "id": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" }, "type": { "type": "string" },
+        "componentId": { "type": "string" }, "sessionId": { "type": "string" }, "turnId": { "type": "string" }, "actor": { "$ref": "#/$defs/actor" },
+        "summary": { "type": "string" }, "status": { "type": "string" }, "outcome": { "type": "string" }, "provider": { "type": "string" }, "model": { "type": "string" },
+        "inputTokens": { "type": "number" }, "outputTokens": { "type": "number" }, "amount": { "type": "number" }, "currency": { "type": "string" }, "costKind": { "enum": ["reported", "estimated", "allocated"] }
+      }
+    }
   }
 }

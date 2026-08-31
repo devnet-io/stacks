@@ -71,6 +71,27 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     assert.deepEqual(resolved.structuredContent.items.map((item) => [item.componentId, item.path]), [["knowledge", "engineering.md"], ["product", "AGENTS.md"]]);
     assert.equal(resolved.structuredContent.briefing.items[0]?.content, "# Engineering\n");
     assert.equal(resolved.structuredContent.briefing.omissions[0]?.reason, "missing");
+
+    send({ jsonrpc: "2.0", id: 10, method: "tools/call", params: { name: "work_start", arguments: { stack: "tests/mcp-authoring", componentId: "product", summary: "Exercise logical work", agent: "codex" } } });
+    const startedWork = (await response(10)).result as { structuredContent: { sessionId: string } };
+    const sessionId = startedWork.structuredContent.sessionId;
+    send({ jsonrpc: "2.0", id: 11, method: "tools/call", params: { name: "turn_start", arguments: { stack: "tests/mcp-authoring", sessionId, task: "Exercise the turn lifecycle" } } });
+    const startedTurn = (await response(11)).result as { structuredContent: { turnId: string } };
+    const turnId = startedTurn.structuredContent.turnId;
+    send({ jsonrpc: "2.0", id: 12, method: "tools/call", params: { name: "turn_complete", arguments: { stack: "tests/mcp-authoring", sessionId, turnId, summary: "Lifecycle exercised", status: "complete", changedPaths: ["src/example.ts"] } } });
+    assert.equal((await response(12)).result !== undefined, true);
+    send({ jsonrpc: "2.0", id: 13, method: "tools/call", params: { name: "work_list", arguments: { stack: "tests/mcp-authoring", componentId: "product", status: "active" } } });
+    const workList = (await response(13)).result as { structuredContent: { work: Array<{ sessionId: string; title: string; turnCount: number }> } };
+    assert.deepEqual(workList.structuredContent.work.map((item) => [item.sessionId, item.title, item.turnCount]), [[sessionId, "Exercise logical work", 1]]);
+    send({ jsonrpc: "2.0", id: 14, method: "tools/call", params: { name: "work_get", arguments: { stack: "tests/mcp-authoring", sessionId } } });
+    const workDetail = (await response(14)).result as { structuredContent: { turns: Array<{ turnId: string }> } };
+    assert.equal(workDetail.structuredContent.turns[0]?.turnId, turnId);
+    send({ jsonrpc: "2.0", id: 15, method: "tools/call", params: { name: "turn_get", arguments: { stack: "tests/mcp-authoring", sessionId, turnId } } });
+    const turnDetail = (await response(15)).result as { structuredContent: { turn: { summary: string; changedPaths: string[] } } };
+    assert.equal(turnDetail.structuredContent.turn.summary, "Lifecycle exercised");
+    assert.deepEqual(turnDetail.structuredContent.turn.changedPaths, ["src/example.ts"]);
+    send({ jsonrpc: "2.0", id: 16, method: "tools/call", params: { name: "work_complete", arguments: { stack: "tests/mcp-authoring", sessionId, summary: "Logical work complete" } } });
+    assert.equal((await response(16)).result !== undefined, true);
     assert.match(stderr, /^Stacks MCP server is listening for the machine catalog/u);
     assert.ok(stdout.split("\n").filter(Boolean).every((line) => (JSON.parse(line) as { jsonrpc?: string }).jsonrpc === "2.0"));
   } finally {

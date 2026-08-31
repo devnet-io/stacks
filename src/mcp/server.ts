@@ -132,8 +132,30 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
     ...(maxBytes === undefined ? {} : { maxBytes }),
   }) as unknown as Record<string, unknown>));
 
+  server.registerTool("work_list", {
+    title: "List logical work", description: "List recent logical work items and their turn counts, status, component, actor, and usage. A work item is not an agent chat.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1).optional(), status: z.enum(["active", "completed"]).optional() }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, status }) => {
+    const activity = await application.getActivity({ stack: stackSelector });
+    const work = activity.work.filter((item) => (!componentId || item.componentId === componentId) && (!status || (status === "active" ? item.status === "active" : item.status !== "active")));
+    return result({ schemaVersion: "0.1", stack: activity.stack, work, limit: activity.workLimit });
+  });
+
+  server.registerTool("work_get", {
+    title: "Get logical work", description: "Inspect one logical work item, including its ordered turns and sanitized lifecycle events.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1) }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, sessionId }) => result(await application.getActivityWork({ stack: stackSelector }, sessionId) as unknown as Record<string, unknown>));
+
+  server.registerTool("turn_get", {
+    title: "Get work turn", description: "Inspect one turn within a logical work item, including outcome, changed paths, usage, and briefing identity.",
+    inputSchema: z.object({ stack: selector, sessionId: z.string().min(1), turnId: z.string().min(1) }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, sessionId, turnId }) => result(await application.getActivityTurn({ stack: stackSelector }, sessionId, turnId) as unknown as Record<string, unknown>));
+
   server.registerTool("work_start", {
-    title: "Start Stack work session", description: "Append a work-start event for a component.",
+    title: "Start logical Stack work", description: "Start one logical unit of work for a component. It may span multiple agent turns and is not the same thing as an agent chat.",
     inputSchema: z.object({ stack: selector, componentId: z.string().min(1), summary: z.string().min(1), workId: z.string().optional(), agent: z.string().optional(), client: z.string().optional(), model: z.string().optional() }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   }, async ({ stack: stackSelector, componentId, summary, workId, agent, client, model }) => {

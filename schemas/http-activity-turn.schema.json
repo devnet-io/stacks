@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stacks.dev/schemas/http-activity-turn.schema.json",
+  "title": "Stacks activity turn detail response",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "stack", "work", "turn", "events", "warnings"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" }, "generatedAt": { "type": "string", "format": "date-time" },
+    "stack": { "type": "object" }, "work": { "type": "object" }, "turn": { "type": "object" },
+    "events": { "type": "array" }, "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

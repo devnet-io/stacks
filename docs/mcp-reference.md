@@ -25,11 +25,11 @@ Every Stack-specific tool takes `stack` in `namespace/name` form. Use `stack_mem
 1. Read the server instructions or call `instructions_get`.
 2. Call `stack_memberships` with the workspace directory. A `component` result is direct; an `ancestor` result means the workspace contains descendant components and requires explicit target selection. If there is no match, call `stack_list`; never guess among multiple matches.
 3. Call `component_get` and `stack_status` for the target component.
-4. Call `work_start` before material work and retain the returned `sessionId`.
+4. Treat one `sessionId` as a logical work item, not the whole chat. Reuse a retained active item across clarifications/retries; use `work_list` or `work_get` when status is uncertain, and call `work_start` before genuinely new material work.
 5. At the beginning of every participating turn, call `turn_start` with the session and current task. Retain its `turnId`, use the materialized briefing, and review its omissions and truncations.
 6. Close that exact turn with `turn_complete`, including only telemetry the client actually observes.
 7. Use `usage_import` only for delayed provider exports or external measurements.
-8. Call `work_complete` with the outcome and remaining work after all turns are closed.
+8. Call `work_complete` only when the logical work is finished and all its turns are closed. One chat may contain multiple work items.
 
 ## Resources
 
@@ -237,13 +237,43 @@ Output includes the plan plus `briefing`: safely read content, source/included b
 
 Side effects: none; read-only and idempotent.
 
+### `work_list`
+
+Lists recent logical work and its active/completed state, component, actor, turn count, opening title, completion result, and usage. A work item is not an agent chat.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "app", "status": "active" }
+```
+
+`componentId` and `status` (`active` or `completed`) are optional filters. Output is bounded to the Activity work limit. Side effects: none; read-only and idempotent.
+
+### `work_get`
+
+Returns one logical work item, its child turns in newest-first order, and sanitized lifecycle events.
+
+```json
+{ "stack": "acme/customer-portal", "sessionId": "session-id" }
+```
+
+Use this before resuming a retained `sessionId` when its status is uncertain. Side effects: none; read-only and idempotent.
+
+### `turn_get`
+
+Returns one turn's status, outcome summary, changed paths, next step, usage, briefing identity/counts, and linked sanitized events.
+
+```json
+{ "stack": "acme/customer-portal", "sessionId": "session-id", "turnId": "turn-id" }
+```
+
+Side effects: none; read-only and idempotent.
+
 ## Work lifecycle tools
 
 Lifecycle tools append events and are deliberately non-idempotent. Never retry an uncertain call blindly; first determine whether its event was recorded.
 
 ### `work_start`
 
-Appends a work-start event for one component and returns a `sessionId`.
+Appends a work-start event for one component and returns a `sessionId`. It represents one logical unit of work that may span multiple turns, retries, or clarifications—not an entire Codex chat and not one response.
 
 Required input: `stack`, `componentId`, `summary`.
 
@@ -303,7 +333,7 @@ Optional input:
 
 ### `work_complete`
 
-Appends the final work outcome. It refuses completion while a turn remains open.
+Appends the final logical-work outcome. Call it only when that work is finished, not automatically after every agent response. It refuses completion while a turn remains open.
 
 Required input: `stack`, `sessionId`, `summary`.
 

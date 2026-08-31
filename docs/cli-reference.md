@@ -320,7 +320,7 @@ All check-in commands append events. They never rewrite prior history.
 
 ### `stacks checkin start`
 
-Starts a work session and returns a `sessionId`.
+Starts one logical unit of work and returns its `sessionId`. The identifier does not represent an entire agent chat or one response. Reuse it across clarifications, retries, and turns while the same work remains active; one chat may contain multiple logical work items.
 
 ```text
 stacks checkin start (--stack <namespace/name> | --root <directory>)
@@ -369,7 +369,7 @@ stacks checkin turn-complete --stack acme/customer-portal --session <id> --turn 
 
 ### `stacks checkin complete`
 
-Appends the final outcome for a work session. It refuses completion while a turn remains open.
+Appends the final outcome for logical work. Call it only when that work is actually finished, not automatically at the end of every agent response. It refuses completion while a turn remains open.
 
 ```text
 stacks checkin complete (--stack <namespace/name> | --root <directory>)

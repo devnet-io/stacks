@@ -8,7 +8,7 @@ import type { StackOverview } from "../src/application/overview.ts";
 import type { StackIntegrations } from "../src/application/integrations.ts";
 import type { StackGraph } from "../src/application/graph.ts";
 import type { StackActivity } from "../src/application/activity.ts";
-import { startWork } from "../src/core/events.ts";
+import { completeTurn, startTurn, startWork } from "../src/core/events.ts";
 import { loadStack } from "../src/core/manifest.ts";
 import { startLocalApi } from "../src/http/server.ts";
 import { addRegisteredComponent, createRegisteredStack } from "../src/core/catalog.ts";
@@ -80,7 +80,7 @@ test("global local API lists and explicitly selects registered Stacks", async ()
     const managed = await (await fetch(`${api.origin}/api/v0.1/overview?stack=acme%2Fthree`)).json() as StackOverview;
     assert.equal(managed.components[0]?.root, path.resolve(rebound));
     const managementActivity = await (await fetch(`${api.origin}/api/v0.1/activity?stack=acme%2Fthree`)).json() as StackActivity;
-    assert.deepEqual(managementActivity.recentEvents.map((event) => event.type), [
+    assert.deepEqual(managementActivity.recentChanges.map((event) => event.type), [
       "component.binding.changed",
       "component.configuration.changed",
       "component.configuration.changed",
@@ -89,7 +89,7 @@ test("global local API lists and explicitly selects registered Stacks", async ()
       "component.added",
       "stack.created",
     ]);
-    assert.ok(managementActivity.recentEvents.every((event) => event.actor?.client === "stacks-web"));
+    assert.ok(managementActivity.recentChanges.every((event) => event.actor?.client === "stacks-web"));
 
     const duplicate = await fetch(`${api.origin}/api/v0.1/stacks`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selector: "acme/three" }),
@@ -121,7 +121,9 @@ test("local overview API is Stack-scoped, versioned, read-only, and browser-acce
   }, null, 2)}\n`, "utf8");
 
   const loaded = await loadStack(root);
-  await startWork(loaded, { componentId: "ready", summary: "Test the Activity API" });
+  const activeWork = await startWork(loaded, { componentId: "ready", summary: "Test the Activity API" });
+  const activeTurn = await startTurn(loaded, { sessionId: activeWork.sessionId!, context: { generatedAt: new Date().toISOString(), items: 0, warnings: 0, errors: 0, briefingDigest: "http-briefing", briefingMode: "orientation", briefingItems: 0, briefingOmissions: 0, briefingBytes: 0, briefingBudgetBytes: 32768 } });
+  await completeTurn(loaded, { sessionId: activeWork.sessionId!, turnId: activeTurn.turnId!, summary: "Verified Activity details", status: "complete", changedPaths: ["ready/file.ts"] });
 
   const api = await startLocalApi({ root, port: 0, staticRoot, hostedMcp: { url: "https://mcp.example.test", bearerTokenEnvVar: "STACKS_MCP_TOKEN" } });
   try {
@@ -168,8 +170,21 @@ test("local overview API is Stack-scoped, versioned, read-only, and browser-acce
     assert.equal(activityResponse.status, 200);
     const activity = await activityResponse.json() as StackActivity;
     assert.equal(activity.stack.id, "http-test-id");
-    assert.equal(activity.summary.activeSessions, 1);
-    assert.equal(activity.recentEvents[0]?.summary, "Test the Activity API");
+    assert.equal(activity.summary.activeWork, 1);
+    assert.equal(activity.work[0]?.title, "Test the Activity API");
+
+    const workResponse = await fetch(`${api.origin}/api/v0.1/activity/work?session=${activeWork.sessionId}`);
+    assert.equal(workResponse.status, 200);
+    const workDetail = await workResponse.json() as { work: { sessionId: string }; turns: unknown[] };
+    assert.equal(workDetail.work.sessionId, activeWork.sessionId);
+    assert.equal(workDetail.turns.length, 1);
+    const turnResponse = await fetch(`${api.origin}/api/v0.1/activity/turn?session=${activeWork.sessionId}&turn=${activeTurn.turnId}`);
+    assert.equal(turnResponse.status, 200);
+    const turnDetail = await turnResponse.json() as { turn: { turnId: string; briefing: { digest: string } } };
+    assert.equal(turnDetail.turn.turnId, activeTurn.turnId);
+    assert.equal(turnDetail.turn.briefing.digest, "http-briefing");
+    const missingTurn = await fetch(`${api.origin}/api/v0.1/activity/turn?session=${activeWork.sessionId}`);
+    assert.equal(missingTurn.status, 400);
 
     const unknown = await fetch(`${api.origin}/api/v0.1/not-real`);
     assert.equal(unknown.status, 404);

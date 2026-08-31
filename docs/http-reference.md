@@ -40,7 +40,15 @@ Returns Stack identity, storage mode, component health summary, explicit paths, 
 
 ### `GET /api/v0.1/activity`
 
-Returns the append-only event summary, token totals, cost totals grouped by currency and provenance, at most 100 work sessions, and at most the 100 newest sanitized events. Recent events include Stack creation, component additions, changed bindings, agent work, and usage, with adapter actor provenance when available. Aggregate counts cover the complete readable history. Monetary totals are never combined across `reported`, `estimated`, and `allocated` values. The response follows `schemas/http-activity.schema.json`.
+Returns full-history counts and usage totals plus at most 50 logical-work summaries and 30 recent Stack changes. A work summary preserves its opening title separately from its completion result and reports child-turn count, active status, actor, component, and usage. Lifecycle/usage events do not clutter the Stack-change list. Monetary totals remain separated by `reported`, `estimated`, and `allocated` provenance. The response follows `schemas/http-activity.schema.json`.
+
+### `GET /api/v0.1/activity/work`
+
+Requires `?stack=namespace%2Fname&session=<sessionId>` for registered mode. Returns one logical work item, its ordered turn summaries, and at most 100 sanitized events scoped to that work. `sessionId` is a durable logical-work identifier, not an agent-chat identity. Unknown work returns `404`. The response follows `schemas/http-activity-work.schema.json`.
+
+### `GET /api/v0.1/activity/turn`
+
+Requires `?stack=namespace%2Fname&session=<sessionId>&turn=<turnId>`. Returns one turn with status, outcome summary, changed paths, next step, briefing identity/counts, usage, and sanitized linked events. Unknown work or turn returns `404`. The response follows `schemas/http-activity-turn.schema.json`.
 
 ### `GET /api/v0.1/graph`
 

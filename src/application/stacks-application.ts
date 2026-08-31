@@ -13,7 +13,7 @@ import { buildUsageReport } from "../core/usage.ts";
 import { buildStackGraph, type StackGraph } from "./graph.ts";
 import { buildStackIntegrations, type HostedMcpConfiguration, type StackIntegrations } from "./integrations.ts";
 import { buildStackOverview, type StackOverview } from "./overview.ts";
-import { buildStackActivity, type StackActivity } from "./activity.ts";
+import { buildActivityTurnDetail, buildActivityWorkDetail, buildStackActivity, type ActivityTurnDetail, type ActivityWorkDetail, type StackActivity } from "./activity.ts";
 import { initOutput, lockOutput, stackIdentity, statusOutput, syncOutput, validateOutput, type InitOutput, type LockOutput, type StackIdentity, type StatusOutput, type SyncOutput, type ValidateOutput } from "./contracts.ts";
 
 export type StackReference = { stack: string; root?: never } | { root: string; stack?: never };
@@ -109,6 +109,8 @@ export interface StacksApplication {
   getUsageReport(reference: StackReference): Promise<UsageReport>;
   getOverview(reference: StackReference): Promise<StackOverview>;
   getActivity(reference: StackReference): Promise<StackActivity>;
+  getActivityWork(reference: StackReference, sessionId: string): Promise<ActivityWorkDetail>;
+  getActivityTurn(reference: StackReference, sessionId: string, turnId: string): Promise<ActivityTurnDetail>;
   getGraph(reference: StackReference): Promise<StackGraph>;
   getIntegrations(reference: StackReference): Promise<StackIntegrations>;
 }
@@ -330,6 +332,14 @@ export class LocalStacksApplication implements StacksApplication {
 
   async getActivity(reference: StackReference): Promise<StackActivity> {
     return buildStackActivity(await this.load(reference));
+  }
+
+  async getActivityWork(reference: StackReference, sessionId: string): Promise<ActivityWorkDetail> {
+    return buildActivityWorkDetail(await this.load(reference), sessionId);
+  }
+
+  async getActivityTurn(reference: StackReference, sessionId: string, turnId: string): Promise<ActivityTurnDetail> {
+    return buildActivityTurnDetail(await this.load(reference), sessionId, turnId);
   }
 
   async getGraph(reference: StackReference): Promise<StackGraph> {

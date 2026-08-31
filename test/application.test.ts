@@ -65,7 +65,7 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     await application.bindComponent("tests/application", "remote", rebound, { materialize: false, actor: { client: "test-client" } });
 
     const activity = await application.getActivity({ stack: "tests/application" });
-    assert.deepEqual(activity.recentEvents.map((event) => event.type), [
+    assert.deepEqual(activity.recentChanges.map((event) => event.type), [
       "component.binding.changed",
       "component.configuration.changed",
       "component.configuration.changed",
@@ -74,7 +74,7 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
       "component.added",
       "stack.created",
     ]);
-    assert.ok(activity.recentEvents.every((event) => event.actor?.client === "test-client"));
+    assert.ok(activity.recentChanges.every((event) => event.actor?.client === "test-client"));
 
     const catalog = await application.getCatalogStatus();
     assert.equal(catalog.schemaVersion, "0.1");

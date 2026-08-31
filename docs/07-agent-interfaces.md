@@ -38,6 +38,9 @@ Current tools are:
 - `guidance_configure`
 - `stack_status`
 - `context_resolve`
+- `work_list`
+- `work_get`
+- `turn_get`
 - `work_start`
 - `turn_start`
 - `turn_complete`
@@ -48,6 +51,8 @@ Current tools are:
 `stack_memberships` maps an explicit workspace path to zero, one, or multiple bound Stack components. Direct `component` matches take precedence. When there is no direct match, `ancestor` matches let an agent opened at a shared parent discover descendant components without claiming the parent belongs to one of them. Multiple results always require explicit target selection. Every subsequent Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
 
 MCP may add an existing local component, change its binding, and author capability/provider relationships plus guidance descriptors. Git cloning and repository synchronization remain absent because those filesystem/network mutations are better initiated explicitly through the CLI.
+
+`sessionId` identifies one logical work item rather than a Codex chat. `work_list`, `work_get`, and `turn_get` are read-only inspection tools for deciding whether to resume active work and for reviewing its child turns. The same work may span clarifications and retries; `work_complete` closes it only after the logical outcome is known.
 
 ## Skills and clients
 

@@ -294,6 +294,20 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         send(response, 200, await application.getActivity(await selected()) as unknown as Record<string, unknown>);
         return;
       }
+      if (url.pathname === "/api/v0.1/activity/work") {
+        const sessionId = url.searchParams.get("session");
+        if (!sessionId) throw new HttpError(400, "session must be a non-empty string.");
+        send(response, 200, await application.getActivityWork(await selected(), sessionId) as unknown as Record<string, unknown>);
+        return;
+      }
+      if (url.pathname === "/api/v0.1/activity/turn") {
+        const sessionId = url.searchParams.get("session");
+        const turnId = url.searchParams.get("turn");
+        if (!sessionId) throw new HttpError(400, "session must be a non-empty string.");
+        if (!turnId) throw new HttpError(400, "turn must be a non-empty string.");
+        send(response, 200, await application.getActivityTurn(await selected(), sessionId, turnId) as unknown as Record<string, unknown>);
+        return;
+      }
       if (url.pathname === "/api/v0.1/integrations") {
         send(response, 200, await application.getIntegrations(await selected()) as unknown as Record<string, unknown>);
         return;
