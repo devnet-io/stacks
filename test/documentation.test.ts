@@ -11,17 +11,21 @@ test("keeps product, current architecture, RFCs, and delivery evidence distinct"
   assert.match(doc("project-status.md"), /Do not infer completion/u);
 });
 
-test("keeps the MVP workflow proposed while aligning product and delivery direction", () => {
+test("keeps exercised MVP acceptance separate from its archived design narrative", () => {
   const vision = doc("11-mvp-agent-workflow-vision.md");
+  const acceptance = doc("mvp-acceptance.md");
   const catalog = doc("catalog.json");
   const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
-  assert.match(vision, /proposed workflow, not current-state documentation/u);
-  assert.match(catalog, /"id": "mvp-agent-workflow-vision", "category": "decisions", "lifecycle": "proposed"/u);
+  assert.match(vision, /historical design material, not current-state documentation/u);
+  assert.match(acceptance, /current delivery evidence, not a future proposal/u);
+  assert.match(acceptance, /live `stacks mcp` stdio process/u);
+  assert.match(catalog, /"id": "mvp-acceptance", "category": "current", "lifecycle": "current"/u);
+  assert.match(catalog, /"id": "mvp-agent-workflow-vision", "category": "archive", "lifecycle": "archive"/u);
   assert.match(doc("product.md"), /authoritative providers/u);
   assert.match(doc("architecture.md"), /returned briefing has a stable digest/u);
   assert.match(doc("08-roadmap.md"), /minimum dependable briefing/u);
   assert.match(doc("08-roadmap.md"), /cross-component capability requests as a complete vertical slice/u);
-  assert.match(agents, /proposed acceptance scenario, not implementation evidence/u);
+  assert.match(agents, /mvp-acceptance\.md/u);
   assert.match(agents, /refresh the copied installation/u);
 });
 

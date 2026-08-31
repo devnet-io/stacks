@@ -9,7 +9,7 @@ Build **Stacks** as a local-first, portable, agent-agnostic composition and cont
 
 Read `docs/00-input-synthesis.md` and the current-state documentation named below before making architectural changes.
 
-For work on the local agent MVP, also read `docs/11-mvp-agent-workflow-vision.md` and the active sequence in `docs/08-roadmap.md`. The workflow vision is a proposed acceptance scenario, not implementation evidence; use current architecture and project status to determine what actually exists.
+For work on the local agent MVP, also read `docs/mvp-acceptance.md` and the active sequence in `docs/08-roadmap.md`. The archived `docs/11-mvp-agent-workflow-vision.md` is design rationale, not current implementation evidence.
 
 ## Documentation truth policy
 

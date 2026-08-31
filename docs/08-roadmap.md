@@ -44,7 +44,7 @@ Exit condition: the CLI, local web UI, and MCP use the same application services
 
 ## Milestone 3: dependable MVP agent workflow
 
-Complete the proposed [MVP agent workflow](11-mvp-agent-workflow-vision.md) with the smallest explicit mechanisms:
+Complete the [local MVP acceptance workflow](mvp-acceptance.md), originally framed by the archived [workflow vision](11-mvp-agent-workflow-vision.md), with the smallest explicit mechanisms:
 
 - authorable capability providers, consumer relationships, guidance, and bounded resource exports through shared application adapters;
 - distinct session-orientation, compact turn-refresh, and on-demand context products;
@@ -117,7 +117,7 @@ Before expanding into component descriptors, remote transports, collections, or 
 6. **Complete:** add capability, authoritative-provider, guidance, and single bounded-resource-path authoring through the application boundary and a complete Manage slice. Explicit Stack declarations precede provider self-description.
 7. **Complete:** build the minimum dependable briefing: first-turn orientation and compact later-turn refresh, deterministic task-sensitive selection, hard byte budgets, safe text excerpts, provenance, explicit omissions, and a durable briefing digest. Refresh is size-based in the MVP; change-aware deltas and model-specific tokenization are later refinements.
 8. **Complete:** add cross-component capability requests as a complete vertical slice: create, list, inspect, transition, provider-complete, consumer-verify, and link blocked work through append-only events. Stacks records the protocol but never assigns agents or schedules execution.
-9. Exercise the complete [three-component MVP workflow](11-mvp-agent-workflow-vision.md) through a copied installation and real agent activation before expanding the platform boundary.
+9. **Complete:** exercise the complete [three-component MVP workflow](mvp-acceptance.md) through a copied installation, managed repository activation, and live stdio MCP. The quality gate proves orientation, refresh, authoritative reuse, a blocked request, provider publication/completion, separate consumer verification, resumed work, and retained activity evidence.
 10. Define optional provider-owned self-description for capabilities and bounded exports, with consumer relationships remaining in the Stack definition and precedence recorded in an ADR.
 11. Add remote transports together: an HTTP application client plus global `--endpoint` and `STACKS_ENDPOINT` selection for the CLI, and a Streamable HTTP MCP endpoint backed by the same `StacksApplication` and authentication boundary. Local in-process CLI execution and local stdio MCP remain the defaults; `stacks mcp --endpoint` may bridge stdio-only clients to a remote application. Non-loopback exposure requires authentication.
 12. Define and implement a portable, generic Git-backed Stack collection format and explicit add/list/sync/remove/publish workflows. Collections exclude machine bindings, credentials, caches, and local activity state.

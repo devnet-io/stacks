@@ -36,13 +36,6 @@ These are deliberately deferred. Codex should not silently lock them in without 
 - What change evidence should make a later refresh a delta rather than a smaller current-plan briefing?
 - When is optional semantic ranking justified within declared context boundaries?
 
-## Cross-component capability requests
-
-- Is a capability request a Stack-native domain object, an event-derived projection, or a portable file plus append-only transitions?
-- Which minimal states preserve provider completion and separate consumer verification without turning Stacks into an issue tracker?
-- How should a blocked work session reference a request, and how should later turns discover relevant changes?
-- What evidence may be attached safely, and which evidence remains a path or external reference rather than copied content?
-
 ## Events and analytics
 
 - Which event fields are safe to commit in sanitized exports?

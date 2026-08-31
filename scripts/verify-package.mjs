@@ -6,6 +6,7 @@ import path from "node:path";
 import process from "node:process";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { verifyMvpWorkflow } from "./verify-mvp-workflow.mjs";
 
 function npmInvocation(args) {
   const npmCli = process.env.npm_execpath;
@@ -116,6 +117,7 @@ try {
   const version = await run(process.execPath, [path.join(packageRoot, "dist", "cli.js"), "--version"]);
   assert.equal(version.stdout.trim(), JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8")).version);
   await verifyMcp(packageRoot);
+  await verifyMvpWorkflow({ packageRoot, root: path.join(temporary, "mvp-workflow"), run });
 
   const port = await availablePort();
   web = spawn(process.execPath, [path.join(packageRoot, "dist", "cli.js"), "ui", "--port", String(port), "--no-open"], {
@@ -131,7 +133,7 @@ try {
   await waitForMarker(port);
   const health = await (await fetch(`http://127.0.0.1:${port}/api/v0.1/health`)).json();
   assert.equal(health.status, "ok");
-  process.stdout.write("Verified copied CLI, packaged MCP contract, and web runtime.\n");
+  process.stdout.write("Verified copied CLI, packaged MCP contract, three-component agent workflow, and web runtime.\n");
 } finally {
   if (web && web.exitCode === null) {
     const exited = new Promise((resolve) => web.once("exit", resolve));
