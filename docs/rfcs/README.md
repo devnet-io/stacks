@@ -18,3 +18,4 @@ Acceptance never means implementation or deployment.
 | RFC | Status |
 | --- | --- |
 | [RFC-0001: Portable runtime and hosted adapters](0001-portable-runtime-and-hosted-adapters.md) | Implementing |
+| [RFC-0002: First-class application HTTP API](0002-first-class-application-http-api.md) | Proposed |

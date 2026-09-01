@@ -35,6 +35,7 @@ Do not infer completion from product documentation or accepted RFCs. This ledger
 
 ## Proposed
 
+- A first-class, machine-readable application HTTP contract for developers, automation, the Admin UI, CLI endpoint mode, and authenticated remote adapters, as scoped by [RFC-0002](rfcs/0002-first-class-application-http-api.md).
 - Hosted Stack snapshots, web access, and authenticated Streamable HTTP MCP.
 - Change-aware refresh deltas and optional model-specific token budgeting beyond the implemented deterministic byte-bounded briefings.
 - Ingestion observations and adoption proposals now that explicit declarations and bounded provider descriptors are proven.

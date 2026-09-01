@@ -11,6 +11,16 @@ test("keeps product, current architecture, RFCs, and delivery evidence distinct"
   assert.match(doc("project-status.md"), /Do not infer completion/u);
 });
 
+test("proposes a first-class HTTP application contract without overstating current behavior", () => {
+  const proposal = doc("rfcs/0002-first-class-application-http-api.md");
+  assert.match(proposal, /supported way for developers and automation to use Stacks/u);
+  assert.match(proposal, /same `StacksApplication` use cases as CLI, MCP, and the Admin UI/u);
+  assert.match(proposal, /explicitly private lifecycle surface/u);
+  assert.match(proposal, /current `\/api\/v0\.1` routes remain pre-stable implementation evidence/u);
+  assert.match(doc("08-roadmap.md"), /RFC-0002/u);
+  assert.match(doc("project-status.md"), /## Proposed[\s\S]*RFC-0002/u);
+});
+
 test("keeps exercised MVP acceptance separate from its archived design narrative", () => {
   const vision = doc("11-mvp-agent-workflow-vision.md");
   const acceptance = doc("mvp-acceptance.md");
