@@ -184,7 +184,7 @@ export function StackGraph({
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <GraphCanvas
+            <StackGraphCanvas
               data={data}
               query={query}
               selectedId={selected.id}
@@ -200,7 +200,7 @@ export function StackGraph({
   );
 }
 
-function GraphCanvas({
+export function StackGraphCanvas({
   data,
   query,
   selectedId,

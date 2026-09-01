@@ -93,7 +93,7 @@ The command safely includes only declared regular text files, defaults to a 32 K
 
 ## What is editable today?
 
-The CLI, MCP, and Components inspector can configure the minimum context graph without editing catalog files directly. For example:
+The CLI, MCP, and component editor can configure the minimum context graph without editing catalog files directly. For example:
 
 ```bash
 stacks component update your-name/my-stack app --name "Customer application" --description "Primary product" --kind product --access read-write

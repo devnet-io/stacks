@@ -28,7 +28,7 @@ On PowerShell or Command Prompt, use normal Windows paths without Unix-style sin
 stacks component add your-name/my-stack app --path C:\Users\you\projects\app --kind product
 ```
 
-`stacks ui` opens one local management interface for the machine catalog. Use the Stack selector to switch between registered Stacks. Components provides list and graph views of the same composition; selecting any component opens a side inspector for its details, local binding, metadata, artifacts, capability relationships, and guidance. Activity shows Stack changes, agent work, and usage. The UI includes the same getting-started and reference documentation as this repository.
+`stacks ui` opens one local management interface for the machine catalog. Use the Stack selector to switch between registered Stacks. Components is an integrated explorer: list and graph presentations share search, selection, and live component details. Editing opens a dedicated component workspace organized into Overview, Capabilities, Relationships, and Guidance instead of compressing management forms into the explorer. Activity shows Stack changes, agent work, and usage. The UI includes the same getting-started and reference documentation as this repository.
 
 Connect Codex once for all registered Stacks:
 

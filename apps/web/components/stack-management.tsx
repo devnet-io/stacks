@@ -1,9 +1,14 @@
 import {
   AlertCircle,
+  ArrowLeft,
+  BookOpen,
+  Boxes,
   CheckCircle2,
   Loader2,
+  Network,
   Plus,
   RefreshCw,
+  Settings2,
   Trash2,
 } from 'lucide-react';
 import {
@@ -28,6 +33,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   addComponent,
   bindComponent,
@@ -174,10 +180,12 @@ export function StackAddPanel({
 export function ComponentManagementPanel({
   stack,
   componentId,
+  onBack,
   onChanged,
 }: {
   stack: string;
   componentId: string;
+  onBack(): void;
   onChanged(): Promise<void>;
 }) {
   const [overview, setOverview] = useState<StackOverview>();
@@ -227,53 +235,210 @@ export function ComponentManagementPanel({
         </AlertDescription>
       </Alert>
     );
+  const component = entry.component;
   return (
-    <div className="space-y-5">
-      <div className="rounded-xl border bg-muted/20 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold">
-            {entry.component.name ?? entry.component.id}
+    <div className="mx-auto max-w-5xl space-y-6">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="-ml-2"
+        onClick={onBack}
+      >
+        <ArrowLeft /> Back to Components
+      </Button>
+      <header className="flex flex-wrap items-start justify-between gap-5 border-b pb-6">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              {component.kind}
+            </span>
+            <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+              {health.health}
+            </span>
+          </div>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+            {component.name ?? component.id}
           </h2>
-          <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
-            {entry.component.kind}
-          </span>
-          <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
-            {health.health}
-          </span>
-        </div>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">
-          {entry.component.id}
-        </p>
-        {entry.component.description ? (
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            {entry.component.description}
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            {component.id}
           </p>
-        ) : null}
-        <p className="mt-3 break-all font-mono text-xs text-muted-foreground">
-          {health.root}
-        </p>
-      </div>
-      <div className="grid gap-5 md:grid-cols-2">
-        <ComponentMetadataForm
-          stack={stack}
-          components={components}
-          fixedComponentId={componentId}
-          onChanged={changed}
-        />
-        <BindingForm
-          stack={stack}
-          overview={overview}
-          fixedComponentId={componentId}
-          onChanged={changed}
-        />
-      </div>
-      <ContextConfiguration
-        stack={stack}
-        components={components}
-        fixedComponentId={componentId}
-        onChanged={changed}
-      />
+          {component.description ? (
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {component.description}
+            </p>
+          ) : null}
+        </div>
+        <div className="max-w-md rounded-lg border bg-muted/20 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">
+            Local binding
+          </p>
+          <p className="mt-1 break-all font-mono text-xs leading-5">
+            {health.root}
+          </p>
+        </div>
+      </header>
+      <Tabs defaultValue="overview" className="gap-6">
+        <TabsList
+          variant="line"
+          className="w-full justify-start overflow-x-auto border-b pb-1"
+        >
+          <TabsTrigger value="overview" className="flex-none px-3 py-2">
+            <Settings2 /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="capabilities" className="flex-none px-3 py-2">
+            <Boxes /> Capabilities
+          </TabsTrigger>
+          <TabsTrigger value="relationships" className="flex-none px-3 py-2">
+            <Network /> Relationships
+          </TabsTrigger>
+          <TabsTrigger value="guidance" className="flex-none px-3 py-2">
+            <BookOpen /> Guidance
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="space-y-5">
+          <SectionIntro
+            title="Component identity and location"
+            description="Edit portable descriptive metadata separately from this machine's explicit directory binding."
+          />
+          <div className="grid gap-5 lg:grid-cols-2">
+            <ComponentMetadataForm
+              stack={stack}
+              components={components}
+              fixedComponentId={componentId}
+              onChanged={changed}
+            />
+            <BindingForm
+              stack={stack}
+              overview={overview}
+              fixedComponentId={componentId}
+              onChanged={changed}
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value="capabilities" className="space-y-5">
+          <SectionIntro
+            title="Provided capabilities"
+            description="Describe what this component authoritatively provides, including bounded context and an optional implementation artifact."
+          />
+          <DescriptorSummary descriptor={entry.descriptor} />
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,.65fr)]">
+            <CapabilityProviderForm
+              key={`provider-${componentId}`}
+              stack={stack}
+              component={component}
+              descriptor={entry.descriptor}
+              onChanged={changed}
+            />
+            <ConfigurationCard
+              label="Current providers"
+              values={(component.provides ?? []).map(
+                (item) =>
+                  `${item.capability}${item.artifact ? ` · ${item.artifact.ecosystem}:${item.artifact.name}` : ''}`,
+              )}
+              empty="No capabilities provided"
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value="relationships" className="space-y-5">
+          <SectionIntro
+            title="Consumed capabilities"
+            description="Connect this component to authoritative providers. Required and optional relationships remain explicit."
+          />
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,.65fr)]">
+            <CapabilityRequirementForm
+              key={`requirement-${componentId}`}
+              stack={stack}
+              component={component}
+              components={components}
+              onChanged={changed}
+            />
+            <ConfigurationCard
+              label="Current requirements"
+              values={(component.consumes ?? []).map(
+                (item) =>
+                  `${item.capability} · ${item.optional ? 'optional' : 'required'}${item.from ? ` · from ${item.from}` : ' · inferred provider'}`,
+              )}
+              empty="No capabilities consumed"
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value="guidance" className="space-y-5">
+          <SectionIntro
+            title="Component guidance"
+            description="Expose bounded, readable files that agents should consult when working with this component."
+          />
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,.65fr)]">
+            <GuidanceForm
+              key={`guidance-${componentId}`}
+              stack={stack}
+              component={component}
+              onChanged={changed}
+            />
+            <ConfigurationCard
+              label="Current guidance"
+              values={(component.guidance ?? []).map(
+                (item) => `${item.path} · ${item.strength ?? 'reference'}`,
+              )}
+              empty="No guidance configured"
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+function SectionIntro({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
+    </div>
+  );
+}
+function ConfigurationCard({
+  label,
+  values,
+  empty,
+}: {
+  label: string;
+  values: string[];
+  empty: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{label}</CardTitle>
+        <CardDescription>
+          Saved Stack declarations for this component.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {values.length ? (
+          <ul className="space-y-2">
+            {values.map((value) => (
+              <li
+                key={value}
+                className="rounded-lg border bg-muted/20 px-3 py-2 font-mono text-xs leading-5"
+              >
+                {value}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">{empty}</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
