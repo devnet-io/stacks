@@ -56,6 +56,7 @@ For work on the local agent MVP, also read `docs/mvp-acceptance.md` and the acti
 - Add an ADR under `docs/adr/` for changes to source-of-truth, identity, context semantics, event semantics, or component layout.
 - Use `namespace/name` as the readable Stack reference and immutable `metadata.id` for machine identity. Do not use an editable name as event or resource identity.
 - Keep `apps/cloud` honest: it is a reserved adapter boundary until runtime code and deployment evidence exist. Use the sibling `govwork` repository only as untrusted reference material for future Worker, GitHub, and documentation patterns.
+- Do not silently normalize recurring workflow friction. When a failure or workaround repeats, or when a workaround materially increases elapsed time, tool calls, token use, or user cost, pause feature work long enough to identify the root cause. Fix the underlying development path when that is safely in scope; otherwise record the defect, explain the tradeoff, and avoid presenting the workaround as the intended workflow.
 
 ## Working sequence
 
@@ -66,12 +67,15 @@ For work on the local agent MVP, also read `docs/mvp-acceptance.md` and the acti
 5. Add or update tests and schemas.
 6. Run `npm run check` before considering a milestone complete.
 7. Update current documentation and `docs/project-status.md` before considering the work complete.
-8. For a product delivery intended for local evaluation, refresh the standalone local installation with `npm run install:local`, verify the installed version, and leave the global UI running again. MCP contract changes also require the agent client to be fully restarted before its live tool registry can be evaluated.
-9. The user expects each completed coherent delivery in this workspace to be committed and pushed. Preserve unrelated work, stage explicit files when necessary, and report the commit and push result.
+8. Use the shortest reliable development feedback loop while iterating. Packaging, installation, or full-environment restarts are delivery verification steps, not substitutes for a broken development or preview workflow; diagnose repeated friction in the expected loop before continuing to pay its cost.
+9. For a product delivery intended for local evaluation, refresh the standalone local installation with `npm run install:local`, verify the installed version, and leave the global UI running again. MCP contract changes also require the agent client to be fully restarted before its live tool registry can be evaluated.
+10. The user expects each completed coherent delivery in this workspace to be committed and pushed. Preserve unrelated work, stage explicit files when necessary, and report the commit and push result.
 
 ## Admin UI vertical slices
 
 Treat each admin UI section as a complete vertical product slice. A section is not complete when it is only a mockup or only a backend primitive. Finish its shared application contract, local adapter/API, loading/empty/error/success states, responsive and accessible UI, focused tests, current-state documentation, and cross-platform verification together. Keep unfinished sections visibly labeled rather than wiring partial behavior behind active controls.
+
+For browser-based UI changes, validate the complete affected workflow at both a representative wide-desktop viewport (at least 1440×900) and a representative narrow-mobile viewport (approximately 390×844). Test an intermediate width when the design introduces a breakpoint, dense multi-pane layout, or other behavior that could fail between those endpoints. Do not treat an ambient browser size or a tablet-like viewport as sufficient desktop evidence, and restore any temporarily overridden viewport after validation.
 
 ## Code review rules
 
