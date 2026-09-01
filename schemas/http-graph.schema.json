@@ -23,21 +23,29 @@
   "$defs": {
     "node": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "name", "kind", "sourceType", "access", "provides", "consumes", "artifacts"],
+      "required": ["id", "name", "kind", "sourceType", "access", "provides", "consumes", "requirements", "artifacts"],
       "properties": {
         "id": { "type": "string" }, "name": { "type": "string" }, "kind": { "type": "string" },
         "description": { "type": "string" }, "sourceType": { "enum": ["path", "git", "local"] },
         "access": { "enum": ["read-only", "read-write"] },
         "provides": { "type": "array", "items": { "type": "string" } },
         "consumes": { "type": "array", "items": { "type": "string" } },
+        "requirements": { "type": "array", "items": { "$ref": "#/$defs/requirement" } },
         "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifact" } }
+      }
+    },
+    "requirement": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capability", "optional"],
+      "properties": {
+        "capability": { "type": "string" }, "from": { "type": "string" }, "optional": { "type": "boolean" }
       }
     },
     "artifact": {
       "type": "object", "additionalProperties": false,
       "required": ["capability", "ecosystem", "name"],
       "properties": {
-        "capability": { "type": "string" }, "ecosystem": { "type": "string" }, "name": { "type": "string" }
+        "capability": { "type": "string" }, "ecosystem": { "type": "string" }, "name": { "type": "string" }, "path": { "type": "string" }
       }
     },
     "edge": {

@@ -18,6 +18,13 @@ export interface ComponentMembership {
   componentPath?: string;
 }
 
+export interface ComponentMetadataPatch {
+  name?: string | null;
+  description?: string | null;
+  kind?: string;
+  access?: "read-only" | "read-write";
+}
+
 export function platformDirectories(
   platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
@@ -275,6 +282,28 @@ async function updateRegisteredComponent(
     await writeJsonAtomic(entry.definitionPath, manifest);
   });
   return { stack: await loadRegisteredStack(stackSelector, directories), changed };
+}
+
+export function updateRegisteredComponentMetadata(
+  stackSelector: string,
+  componentId: string,
+  value: ComponentMetadataPatch,
+  directories = platformDirectories(),
+): Promise<{ stack: LoadedStack; changed: boolean }> {
+  return updateRegisteredComponent(stackSelector, componentId, (component) => {
+    const updated = { ...component };
+    if (value.name !== undefined) {
+      if (value.name === null) delete updated.name;
+      else updated.name = value.name;
+    }
+    if (value.description !== undefined) {
+      if (value.description === null) delete updated.description;
+      else updated.description = value.description;
+    }
+    if (value.kind !== undefined) updated.kind = value.kind;
+    if (value.access !== undefined) updated.access = value.access;
+    return updated;
+  }, directories);
 }
 
 function upsertBy<T>(items: T[] | undefined, matches: (item: T) => boolean, value: T): T[] {

@@ -49,6 +49,14 @@ test("global local API lists and explicitly selects registered Stacks", async ()
       body: JSON.stringify({ stack: "acme/three", id: "app", path: component, kind: "product" }),
     });
     assert.equal(added.status, 201, await added.text());
+    const metadata = await fetch(`${api.origin}/api/v0.1/component`, {
+      method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
+      body: JSON.stringify({ stack: "acme/three", componentId: "app", name: "Customer application", description: "Primary product", access: "read-only" }),
+    });
+    const metadataText = await metadata.text();
+    assert.equal(metadata.status, 200, metadataText);
+    const metadataBody = JSON.parse(metadataText) as { component: { id: string; name: string; description: string; access: string } };
+    assert.deepEqual(metadataBody.component, { ...metadataBody.component, id: "app", name: "Customer application", description: "Primary product", access: "read-only" });
 
     const addedKnowledge = await fetch(`${api.origin}/api/v0.1/components`, {
       method: "POST", headers: { "Content-Type": "application/json", Origin: api.origin },
@@ -115,6 +123,7 @@ test("global local API lists and explicitly selects registered Stacks", async ()
       "component.configuration.changed",
       "component.configuration.changed",
       "component.added",
+      "component.configuration.changed",
       "component.added",
       "stack.created",
     ]);

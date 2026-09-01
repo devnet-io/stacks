@@ -83,6 +83,17 @@ export async function bindComponent(input: {
   return mutation('/api/v0.1/component-binding', 'PUT', input);
 }
 
+export async function updateComponent(input: {
+  stack: string;
+  componentId: string;
+  name?: string | null;
+  description?: string | null;
+  kind?: string;
+  access?: 'read-only' | 'read-write';
+}): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/component', 'PUT', input);
+}
+
 export async function configureCapabilityProvider(input: {
   stack: string;
   componentId: string;

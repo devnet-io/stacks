@@ -161,7 +161,7 @@ export async function recordComponentBindingChanged(
 
 export async function recordComponentConfigurationChanged(
   stack: LoadedStack,
-  input: { componentId: string; configuration: "capability-export" | "capability-requirement" | "guidance"; subject: string; actor?: EventActor },
+  input: { componentId: string; configuration: "metadata" | "capability-export" | "capability-requirement" | "guidance"; subject: string; actor?: EventActor },
 ): Promise<StackEvent> {
   return appendEvent(stack, {
     type: "component.configuration.changed",

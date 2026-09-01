@@ -18,6 +18,11 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     await mkdir(component, { recursive: true });
     await application.createStack("tests/application", { actor: { client: "test-client" } });
     await application.addComponent({ stack: "tests/application", id: "app", path: component, kind: "product", actor: { client: "test-client" } });
+    const renamed = await application.updateComponent("tests/application", "app", { name: "Customer application", description: "Main product", access: "read-only" }, { actor: { client: "test-client" } });
+    assert.equal(renamed.component.name, "Customer application");
+    assert.equal(renamed.component.description, "Main product");
+    assert.equal(renamed.component.access, "read-only");
+    assert.equal(renamed.component.id, "app");
     const knowledge = path.join(root, "components", "knowledge");
     await mkdir(knowledge, { recursive: true });
     await writeFile(path.join(knowledge, "engineering.md"), "# Engineering rules\n", "utf8");
@@ -80,6 +85,7 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
       "component.configuration.changed",
       "component.configuration.changed",
       "component.added",
+      "component.configuration.changed",
       "component.added",
       "stack.created",
     ]);

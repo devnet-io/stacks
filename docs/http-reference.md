@@ -60,7 +60,7 @@ Requires `?stack=namespace%2Fname&request=<requestId>`. Returns one request, new
 
 ### `GET /api/v0.1/graph`
 
-Returns component nodes, their declared implementation artifacts, capability/dependency edges, and unresolved requirements.
+Returns component nodes, editable display metadata and access, declared implementation artifacts (including component-relative artifact roots), required/optional capability requirements, capability/dependency edges, and unresolved requirements. Capability edges and requirement entries carry `optional`; direct dependency edges currently report `optional: false`.
 
 ### `GET /api/v0.1/integrations`
 
@@ -96,6 +96,16 @@ Returns every effective component with its explicit machine binding and provider
 ```
 
 `stack`, `id`, and `path` are required. `git`, `name`, and `kind` are optional; omitted kind persists as `component`. Without `git`, the directory must already exist. With `git`, a missing explicit path may be cloned. Returns `201` with Stack identity, component binding, and synchronization result, and appends a `component.added` Activity event attributed to `stacks-web`.
+
+## Edit component metadata
+
+### `PUT /api/v0.1/component`
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "app", "name": "Customer portal", "description": "Primary product", "kind": "product", "access": "read-write" }
+```
+
+At least one editable field is required. `name` and `description` accept `null` to clear them. Component ID and source provenance are immutable; use the binding endpoint for the machine path. Access is advisory and does not change operating-system permissions. A changed value appends a `component.configuration.changed` Activity event attributed to `stacks-web`; identical values are an event no-op.
 
 ## Change a component binding
 
@@ -140,7 +150,7 @@ Upserts by component and capability. `description`, `contextPath`, `strength`, `
 { "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components", "from": "shared-ui", "optional": false }
 ```
 
-Upserts by component and capability. `from` and `optional` are optional.
+Upserts by component and capability. `from` and `optional` are optional. `optional` defaults to `false`; unresolved required relationships become context errors while unresolved optional relationships become warnings. Graph returns the distinction for resolved and unresolved capability relationships. Direct `dependsOn` relationships are currently required.
 
 ### `PUT /api/v0.1/component-guidance`
 

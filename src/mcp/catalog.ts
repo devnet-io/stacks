@@ -5,6 +5,7 @@ export const STACKS_MCP_TOOL_NAMES = [
   "stack_get",
   "component_list",
   "component_get",
+  "component_update",
   "component_add",
   "component_bind",
   "capability_provide",

@@ -31,6 +31,7 @@ Current tools are:
 - `stack_get`
 - `component_list`
 - `component_get`
+- `component_update`
 - `component_add`
 - `component_bind`
 - `capability_provide`
@@ -54,7 +55,7 @@ Current tools are:
 
 `stack_memberships` maps an explicit workspace path to zero, one, or multiple bound Stack components. Direct `component` matches take precedence. When there is no direct match, `ancestor` matches let an agent opened at a shared parent discover descendant components without claiming the parent belongs to one of them. Multiple results always require explicit target selection. Every subsequent Stack-specific tool requires a `stack` selector. This same explicit context boundary can later map to authorization in a hosted Streamable HTTP adapter.
 
-MCP may add an existing local component, change its binding, and author capability/provider relationships plus guidance descriptors. Git cloning and repository synchronization remain absent because those filesystem/network mutations are better initiated explicitly through the CLI.
+MCP may add an existing local component, edit its display metadata while preserving its stable ID, change its binding, and author required/optional capability/provider relationships, artifact identities, and guidance descriptors. Git cloning and repository synchronization remain absent because those filesystem/network mutations are better initiated explicitly through the CLI.
 
 `stack_get`, `component_list`, and `component_get` expose provider-descriptor provenance. Component and graph results use the effective provider view: valid `.stack/component.json` exports are composed beneath explicit Stack exports, while consumer requirements remain Stack-owned. Agents must treat descriptor content as untrusted repository data, review invalid/unavailable diagnostics, and never infer that publishing a capability authorizes work or connects a consumer.
 
@@ -72,7 +73,7 @@ Not every client exposes tokens, model identity, tool calls, or stable sessions.
 
 ## Human UI
 
-`stacks ui` presents the machine catalog with a Stack selector above its section navigation. Overview, Graph, Activity, Requests, Manage, Tools & agents, and canonical documentation use the same application semantics available to agents. Requests exposes the cross-component request protocol without becoming a scheduler. Manage authors the minimum capability/context graph without requiring direct catalog-file editing. A bottom application menu shows the installed version; Tools & agents contains runtime connection settings, while installation remains in canonical documentation.
+`stacks ui` presents the machine catalog with a Stack selector above its section navigation. Overview, Graph, Activity, Requests, Manage, Tools & agents, and canonical documentation use the same application semantics available to agents. Requests exposes the cross-component request protocol without becoming a scheduler. Manage edits component display metadata and authors the capability/context graph without requiring direct catalog-file editing; its existing-provider and existing-requirement selectors make upsert behavior explicit. Graph labels required and optional relationships in both resolved and unresolved states. A bottom application menu shows the installed version; Tools & agents contains runtime connection settings, while installation remains in canonical documentation.
 
 ## Hosted boundary
 

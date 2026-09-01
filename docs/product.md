@@ -8,6 +8,7 @@ This document defines the product independent of release state. See [Project sta
 
 - Ordinary Git-readable files are the durable source of truth.
 - Component repositories remain independent; local composition does not turn them into submodules by default.
+- Component IDs are stable logical references within a Stack, while human-facing metadata and machine-local bindings may evolve independently.
 - Context is a bounded, explainable selection of resources rather than a repository dump.
 - Capability relationships identify authoritative providers so consumers can reuse established knowledge and implementations instead of inventing parallel ones.
 - Capability providers may identify the portable artifact that carries an implementation. Stacks can offer machine-local consumption guidance while preserving an organization's existing registry, workspace, and package-manager conventions.

@@ -111,6 +111,12 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     const describedComponent = (await response(21)).result as { structuredContent: { descriptor: { status: string; path: string } } };
     assert.equal(describedComponent.structuredContent.descriptor.status, "absent");
     assert.match(describedComponent.structuredContent.descriptor.path, /\.stack[/\\]component\.json$/u);
+    send({ jsonrpc: "2.0", id: 22, method: "tools/call", params: { name: "component_update", arguments: { stack: "tests/mcp-authoring", componentId: "product", name: "Product application", description: "MCP-managed metadata", access: "read-only" } } });
+    const updatedComponent = (await response(22)).result as { structuredContent: { component: { id: string; name: string; description: string; access: string } } };
+    assert.deepEqual(updatedComponent.structuredContent.component, {
+      ...updatedComponent.structuredContent.component,
+      id: "product", name: "Product application", description: "MCP-managed metadata", access: "read-only",
+    });
     assert.match(stderr, /^Stacks MCP server is listening for the machine catalog/u);
     assert.ok(stdout.split("\n").filter(Boolean).every((line) => (JSON.parse(line) as { jsonrpc?: string }).jsonrpc === "2.0"));
   } finally {

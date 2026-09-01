@@ -34,6 +34,7 @@
     { "path": "docs/adr/0012-capability-requests-are-role-checked-events.md", "id": "adr-0012", "category": "decisions", "lifecycle": "decision", "order": 12 },
     { "path": "docs/adr/0013-provider-descriptors-are-bounded-inputs.md", "id": "adr-0013", "category": "decisions", "lifecycle": "decision", "order": 13 },
     { "path": "docs/adr/0014-capabilities-may-identify-consumable-artifacts.md", "id": "adr-0014", "category": "decisions", "lifecycle": "decision", "order": 14 },
+    { "path": "docs/adr/0015-component-identity-and-editable-metadata.md", "id": "adr-0015", "category": "decisions", "lifecycle": "decision", "order": 15 },
     { "path": "docs/rfcs/README.md", "id": "rfc-index", "category": "decisions", "lifecycle": "proposed", "order": 200 },
     { "path": "docs/rfcs/0001-portable-runtime-and-hosted-adapters.md", "id": "rfc-portable-runtime", "category": "decisions", "lifecycle": "proposed", "order": 210 },
 

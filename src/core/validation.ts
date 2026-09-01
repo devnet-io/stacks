@@ -89,6 +89,9 @@ function validateComponent(value: unknown, index: number, errors: string[]): val
   }
   if (!isNonEmptyString(value.id)) errors.push(`${at}.id must be a non-empty string.`);
   else if (!PORTABLE_NAME.test(value.id)) errors.push(`${at}.id must contain only letters, numbers, dots, underscores, and hyphens.`);
+  if (value.name !== undefined && !isNonEmptyString(value.name)) errors.push(`${at}.name must be a non-empty string.`);
+  if (value.kind !== undefined && !isNonEmptyString(value.kind)) errors.push(`${at}.kind must be a non-empty string.`);
+  if (value.description !== undefined && !isNonEmptyString(value.description)) errors.push(`${at}.description must be a non-empty string.`);
   if (!isRecord(value.source)) {
     errors.push(`${at}.source must be an object.`);
   } else if (value.source.type === "local") {

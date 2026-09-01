@@ -42,7 +42,7 @@ test("composes validated provider descriptors under explicit Stack overlays", as
     assert.deepEqual(definition.effectiveManifest.components.find((item) => item.id === "ui")?.provides?.map((item) => item.capability), ["ui.dialog", "ui.button"]);
     const graph = await application.getGraph({ stack: "tests/descriptors" });
     assert.deepEqual(graph.nodes.find((item) => item.id === "ui")?.provides, ["ui.button", "ui.dialog"]);
-    assert.deepEqual(graph.nodes.find((item) => item.id === "ui")?.artifacts, [{ capability: "ui.dialog", ecosystem: "npm", name: "@tests/ui" }]);
+    assert.deepEqual(graph.nodes.find((item) => item.id === "ui")?.artifacts, [{ capability: "ui.dialog", ecosystem: "npm", name: "@tests/ui", path: "." }]);
     const context = await application.resolveContext({ stack: "tests/descriptors" }, "product", "Use the shared dialog");
     assert.ok(context.items.some((item) => item.path === "descriptor-dialog.md" && item.componentId === "ui"));
     assert.ok(context.items.some((item) => item.path === "stack-button.md" && item.componentId === "ui"));

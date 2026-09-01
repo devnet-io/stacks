@@ -114,7 +114,7 @@ function printJson(value: unknown): void {
 function help(topic?: string): void {
   const topics: Record<string, string> = {
     stack: `Create and list Stacks in this machine's catalog.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n`,
-    component: `View, attach, and configure components in registered Stacks. Get/list compose validated provider-owned .stack/component.json exports beneath explicit Stack overrides. Configuration operations upsert Stack-owned data by capability or path.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path>] [--description <text>] [--strength <strength>] [--priority <number>] [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <path>]] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component>] [--optional] [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text>] [--strength <strength>] [--priority <number>] [--applies-to <a,b>] [--json]\n`,
+    component: `View, attach, and configure components in registered Stacks. Component IDs are immutable Stack-local identities; update changes descriptive metadata only. Get/list compose validated provider-owned .stack/component.json exports beneath explicit Stack overrides. Configuration operations upsert Stack-owned data by capability or path.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component update <namespace/name> <id> [--name <name> | --clear-name] [--description <text> | --clear-description] [--kind <kind>] [--access read-only|read-write] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path>] [--description <text>] [--strength <strength>] [--priority <number>] [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <path>]] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component>] [--optional] [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text>] [--strength <strength>] [--priority <number>] [--applies-to <a,b>] [--json]\n`,
     locate: `Find direct Stack component membership or descendant components under an ancestor workspace. Direct matches take precedence; multiple matches are never guessed.\n\n  stacks locate [directory] [--json]\n`,
     agent: `Manage only the delimited Stacks activation block in a repository AGENTS.md. Existing instructions are preserved; malformed markers are refused.\n\n  stacks agent print [--path <directory>] [--json]\n  stacks agent check [--path <directory>] [--json]\n  stacks agent install [--path <directory>] [--json]\n  stacks agent remove [--path <directory>] [--json]\n`,
     status: `Inspect registered Stack component paths and Git state without changing repositories. With no selector, inspect every registered Stack. Loading a Stack also validates its definition.\n\n  stacks status [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
@@ -511,7 +511,7 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
   const operation = parsed.positionals[1];
   const selector = parsed.positionals[2];
   const id = parsed.positionals[3];
-  if (!selector || !operation) throw new Error("Usage: stacks component list|get|add|bind|provide|consume|guidance <namespace/name> ...");
+  if (!selector || !operation) throw new Error("Usage: stacks component list|get|add|update|bind|provide|consume|guidance <namespace/name> ...");
   if (operation === "list") {
     const output = await application.listComponents(selector);
     if (booleanOption(parsed, "json")) printJson(output);
@@ -531,7 +531,26 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
     }
     return;
   }
-  if (!id) throw new Error("Usage: stacks component add|bind|provide|consume|guidance <namespace/name> <id> ...");
+  if (!id) throw new Error("Usage: stacks component add|update|bind|provide|consume|guidance <namespace/name> <id> ...");
+  if (operation === "update") {
+    const name = stringOption(parsed, "name");
+    const description = stringOption(parsed, "description");
+    const kind = stringOption(parsed, "kind");
+    const access = stringOption(parsed, "access") as "read-only" | "read-write" | undefined;
+    if (name !== undefined && booleanOption(parsed, "clear-name")) throw new Error("Use either --name or --clear-name, not both.");
+    if (description !== undefined && booleanOption(parsed, "clear-description")) throw new Error("Use either --description or --clear-description, not both.");
+    if (access && !["read-only", "read-write"].includes(access)) throw new Error("--access must be read-only or read-write.");
+    const value = {
+      ...(name !== undefined ? { name: name.trim() } : booleanOption(parsed, "clear-name") ? { name: null } : {}),
+      ...(description !== undefined ? { description: description.trim() } : booleanOption(parsed, "clear-description") ? { description: null } : {}),
+      ...(kind === undefined ? {} : { kind: kind.trim() }),
+      ...(access === undefined ? {} : { access }),
+    };
+    const output = await application.updateComponent(selector, id, value, { actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output);
+    else process.stdout.write(`Updated metadata for ${id}.\n`);
+    return;
+  }
   if (operation === "provide") {
     const capability = parsed.positionals[4];
     if (!capability) throw new Error("Usage: stacks component provide <namespace/name> <id> <capability> ...");

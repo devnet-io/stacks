@@ -16,3 +16,4 @@ These records explain accepted decisions that shape the current system. They are
 - [0012: Capability requests are role-checked events](0012-capability-requests-are-role-checked-events.md)
 - [0013: Provider descriptors are bounded component-owned inputs](0013-provider-descriptors-are-bounded-inputs.md)
 - [0014: Capabilities may identify consumable artifacts](0014-capabilities-may-identify-consumable-artifacts.md)
+- [0015: Component IDs are stable while descriptive metadata is editable](0015-component-identity-and-editable-metadata.md)

@@ -104,6 +104,23 @@ stacks component add acme/customer-portal standards --path /work/engineering-sta
 
 `--path` is always required. Without `--git`, the directory must exist. `--kind` is optional and defaults to the extensible label `component`; capabilities describe functional behavior. Stacks never adds a membership marker or Git submodule. Success appends a `component.added` Activity event attributed to `stacks-cli`.
 
+### `stacks component update`
+
+Updates descriptive component metadata without changing its stable ID, source provenance, or machine binding.
+
+```text
+stacks component update <namespace/name> <id>
+  [--name <display-name> | --clear-name]
+  [--description <text> | --clear-description]
+  [--kind <kind>] [--access read-only|read-write] [--json]
+```
+
+```bash
+stacks component update acme/customer-portal app --name "Customer portal" --description "Primary product" --kind product --access read-write
+```
+
+At least one editable field is required. `id` is intentionally immutable because bindings, relationships, requests, activity, and agent work use it as the component's Stack-local identity. Use `component bind` for the local path. Access is a declared intent for agents and people, not operating-system permission enforcement. A changed value appends a `component.configuration.changed` Activity event; an identical update is an event no-op.
+
 ### `stacks component bind`
 
 Binds an existing component definition to a different explicit directory on this machine.
@@ -151,6 +168,8 @@ stacks component consume <namespace/name> <id> <capability>
 ```bash
 stacks component consume acme/customer-portal app ui.react.components --from shared-ui
 ```
+
+Requirements are required by default. `--optional` means an unresolved provider becomes a context warning instead of an error; it does not make the provider authoritative or suppress visibility. Direct `dependsOn` relationships remain required in the current model.
 
 ### `stacks component guidance`
 

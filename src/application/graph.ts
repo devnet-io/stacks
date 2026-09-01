@@ -12,7 +12,8 @@ export interface StackGraphNode {
   access: "read-only" | "read-write";
   provides: string[];
   consumes: string[];
-  artifacts: Array<{ capability: string; ecosystem: string; name: string }>;
+  requirements: Array<{ capability: string; from?: string; optional: boolean }>;
+  artifacts: Array<{ capability: string; ecosystem: string; name: string; path?: string }>;
 }
 
 export interface StackGraphEdge {
@@ -51,7 +52,8 @@ function graphNode(component: StackComponent): StackGraphNode {
     access: component.access ?? "read-write",
     provides: (component.provides ?? []).map((item) => item.capability).sort(),
     consumes: (component.consumes ?? []).map((item) => item.capability).sort(),
-    artifacts: (component.provides ?? []).flatMap((item) => item.artifact ? [{ capability: item.capability, ecosystem: item.artifact.ecosystem, name: item.artifact.name }] : []).sort((left, right) => `${left.ecosystem}:${left.name}:${left.capability}`.localeCompare(`${right.ecosystem}:${right.name}:${right.capability}`)),
+    requirements: (component.consumes ?? []).map((item) => ({ capability: item.capability, ...(item.from === undefined ? {} : { from: item.from }), optional: item.optional ?? false })).sort((left, right) => left.capability.localeCompare(right.capability)),
+    artifacts: (component.provides ?? []).flatMap((item) => item.artifact ? [{ capability: item.capability, ecosystem: item.artifact.ecosystem, name: item.artifact.name, ...(item.artifact.path === undefined ? {} : { path: item.artifact.path }) }] : []).sort((left, right) => `${left.ecosystem}:${left.name}:${left.capability}`.localeCompare(`${right.ecosystem}:${right.name}:${right.capability}`)),
   };
 }
 

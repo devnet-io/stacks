@@ -75,6 +75,18 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector, componentId }) => result(await application.getComponent(stackSelector, componentId) as unknown as Record<string, unknown>));
 
+  server.registerTool("component_update", {
+    title: "Update component metadata", description: "Update editable descriptive metadata for a component. The component ID, source provenance, and local binding are unchanged.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), name: z.string().min(1).nullable().optional(), description: z.string().min(1).nullable().optional(), kind: z.string().min(1).optional(), access: z.enum(["read-only", "read-write"]).optional() })
+      .refine((value) => value.name !== undefined || value.description !== undefined || value.kind !== undefined || value.access !== undefined, { message: "Supply at least one editable component field" }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, name, description, kind, access }) => result(await application.updateComponent(stackSelector, componentId, {
+    ...(name === undefined ? {} : { name }),
+    ...(description === undefined ? {} : { description }),
+    ...(kind === undefined ? {} : { kind }),
+    ...(access === undefined ? {} : { access }),
+  }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
   server.registerTool("component_add", {
     title: "Add local component", description: "Add an existing local directory as a Stack component. This does not clone, move, or modify the component repository.",
     inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1), name: z.string().min(1).optional(), kind: z.string().min(1).optional() }),

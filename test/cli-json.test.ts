@@ -38,6 +38,11 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     const added = runJson(["component", "add", "tests/global-cli", "app", "--path", component, "--kind", "product"], 0, env);
     assert.equal(added.stack, "tests/global-cli");
     assert.equal(added.path, path.resolve(component));
+    const updated = runJson(["component", "update", "tests/global-cli", "app", "--name", "Customer application", "--description", "Primary product", "--access", "read-only"], 0, env);
+    assert.equal(object(updated.component).name, "Customer application");
+    assert.equal(object(updated.component).description, "Primary product");
+    assert.equal(object(updated.component).access, "read-only");
+    assert.equal(object(updated.component).id, "app");
     runJson(["component", "add", "tests/global-cli", "knowledge", "--path", knowledge, "--kind", "knowledge"], 0, env);
     const provided = runJson([
       "component", "provide", "tests/global-cli", "knowledge", "practice.engineering",
@@ -68,6 +73,7 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     assert.equal(object(object((components.components as unknown[])[0]).component).id, "app");
     const inspected = runJson(["component", "get", "tests/global-cli", "app"], 0, env);
     assert.equal(object(inspected.component).kind, "product");
+    assert.equal(object(inspected.component).name, "Customer application");
     const described = runJson(["component", "get", "tests/global-cli", "knowledge"], 0, env);
     assert.equal(object(described.descriptor).status, "valid");
     assert.deepEqual(object(described.descriptor).appliedCapabilities, ["practice.published"]);

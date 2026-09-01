@@ -92,6 +92,14 @@ function optionalString(body: Record<string, unknown>, name: string): string | u
   return value.trim() || undefined;
 }
 
+function optionalNullableString(body: Record<string, unknown>, name: string): string | null | undefined {
+  const value = body[name];
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "string" || !value.trim()) throw new HttpError(400, `${name} must be a non-empty string or null.`);
+  return value.trim();
+}
+
 function optionalBoolean(body: Record<string, unknown>, name: string): boolean | undefined {
   const value = body[name];
   if (value === undefined) return undefined;
@@ -230,6 +238,23 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         const output = await application.bindComponent(requiredString(body, "stack"), componentId, requiredString(body, "path"), { actor: { client: "stacks-web" } });
         const { id, namespace, name } = output.manifest.metadata;
         send(response, 200, { schemaVersion: "0.1", stack: { id, namespace, name }, component: { id: componentId, path: output.bindings[componentId] }, sync: output.sync });
+        return;
+      }
+      if (request.method === "PUT" && url.pathname === "/api/v0.1/component") {
+        if (options.root) throw new HttpError(409, "Component management is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const name = optionalNullableString(body, "name");
+        const description = optionalNullableString(body, "description");
+        const kind = optionalString(body, "kind");
+        const access = optionalString(body, "access") as "read-only" | "read-write" | undefined;
+        if (access !== undefined && access !== "read-only" && access !== "read-write") throw new HttpError(400, "access must be read-only or read-write.");
+        const output = await application.updateComponent(requiredString(body, "stack"), requiredString(body, "componentId"), {
+          ...(name === undefined ? {} : { name }),
+          ...(description === undefined ? {} : { description }),
+          ...(kind === undefined ? {} : { kind }),
+          ...(access === undefined ? {} : { access }),
+        }, { actor: { client: "stacks-web" } });
+        send(response, 200, output as unknown as Record<string, unknown>);
         return;
       }
       if (request.method === "PUT" && url.pathname === "/api/v0.1/capability-provider") {

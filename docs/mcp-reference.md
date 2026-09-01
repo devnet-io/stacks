@@ -130,6 +130,16 @@ Returns one effective component declaration, its explicit binding, and the same 
 
 Side effects: none; read-only and idempotent.
 
+### `component_update`
+
+Updates editable descriptive metadata while preserving the component's stable Stack-local `componentId`, source provenance, and machine binding. Supply at least one of `name`, `description`, `kind`, or `access`. `name` and `description` accept `null` to remove the field; `access` is `read-only` or `read-write` and is advisory rather than operating-system permission enforcement.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "app", "name": "Customer portal", "description": "Primary product", "kind": "product", "access": "read-write" }
+```
+
+Side effects: when state changes, writes the portable Stack definition and appends a `component.configuration.changed` event attributed to `stacks-mcp`. It does not rename the component ID, rebind a directory, or modify a repository. Idempotent for the same values.
+
 ### `component_add`
 
 Adds an existing local directory to a Stack. Required input: `stack`, `componentId`, and `path`. Optional input: `name` and `kind`; kind defaults to the extensible label `component`.
@@ -184,6 +194,8 @@ Upserts a capability requirement for a consumer. `from` selects the authoritativ
 ```json
 { "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components", "from": "shared-ui", "optional": false }
 ```
+
+`optional` defaults to `false`. A missing or ambiguous required provider is a context error; the same unresolved optional requirement is a warning. Both remain visible in Graph and structured output. Direct component dependencies are currently always required.
 
 Side effects: when state changes, writes the portable Stack definition and appends a configuration event. An identical upsert is an event no-op. Idempotent for the same Stack, component, and capability.
 

@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { CapabilityExport, CapabilityRequirement, ComponentDescriptorReport, ContextBriefing, ContextPlan, EventActor, Guidance, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
-import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, type ComponentMembership, type PlatformDirectories } from "../core/catalog.ts";
+import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, updateRegisteredComponentMetadata, type ComponentMembership, type ComponentMetadataPatch, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
 import { materializeContextBriefing, type BriefingOptions } from "../core/briefing.ts";
 import { completeTurn, completeWork, createCapabilityRequest, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordComponentConfigurationChanged, recordStackCreated, startTurn as startCoreTurn, startWork, transitionCapabilityRequest } from "../core/events.ts";
@@ -96,6 +96,7 @@ export interface StacksApplication {
   getComponent(stack: string, componentId: string): Promise<ComponentOutput>;
   addComponent(input: AddComponentInput): Promise<ComponentMutationOutput>;
   bindComponent(stack: string, componentId: string, localPath: string, options?: BindComponentOptions): Promise<ComponentMutationOutput>;
+  updateComponent(stack: string, componentId: string, value: ComponentMetadataPatch, options?: MutationOptions): Promise<ComponentOutput>;
   configureCapabilityExport(stack: string, componentId: string, value: CapabilityExport, options?: MutationOptions): Promise<ComponentOutput>;
   configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirement, options?: MutationOptions): Promise<ComponentOutput>;
   configureGuidance(stack: string, componentId: string, value: Guidance, options?: MutationOptions): Promise<ComponentOutput>;
@@ -235,7 +236,7 @@ export class LocalStacksApplication implements StacksApplication {
     loaded: LoadedStack,
     changed: boolean,
     componentId: string,
-    configuration: "capability-export" | "capability-requirement" | "guidance",
+    configuration: "metadata" | "capability-export" | "capability-requirement" | "guidance",
     subject: string,
     actor?: EventActor,
   ): Promise<ComponentOutput> {
@@ -248,6 +249,21 @@ export class LocalStacksApplication implements StacksApplication {
   async configureCapabilityExport(stack: string, componentId: string, value: CapabilityExport, options: MutationOptions = {}): Promise<ComponentOutput> {
     const configured = await configureRegisteredCapabilityExport(stack, componentId, value, this.options.catalogDirectories);
     return this.configuredComponent(configured.stack, configured.changed, componentId, "capability-export", value.capability, options.actor);
+  }
+
+  async updateComponent(stack: string, componentId: string, value: ComponentMetadataPatch, options: MutationOptions = {}): Promise<ComponentOutput> {
+    if (Object.keys(value).length === 0) throw new Error("Supply at least one editable component field.");
+    for (const [field, candidate] of Object.entries(value)) {
+      if (candidate !== null && typeof candidate === "string" && !candidate.trim()) throw new Error(`${field} must be non-empty when supplied.`);
+    }
+    const normalized: ComponentMetadataPatch = {
+      ...(value.name === undefined ? {} : { name: value.name === null ? null : value.name.trim() }),
+      ...(value.description === undefined ? {} : { description: value.description === null ? null : value.description.trim() }),
+      ...(value.kind === undefined ? {} : { kind: value.kind.trim() }),
+      ...(value.access === undefined ? {} : { access: value.access }),
+    };
+    const configured = await updateRegisteredComponentMetadata(stack, componentId, normalized, this.options.catalogDirectories);
+    return this.configuredComponent(configured.stack, configured.changed, componentId, "metadata", Object.keys(value).join(", "), options.actor);
   }
 
   async configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirement, options: MutationOptions = {}): Promise<ComponentOutput> {

@@ -11,6 +11,7 @@ test("builds a deterministic provider-to-consumer graph for the foundation Stack
   assert.deepEqual(graph.nodes.map((node) => node.id), [...graph.nodes.map((node) => node.id)].sort());
   assert.ok(graph.edges.some((edge) => edge.from === "ui-primitives" && edge.to === "ui-patterns" && edge.label === "ui.react.primitives"));
   assert.ok(graph.edges.some((edge) => edge.from === "cloudflare-reference" && edge.to === "product" && edge.label === "platform.cloudflare.d1-patterns"));
+  assert.ok(graph.nodes.find((node) => node.id === "product")?.requirements.every((requirement) => requirement.optional === false));
   assert.deepEqual(graph.unresolved, []);
 });
 
@@ -29,4 +30,5 @@ test("reports ambiguous, missing, mismatched, and unknown capability providers",
   assert.deepEqual(graph.unresolved.map((item) => item.reason).sort(), ["ambiguous-provider", "missing-provider", "provider-mismatch", "unknown-provider"].sort());
   assert.deepEqual(graph.unresolved.find((item) => item.reason === "ambiguous-provider")?.candidates, ["other-standards", "standards"]);
   assert.equal(graph.unresolved.find((item) => item.reason === "unknown-provider")?.optional, true);
+  assert.equal(graph.nodes.find((node) => node.id === "product")?.requirements.find((item) => item.capability === "anything")?.optional, true);
 });
