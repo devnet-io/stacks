@@ -131,9 +131,9 @@ function optionalStrength(body: Record<string, unknown>, name: string): "require
 function applicationErrorStatus(error: unknown): number {
   if (error instanceof HttpError) return error.status;
   const message = error instanceof Error ? error.message : String(error);
-  if (/already exists|already registered|or identity .* is already|cannot transition/u.test(message)) return 409;
+  if (/already exists|already registered|or identity .* is already|cannot transition|would leave consumers unresolved|already provides/u.test(message)) return 409;
   if (/^Unknown /u.test(message)) return 404;
-  if (/must |Missing |does not exist|selector|belongs to/u.test(message)) return 400;
+  if (/must |Missing |does not exist|does not have a Stack-owned|selector|belongs to/u.test(message)) return 400;
   return 500;
 }
 
@@ -260,43 +260,77 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
       if (request.method === "PUT" && url.pathname === "/api/v0.1/capability-provider") {
         if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
         const body = await readJsonBody(request);
-        const contextPath = optionalString(body, "contextPath");
+        const contextPath = optionalNullableString(body, "contextPath");
         const contextStrength = optionalStrength(body, "strength");
         const priority = optionalNumber(body, "priority");
+        const description = optionalNullableString(body, "description");
         const artifactEcosystem = optionalString(body, "artifactEcosystem");
-        const artifactName = optionalString(body, "artifactName");
+        const artifactName = optionalNullableString(body, "artifactName");
         const artifactPath = optionalString(body, "artifactPath");
-        if (Boolean(artifactEcosystem) !== Boolean(artifactName)) throw new HttpError(400, "artifactEcosystem and artifactName must be supplied together.");
+        if (artifactName !== null && Boolean(artifactEcosystem) !== Boolean(artifactName)) throw new HttpError(400, "artifactEcosystem and artifactName must be supplied together, or artifactName may be null to clear the artifact.");
         const output = await application.configureCapabilityExport(requiredString(body, "stack"), requiredString(body, "componentId"), {
           capability: requiredString(body, "capability"),
-          ...(optionalString(body, "description") === undefined ? {} : { description: optionalString(body, "description")! }),
-          ...(contextPath === undefined ? {} : { context: [{ path: contextPath, ...(contextStrength === undefined ? {} : { strength: contextStrength }), ...(priority === undefined ? {} : { priority }) }] }),
-          ...(artifactEcosystem && artifactName ? { artifact: { ecosystem: artifactEcosystem, name: artifactName, ...(artifactPath === undefined ? {} : { path: artifactPath }) } } : {}),
+          ...(description === undefined ? {} : { description }),
+          ...(contextPath === undefined ? {} : contextPath === null ? { context: null } : { context: [{ path: contextPath, ...(contextStrength === undefined ? {} : { strength: contextStrength }), ...(priority === undefined ? {} : { priority }) }] }),
+          ...(artifactName === undefined ? {} : artifactName === null ? { artifact: null } : { artifact: { ecosystem: artifactEcosystem!, name: artifactName, ...(artifactPath === undefined ? {} : { path: artifactPath }) } }),
         }, { actor: { client: "stacks-web" } });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
+      if (request.method === "DELETE" && url.pathname === "/api/v0.1/capability-provider") {
+        if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.removeCapabilityExport(requiredString(body, "stack"), requiredString(body, "componentId"), requiredString(body, "capability"), {
+          allowUnresolved: optionalBoolean(body, "allowUnresolved") ?? false,
+          actor: { client: "stacks-web" },
+        });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
+      if (request.method === "PUT" && url.pathname === "/api/v0.1/capability-rename") {
+        if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.renameCapability(requiredString(body, "stack"), requiredString(body, "componentId"), requiredString(body, "capability"), requiredString(body, "replacement"), { actor: { client: "stacks-web" } });
         send(response, 200, output as unknown as Record<string, unknown>);
         return;
       }
       if (request.method === "PUT" && url.pathname === "/api/v0.1/capability-requirement") {
         if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
         const body = await readJsonBody(request);
+        const from = optionalNullableString(body, "from");
         const output = await application.configureCapabilityRequirement(requiredString(body, "stack"), requiredString(body, "componentId"), {
           capability: requiredString(body, "capability"),
-          ...(optionalString(body, "from") === undefined ? {} : { from: optionalString(body, "from")! }),
+          ...(from === undefined ? {} : { from }),
           ...(optionalBoolean(body, "optional") === undefined ? {} : { optional: optionalBoolean(body, "optional")! }),
         }, { actor: { client: "stacks-web" } });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
+      if (request.method === "DELETE" && url.pathname === "/api/v0.1/capability-requirement") {
+        if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.removeCapabilityRequirement(requiredString(body, "stack"), requiredString(body, "componentId"), requiredString(body, "capability"), { actor: { client: "stacks-web" } });
         send(response, 200, output as unknown as Record<string, unknown>);
         return;
       }
       if (request.method === "PUT" && url.pathname === "/api/v0.1/component-guidance") {
         if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
         const body = await readJsonBody(request);
+        const description = optionalNullableString(body, "description");
         const output = await application.configureGuidance(requiredString(body, "stack"), requiredString(body, "componentId"), {
           path: requiredString(body, "path"),
-          ...(optionalString(body, "description") === undefined ? {} : { description: optionalString(body, "description")! }),
+          ...(description === undefined ? {} : { description }),
           ...(optionalStrength(body, "strength") === undefined ? {} : { strength: optionalStrength(body, "strength")! }),
           ...(optionalNumber(body, "priority") === undefined ? {} : { priority: optionalNumber(body, "priority")! }),
           ...(optionalStringArray(body, "appliesTo") === undefined ? {} : { appliesTo: optionalStringArray(body, "appliesTo")! }),
         }, { actor: { client: "stacks-web" } });
+        send(response, 200, output as unknown as Record<string, unknown>);
+        return;
+      }
+      if (request.method === "DELETE" && url.pathname === "/api/v0.1/component-guidance") {
+        if (options.root) throw new HttpError(409, "Component configuration is unavailable in legacy --root mode.");
+        const body = await readJsonBody(request);
+        const output = await application.removeGuidance(requiredString(body, "stack"), requiredString(body, "componentId"), requiredString(body, "path"), { actor: { client: "stacks-web" } });
         send(response, 200, output as unknown as Record<string, unknown>);
         return;
       }

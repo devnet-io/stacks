@@ -101,36 +101,60 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
 
   server.registerTool("capability_provide", {
     title: "Configure capability provider", description: "Upsert one capability exported by a component, optionally with one bounded context path and portable artifact identity.",
-    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), description: z.string().min(1).optional(), contextPath: z.string().min(1).optional(), strength: strength.optional(), priority: z.number().optional(), artifactEcosystem: z.string().min(1).optional(), artifactName: z.string().min(1).optional(), artifactPath: z.string().min(1).optional() }).refine((value) => Boolean(value.artifactEcosystem) === Boolean(value.artifactName), { message: "artifactEcosystem and artifactName must be supplied together" }),
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), description: z.string().min(1).nullable().optional(), contextPath: z.string().min(1).nullable().optional(), strength: strength.optional(), priority: z.number().optional(), artifactEcosystem: z.string().min(1).optional(), artifactName: z.string().min(1).nullable().optional(), artifactPath: z.string().min(1).optional() }).refine((value) => value.artifactName === null || Boolean(value.artifactEcosystem) === Boolean(value.artifactName), { message: "artifactEcosystem and artifactName must be supplied together, or artifactName may be null to clear the artifact" }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector, componentId, capability, description, contextPath, strength: contextStrength, priority, artifactEcosystem, artifactName, artifactPath }) => result(await application.configureCapabilityExport(stackSelector, componentId, {
     capability,
-    ...(description ? { description } : {}),
-    ...(contextPath ? { context: [{ path: contextPath, ...(contextStrength ? { strength: contextStrength } : {}), ...(priority === undefined ? {} : { priority }) }] } : {}),
-    ...(artifactEcosystem && artifactName ? { artifact: { ecosystem: artifactEcosystem, name: artifactName, ...(artifactPath ? { path: artifactPath } : {}) } } : {}),
+    ...(description === undefined ? {} : { description }),
+    ...(contextPath === undefined ? {} : contextPath === null ? { context: null } : { context: [{ path: contextPath, ...(contextStrength ? { strength: contextStrength } : {}), ...(priority === undefined ? {} : { priority }) }] }),
+    ...(artifactName === undefined ? {} : artifactName === null ? { artifact: null } : { artifact: { ecosystem: artifactEcosystem!, name: artifactName, ...(artifactPath ? { path: artifactPath } : {}) } }),
   }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
+  server.registerTool("capability_unprovide", {
+    title: "Remove capability provider", description: "Remove one Stack-owned capability export. Refuses to strand resolved consumers unless allowUnresolved is explicitly true.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), allowUnresolved: z.boolean().optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, capability, allowUnresolved }) => result(await application.removeCapabilityExport(stackSelector, componentId, capability, { ...(allowUnresolved === undefined ? {} : { allowUnresolved }), actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
+  server.registerTool("capability_rename", {
+    title: "Rename capability", description: "Atomically rename one Stack-owned provider capability and every consumer relationship currently resolved to that provider. Component IDs and unrelated declarations are preserved.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), replacement: z.string().min(1) }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, capability, replacement }) => result(await application.renameCapability(stackSelector, componentId, capability, replacement, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
   server.registerTool("capability_consume", {
     title: "Configure capability requirement", description: "Upsert one capability consumed by a component and optionally select its authoritative provider.",
-    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), from: z.string().min(1).optional(), optional: z.boolean().optional() }),
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), from: z.string().min(1).nullable().optional(), optional: z.boolean().optional() }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector, componentId, capability, from, optional }) => result(await application.configureCapabilityRequirement(stackSelector, componentId, {
     capability,
-    ...(from ? { from } : {}),
+    ...(from === undefined ? {} : { from }),
     ...(optional === undefined ? {} : { optional }),
   }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
+  server.registerTool("capability_unconsume", {
+    title: "Remove capability requirement", description: "Remove one exact Stack-owned consumer relationship without changing the provider or any unrelated relationship.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1) }),
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, capability }) => result(await application.removeCapabilityRequirement(stackSelector, componentId, capability, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
   server.registerTool("guidance_configure", {
     title: "Configure component guidance", description: "Upsert one component-relative guidance path with strength, priority, and optional capability scope.",
-    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1), description: z.string().min(1).optional(), strength: strength.optional(), priority: z.number().optional(), appliesTo: z.array(z.string().min(1)).optional() }),
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1), description: z.string().min(1).nullable().optional(), strength: strength.optional(), priority: z.number().optional(), appliesTo: z.array(z.string().min(1)).nullable().optional() }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   }, async ({ stack: stackSelector, componentId, path, description, strength: guidanceStrength, priority, appliesTo }) => result(await application.configureGuidance(stackSelector, componentId, {
     path,
-    ...(description ? { description } : {}),
+    ...(description === undefined ? {} : { description }),
     ...(guidanceStrength ? { strength: guidanceStrength } : {}),
     ...(priority === undefined ? {} : { priority }),
-    ...(appliesTo ? { appliesTo } : {}),
+    ...(appliesTo === undefined ? {} : { appliesTo }),
   }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
+
+  server.registerTool("guidance_remove", {
+    title: "Remove component guidance", description: "Remove one exact Stack-owned component-relative guidance declaration without changing the referenced file.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), path: z.string().min(1) }),
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+  }, async ({ stack: stackSelector, componentId, path: guidancePath }) => result(await application.removeGuidance(stackSelector, componentId, guidancePath, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
   server.registerTool("stack_status", {
     title: "Inspect Stack status", description: "Inspect explicit component paths and Git state without modifying them.", inputSchema: z.object({ stack: selector }),

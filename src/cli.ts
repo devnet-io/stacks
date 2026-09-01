@@ -114,7 +114,7 @@ function printJson(value: unknown): void {
 function help(topic?: string): void {
   const topics: Record<string, string> = {
     stack: `Create and list Stacks in this machine's catalog.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n`,
-    component: `View, attach, and configure components in registered Stacks. Component IDs are immutable Stack-local identities; update changes descriptive metadata only. Get/list compose validated provider-owned .stack/component.json exports beneath explicit Stack overrides. Configuration operations upsert Stack-owned data by capability or path.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component update <namespace/name> <id> [--name <name> | --clear-name] [--description <text> | --clear-description] [--kind <kind>] [--access read-only|read-write] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path>] [--description <text>] [--strength <strength>] [--priority <number>] [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <path>]] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component>] [--optional] [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text>] [--strength <strength>] [--priority <number>] [--applies-to <a,b>] [--json]\n`,
+    component: `View, attach, and configure components in registered Stacks. Component IDs are immutable Stack-local identities; update changes descriptive metadata only. Get/list compose validated provider-owned .stack/component.json exports beneath explicit Stack overrides. Configuration operations update one Stack-owned declaration without replacing unrelated data.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component update <namespace/name> <id> [--name <name> | --clear-name] [--description <text> | --clear-description] [--kind <kind>] [--access read-only|read-write] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path> | --clear-context] [--description <text> | --clear-description] [--strength <strength>] [--priority <number>] [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <path>] | --clear-artifact] [--json]\n  stacks component rename-capability <namespace/name> <id> <capability> --to <replacement> [--json]\n  stacks component unprovide <namespace/name> <id> <capability> [--allow-unresolved] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component> | --clear-from] [--optional | --required] [--json]\n  stacks component unconsume <namespace/name> <id> <capability> [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text> | --clear-description] [--strength <strength>] [--priority <number>] [--applies-to <a,b> | --clear-applies-to] [--json]\n  stacks component unguidance <namespace/name> <id> --path <path> [--json]\n`,
     locate: `Find direct Stack component membership or descendant components under an ancestor workspace. Direct matches take precedence; multiple matches are never guessed.\n\n  stacks locate [directory] [--json]\n`,
     agent: `Manage only the delimited Stacks activation block in a repository AGENTS.md. Existing instructions are preserved; malformed markers are refused.\n\n  stacks agent print [--path <directory>] [--json]\n  stacks agent check [--path <directory>] [--json]\n  stacks agent install [--path <directory>] [--json]\n  stacks agent remove [--path <directory>] [--json]\n`,
     status: `Inspect registered Stack component paths and Git state without changing repositories. With no selector, inspect every registered Stack. Loading a Stack also validates its definition.\n\n  stacks status [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
@@ -561,28 +561,55 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
     const artifactEcosystem = stringOption(parsed, "artifact-ecosystem");
     const artifactName = stringOption(parsed, "artifact-name");
     const artifactPath = stringOption(parsed, "artifact-path");
+    if (contextPath !== undefined && booleanOption(parsed, "clear-context")) throw new Error("Use either --context or --clear-context, not both.");
+    if (stringOption(parsed, "description") !== undefined && booleanOption(parsed, "clear-description")) throw new Error("Use either --description or --clear-description, not both.");
+    if ((artifactEcosystem || artifactName || artifactPath) && booleanOption(parsed, "clear-artifact")) throw new Error("Use artifact fields or --clear-artifact, not both.");
     if (Boolean(artifactEcosystem) !== Boolean(artifactName)) throw new Error("Use --artifact-ecosystem and --artifact-name together.");
     const output = await application.configureCapabilityExport(selector, id, {
       capability,
-      ...(stringOption(parsed, "description") === undefined ? {} : { description: stringOption(parsed, "description")! }),
-      ...(contextPath === undefined ? {} : { context: [{ path: contextPath, ...(strength === undefined ? {} : { strength }), ...(priority === undefined ? {} : { priority }) }] }),
-      ...(artifactEcosystem && artifactName ? { artifact: { ecosystem: artifactEcosystem, name: artifactName, ...(artifactPath === undefined ? {} : { path: artifactPath }) } } : {}),
+      ...(stringOption(parsed, "description") !== undefined ? { description: stringOption(parsed, "description")! } : booleanOption(parsed, "clear-description") ? { description: null } : {}),
+      ...(contextPath !== undefined ? { context: [{ path: contextPath, ...(strength === undefined ? {} : { strength }), ...(priority === undefined ? {} : { priority }) }] } : booleanOption(parsed, "clear-context") ? { context: null } : {}),
+      ...(artifactEcosystem && artifactName ? { artifact: { ecosystem: artifactEcosystem, name: artifactName, ...(artifactPath === undefined ? {} : { path: artifactPath }) } } : booleanOption(parsed, "clear-artifact") ? { artifact: null } : {}),
     }, { actor: { client: "stacks-cli" } });
     if (booleanOption(parsed, "json")) printJson(output);
     else process.stdout.write(`Configured ${id} as a provider of ${capability}.\n`);
+    return;
+  }
+  if (operation === "unprovide") {
+    const capability = parsed.positionals[4];
+    if (!capability) throw new Error("Usage: stacks component unprovide <namespace/name> <id> <capability> [--allow-unresolved]");
+    const output = await application.removeCapabilityExport(selector, id, capability, { allowUnresolved: booleanOption(parsed, "allow-unresolved"), actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output); else process.stdout.write(`Removed provider declaration ${capability} from ${id}.\n`);
+    return;
+  }
+  if (operation === "rename-capability") {
+    const capability = parsed.positionals[4];
+    if (!capability) throw new Error("Usage: stacks component rename-capability <namespace/name> <id> <capability> --to <replacement>");
+    const replacement = requiredOption(parsed, "to");
+    const output = await application.renameCapability(selector, id, capability, replacement, { actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output); else process.stdout.write(`Renamed ${capability} to ${replacement}; updated ${output.updatedConsumers.length} consumer relationship(s).\n`);
     return;
   }
   if (operation === "consume") {
     const capability = parsed.positionals[4];
     if (!capability) throw new Error("Usage: stacks component consume <namespace/name> <id> <capability> ...");
     const from = stringOption(parsed, "from");
+    if (from !== undefined && booleanOption(parsed, "clear-from")) throw new Error("Use either --from or --clear-from, not both.");
+    if (booleanOption(parsed, "optional") && booleanOption(parsed, "required")) throw new Error("Use either --optional or --required, not both.");
     const output = await application.configureCapabilityRequirement(selector, id, {
       capability,
-      ...(from === undefined ? {} : { from }),
-      ...(booleanOption(parsed, "optional") ? { optional: true } : {}),
+      ...(from !== undefined ? { from } : booleanOption(parsed, "clear-from") ? { from: null } : {}),
+      ...(booleanOption(parsed, "optional") ? { optional: true } : booleanOption(parsed, "required") ? { optional: false } : {}),
     }, { actor: { client: "stacks-cli" } });
     if (booleanOption(parsed, "json")) printJson(output);
     else process.stdout.write(`Configured ${id} to consume ${capability}${from ? ` from ${from}` : ""}.\n`);
+    return;
+  }
+  if (operation === "unconsume") {
+    const capability = parsed.positionals[4];
+    if (!capability) throw new Error("Usage: stacks component unconsume <namespace/name> <id> <capability>");
+    const output = await application.removeCapabilityRequirement(selector, id, capability, { actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output); else process.stdout.write(`Removed requirement ${capability} from ${id}.\n`);
     return;
   }
   if (operation === "guidance") {
@@ -591,15 +618,23 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
     if (!["required", "preferred", "reference"].includes(strength)) throw new Error("Invalid --strength.");
     const priority = numericOption(parsed, "priority");
     const appliesTo = listOption(parsed, "applies-to");
+    if (stringOption(parsed, "description") !== undefined && booleanOption(parsed, "clear-description")) throw new Error("Use either --description or --clear-description, not both.");
+    if (appliesTo !== undefined && booleanOption(parsed, "clear-applies-to")) throw new Error("Use either --applies-to or --clear-applies-to, not both.");
     const output = await application.configureGuidance(selector, id, {
       path: guidancePath,
       strength,
-      ...(stringOption(parsed, "description") === undefined ? {} : { description: stringOption(parsed, "description")! }),
+      ...(stringOption(parsed, "description") !== undefined ? { description: stringOption(parsed, "description")! } : booleanOption(parsed, "clear-description") ? { description: null } : {}),
       ...(priority === undefined ? {} : { priority }),
-      ...(appliesTo === undefined ? {} : { appliesTo }),
+      ...(appliesTo !== undefined ? { appliesTo } : booleanOption(parsed, "clear-applies-to") ? { appliesTo: null } : {}),
     }, { actor: { client: "stacks-cli" } });
     if (booleanOption(parsed, "json")) printJson(output);
     else process.stdout.write(`Configured guidance ${guidancePath} for ${id}.\n`);
+    return;
+  }
+  if (operation === "unguidance") {
+    const guidancePath = requiredOption(parsed, "path");
+    const output = await application.removeGuidance(selector, id, guidancePath, { actor: { client: "stacks-cli" } });
+    if (booleanOption(parsed, "json")) printJson(output); else process.stdout.write(`Removed guidance ${guidancePath} from ${id}.\n`);
     return;
   }
   const localPath = requiredOption(parsed, "path");

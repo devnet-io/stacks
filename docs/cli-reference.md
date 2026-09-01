@@ -141,20 +141,39 @@ Upserts one capability exported by a component. An optional component-relative c
 
 ```text
 stacks component provide <namespace/name> <id> <capability>
-  [--context <path>] [--description <text>]
+  [--context <path> | --clear-context]
+  [--description <text> | --clear-description]
   [--strength required|preferred|reference] [--priority <number>]
-  [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <relative-path>]] [--json]
+  [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <relative-path>] | --clear-artifact] [--json]
 ```
 
 ```bash
 stacks component provide acme/customer-portal shared-ui ui.react.components --context docs/components.md --strength required --artifact-ecosystem npm --artifact-name @acme/ui --artifact-path .
 ```
 
-Saving the same component and capability replaces that export instead of creating a duplicate. A state change writes only the portable Stack definition and appends a `component.configuration.changed` event; an identical upsert is an event no-op. It never modifies the component repository.
+Saving the same component and capability patches that exact Stack-owned export instead of creating a duplicate: omitted fields and unrelated declarations are preserved, while the explicit clear flags remove optional fields. A state change writes only the portable Stack definition and appends a `component.configuration.changed` event; an identical update is an event no-op. It never modifies the component repository.
 
 An explicit Stack export also replaces the complete provider-owned `.stack/component.json` entry for the same capability. Other valid descriptor exports remain effective. See [Provider-owned component descriptors](user-guide.md#provider-owned-component-descriptors).
 
 For consumed npm artifacts, `stacks context` returns `artifactGuidance` containing the provider and artifact roots plus a derived `file:` dependency candidate. This is fallback guidance, not an install action: inspect and preserve the consumer's existing registry, workspace, lockfile, and package-manager conventions first. Stacks never edits `package.json`, runs an install, or executes lifecycle scripts.
+
+### `stacks component rename-capability`
+
+Atomically renames one Stack-owned provider capability and consumer requirements currently resolved to that provider. Component IDs, bindings, provenance, and unrelated configuration are unchanged.
+
+```text
+stacks component rename-capability <namespace/name> <provider-id> <capability> --to <replacement> [--json]
+```
+
+The operation refuses collisions and cannot rename a descriptor-only export; edit the provider's `.stack/component.json` for repository-owned declarations. Repeating an already completed rename is an idempotent no-op when the replacement exists.
+
+### `stacks component unprovide`
+
+```text
+stacks component unprovide <namespace/name> <provider-id> <capability> [--allow-unresolved] [--json]
+```
+
+Removes one exact Stack-owned export. It refuses to strand resolved consumers by default. `--allow-unresolved` is an explicit escape hatch that leaves those requirements visible as graph/context errors. Descriptor-only exports remain repository-owned.
 
 ### `stacks component consume`
 
@@ -162,7 +181,7 @@ Upserts one capability requirement. `--from` identifies the authoritative provid
 
 ```text
 stacks component consume <namespace/name> <id> <capability>
-  [--from <component-id>] [--optional] [--json]
+  [--from <component-id> | --clear-from] [--optional | --required] [--json]
 ```
 
 ```bash
@@ -171,19 +190,35 @@ stacks component consume acme/customer-portal app ui.react.components --from sha
 
 Requirements are required by default. `--optional` means an unresolved provider becomes a context warning instead of an error; it does not make the provider authoritative or suppress visibility. Direct `dependsOn` relationships remain required in the current model.
 
+### `stacks component unconsume`
+
+```text
+stacks component unconsume <namespace/name> <id> <capability> [--json]
+```
+
+Removes one exact consumer requirement without changing its provider or any other consumer. Repeating the command is an idempotent no-op.
+
 ### `stacks component guidance`
 
 Upserts one component-relative guidance path. The path remains ordinary repository content; Stacks stores only its descriptor and never creates or edits the file.
 
 ```text
 stacks component guidance <namespace/name> <id> --path <path>
-  [--description <text>] [--strength required|preferred|reference]
-  [--priority <number>] [--applies-to <capability-a,capability-b>] [--json]
+  [--description <text> | --clear-description] [--strength required|preferred|reference]
+  [--priority <number>] [--applies-to <capability-a,capability-b> | --clear-applies-to] [--json]
 ```
 
 ```bash
 stacks component guidance acme/customer-portal standards --path engineering.md --strength required
 ```
+
+### `stacks component unguidance`
+
+```text
+stacks component unguidance <namespace/name> <id> --path <path> [--json]
+```
+
+Removes the exact Stack-owned guidance descriptor. It never deletes or edits the repository file.
 
 ## Inspection and context
 

@@ -185,7 +185,27 @@ Upserts a capability exported by a component and optionally exposes one componen
 }
 ```
 
-Side effects: when state changes, writes the portable Stack definition and appends a `component.configuration.changed` event attributed to `stacks-mcp`. An identical upsert is an event no-op. It never writes the referenced file. Idempotent for the same Stack, component, and capability.
+Omitted fields preserve the current value. Set `description`, `contextPath`, or `artifactName` to `null` to clear the corresponding optional declaration; `artifactName: null` clears the whole artifact. Side effects: when state changes, writes the portable Stack definition and appends a `component.configuration.changed` event attributed to `stacks-mcp`. An identical update is an event no-op. It never writes the referenced file. Idempotent for the same Stack, component, and capability.
+
+### `capability_unprovide`
+
+Removes one exact Stack-owned provider declaration. It refuses to leave resolved consumers without a provider unless `allowUnresolved` is explicitly true. Descriptor-only exports must be removed from the provider repository.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "shared-ui", "capability": "ui.react.components", "allowUnresolved": false }
+```
+
+Side effects: writes the portable definition and appends a removal configuration event only when the declaration existed. Idempotent.
+
+### `capability_rename`
+
+Atomically renames one Stack-owned export and all requirements currently resolved to that provider. Stable component IDs, bindings, provenance, and unrelated configuration are preserved.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "shared-ui", "capability": "ui.react.components", "replacement": "ui.react.controls" }
+```
+
+The operation rejects collisions and descriptor-only declarations. Output includes `previousCapability`, `capability`, and `updatedConsumers`. Idempotent after a completed rename.
 
 ### `capability_consume`
 
@@ -195,9 +215,19 @@ Upserts a capability requirement for a consumer. `from` selects the authoritativ
 { "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components", "from": "shared-ui", "optional": false }
 ```
 
-`optional` defaults to `false`. A missing or ambiguous required provider is a context error; the same unresolved optional requirement is a warning. Both remain visible in Graph and structured output. Direct component dependencies are currently always required.
+`optional` defaults to `false`. Omitted fields preserve current values; `from: null` clears an explicit provider, and `optional: false` makes an existing relationship required. A missing or ambiguous required provider is a context error; the same unresolved optional requirement is a warning. Both remain visible in Graph and structured output. Direct component dependencies are currently always required.
 
 Side effects: when state changes, writes the portable Stack definition and appends a configuration event. An identical upsert is an event no-op. Idempotent for the same Stack, component, and capability.
+
+### `capability_unconsume`
+
+Removes one exact Stack-owned consumer requirement without changing the provider or unrelated consumers.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components" }
+```
+
+Side effects: writes the portable definition and appends a removal event only when the requirement existed. Idempotent.
 
 ### `guidance_configure`
 
@@ -216,6 +246,18 @@ Upserts one component-relative guidance descriptor.
 ```
 
 Side effects: when state changes, writes the portable Stack definition and appends a configuration event. An identical upsert is an event no-op. It never creates or modifies the guidance file. Idempotent for the same Stack, component, and path.
+
+Omitted fields preserve current values. `description: null` or `appliesTo: null` clears that optional field.
+
+### `guidance_remove`
+
+Removes one exact Stack-owned guidance descriptor without touching the referenced repository file.
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "standards", "path": "engineering.md" }
+```
+
+Side effects: writes the portable definition and appends a removal event only when the descriptor existed. Idempotent.
 
 ### `stack_status`
 

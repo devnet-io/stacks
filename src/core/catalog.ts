@@ -3,7 +3,12 @@ import { access, mkdir, open, readFile, realpath, rename, unlink, writeFile } fr
 import os from "node:os";
 import path from "node:path";
 import { assertValidManifest } from "./validation.ts";
-import type { CapabilityExport, CapabilityRequirement, Guidance, LoadedStack, StackComponent, StackManifest } from "./types.ts";
+import { resolveComponentDescriptors } from "./component-descriptor.ts";
+import type { CapabilityArtifact, CapabilityExport, CapabilityRequirement, ContextPath, Guidance, LoadedStack, StackComponent, StackManifest } from "./types.ts";
+
+export type CapabilityExportPatch = Omit<CapabilityExport, "description" | "context" | "artifact"> & { description?: string | null; context?: ContextPath[] | null; artifact?: CapabilityArtifact | null };
+export type CapabilityRequirementPatch = Omit<CapabilityRequirement, "from"> & { from?: string | null };
+export type GuidancePatch = Omit<Guidance, "description" | "appliesTo"> & { description?: string | null; appliesTo?: string[] | null };
 
 export interface PlatformDirectories { config: string; state: string }
 export interface CatalogEntry { id: string; namespace: string; name: string; definitionPath: string; bindingsPath: string }
@@ -315,38 +320,128 @@ function upsertBy<T>(items: T[] | undefined, matches: (item: T) => boolean, valu
   return updated;
 }
 
+function withoutEmpty<T>(items: T[] | undefined, matches: (item: T) => boolean): T[] | undefined {
+  const updated = (items ?? []).filter((item) => !matches(item));
+  return updated.length ? updated : undefined;
+}
+
+function mergeNullable<T extends object>(current: T | undefined, patch: Record<string, unknown>): T {
+  const merged = { ...(current ?? {}), ...patch } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(merged)) if (value === null) delete merged[key];
+  return merged as T;
+}
+
 export function configureRegisteredCapabilityExport(
   stackSelector: string,
   componentId: string,
-  value: CapabilityExport,
+  value: CapabilityExportPatch,
   directories = platformDirectories(),
 ): Promise<{ stack: LoadedStack; changed: boolean }> {
   return updateRegisteredComponent(stackSelector, componentId, (component) => ({
     ...component,
-    provides: upsertBy(component.provides, (item) => item.capability === value.capability, value),
+    provides: upsertBy(component.provides, (item) => item.capability === value.capability, mergeNullable<CapabilityExport>((component.provides ?? []).find((item) => item.capability === value.capability), value)),
   }), directories);
 }
 
 export function configureRegisteredCapabilityRequirement(
   stackSelector: string,
   componentId: string,
-  value: CapabilityRequirement,
+  value: CapabilityRequirementPatch,
   directories = platformDirectories(),
 ): Promise<{ stack: LoadedStack; changed: boolean }> {
   return updateRegisteredComponent(stackSelector, componentId, (component) => ({
     ...component,
-    consumes: upsertBy(component.consumes, (item) => item.capability === value.capability, value),
+    consumes: upsertBy(component.consumes, (item) => item.capability === value.capability, mergeNullable<CapabilityRequirement>((component.consumes ?? []).find((item) => item.capability === value.capability), value)),
   }), directories);
 }
 
 export function configureRegisteredGuidance(
   stackSelector: string,
   componentId: string,
-  value: Guidance,
+  value: GuidancePatch,
   directories = platformDirectories(),
 ): Promise<{ stack: LoadedStack; changed: boolean }> {
   return updateRegisteredComponent(stackSelector, componentId, (component) => ({
     ...component,
-    guidance: upsertBy(component.guidance, (item) => item.path === value.path, value),
+    guidance: upsertBy(component.guidance, (item) => item.path === value.path, mergeNullable<Guidance>((component.guidance ?? []).find((item) => item.path === value.path), value)),
   }), directories);
+}
+
+export function removeRegisteredCapabilityRequirement(stackSelector: string, componentId: string, capability: string, directories = platformDirectories()): Promise<{ stack: LoadedStack; changed: boolean }> {
+  return updateRegisteredComponent(stackSelector, componentId, (component) => {
+    const consumes = withoutEmpty(component.consumes, (item) => item.capability === capability);
+    const updated = { ...component };
+    if (consumes) updated.consumes = consumes; else delete updated.consumes;
+    return updated;
+  }, directories);
+}
+
+export function removeRegisteredGuidance(stackSelector: string, componentId: string, guidancePath: string, directories = platformDirectories()): Promise<{ stack: LoadedStack; changed: boolean }> {
+  return updateRegisteredComponent(stackSelector, componentId, (component) => {
+    const guidance = withoutEmpty(component.guidance, (item) => item.path === guidancePath);
+    const updated = { ...component };
+    if (guidance) updated.guidance = guidance; else delete updated.guidance;
+    return updated;
+  }, directories);
+}
+
+function consumersResolvedTo(manifest: StackManifest, providerId: string, capability: string): string[] {
+  const providerIds = manifest.components.filter((component) => component.provides?.some((item) => item.capability === capability)).map((component) => component.id);
+  return manifest.components.filter((component) => component.consumes?.some((item) => item.capability === capability && (item.from === providerId || (!item.from && providerIds.length === 1 && providerIds[0] === providerId)))).map((component) => component.id);
+}
+
+export async function removeRegisteredCapabilityExport(stackSelector: string, componentId: string, capability: string, allowUnresolved = false, directories = platformDirectories()): Promise<{ stack: LoadedStack; changed: boolean; affectedConsumers: string[] }> {
+  let changed = false;
+  let affectedConsumers: string[] = [];
+  await withCatalogMutation(directories, async () => {
+    const catalog = await readCatalog(directories);
+    const entry = catalog.stacks.find((candidate) => selector(candidate) === stackSelector || candidate.id === stackSelector);
+    if (!entry) throw new Error(`Unknown registered Stack: ${stackSelector}.`);
+    const stack = await loadRegisteredStack(stackSelector, directories);
+    const component = stack.manifest.components.find((candidate) => candidate.id === componentId);
+    if (!component) throw new Error(`Unknown component ${componentId} in ${selector(entry)}.`);
+    if (!component.provides?.some((item) => item.capability === capability)) return;
+    affectedConsumers = consumersResolvedTo((await resolveComponentDescriptors(stack)).stack.manifest, componentId, capability);
+    if (affectedConsumers.length && !allowUnresolved) throw new Error(`Removing ${capability} from ${componentId} would leave consumers unresolved: ${affectedConsumers.join(", ")}. Remove those requirements first or explicitly allow unresolved consumers.`);
+    const provides = withoutEmpty(component.provides, (item) => item.capability === capability);
+    const updated = { ...component };
+    if (provides) updated.provides = provides; else delete updated.provides;
+    const manifest = { ...stack.manifest, components: stack.manifest.components.map((candidate) => candidate.id === componentId ? updated : candidate) };
+    assertValidManifest(manifest);
+    await writeJsonAtomic(entry.definitionPath, manifest);
+    changed = true;
+  });
+  return { stack: await loadRegisteredStack(stackSelector, directories), changed, affectedConsumers };
+}
+
+export async function renameRegisteredCapability(stackSelector: string, componentId: string, capability: string, replacement: string, directories = platformDirectories()): Promise<{ stack: LoadedStack; changed: boolean; updatedConsumers: string[] }> {
+  if (capability === replacement) return { stack: await loadRegisteredStack(stackSelector, directories), changed: false, updatedConsumers: [] };
+  let changed = false;
+  let updatedConsumers: string[] = [];
+  await withCatalogMutation(directories, async () => {
+    const catalog = await readCatalog(directories);
+    const entry = catalog.stacks.find((candidate) => selector(candidate) === stackSelector || candidate.id === stackSelector);
+    if (!entry) throw new Error(`Unknown registered Stack: ${stackSelector}.`);
+    const stack = await loadRegisteredStack(stackSelector, directories);
+    const provider = stack.manifest.components.find((candidate) => candidate.id === componentId);
+    if (!provider) throw new Error(`Unknown component ${componentId} in ${selector(entry)}.`);
+    const exported = provider.provides?.find((item) => item.capability === capability);
+    if (!exported) {
+      if (provider.provides?.some((item) => item.capability === replacement)) return;
+      throw new Error(`Component ${componentId} does not have a Stack-owned capability export named ${capability}.`);
+    }
+    if (provider.provides?.some((item) => item.capability === replacement)) throw new Error(`Component ${componentId} already provides ${replacement}.`);
+    const resolvedConsumers = new Set(consumersResolvedTo((await resolveComponentDescriptors(stack)).stack.manifest, componentId, capability));
+    updatedConsumers = [...resolvedConsumers].sort();
+    const components = stack.manifest.components.map((component) => ({
+      ...component,
+      ...(component.id === componentId ? { provides: component.provides?.map((item) => item.capability === capability ? { ...item, capability: replacement } : item) } : {}),
+      ...(resolvedConsumers.has(component.id) ? { consumes: component.consumes?.map((item) => item.capability === capability && (item.from === componentId || !item.from) ? { ...item, capability: replacement } : item) } : {}),
+    }));
+    const manifest = { ...stack.manifest, components };
+    assertValidManifest(manifest);
+    await writeJsonAtomic(entry.definitionPath, manifest);
+    changed = true;
+  });
+  return { stack: await loadRegisteredStack(stackSelector, directories), changed, updatedConsumers };
 }

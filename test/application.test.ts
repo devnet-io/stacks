@@ -104,3 +104,33 @@ test("StacksApplication owns catalog and status use-case orchestration", async (
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("component configuration edits preserve identity and unrelated declarations", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-configuration-"));
+  const directories = { config: path.join(root, "config"), state: path.join(root, "state") };
+  const application = createLocalStacksApplication({ catalogDirectories: directories });
+  try {
+    for (const id of ["library", "product", "other"]) await mkdir(path.join(root, id), { recursive: true });
+    await application.createStack("tests/configuration");
+    for (const id of ["library", "product", "other"]) await application.addComponent({ stack: "tests/configuration", id, path: path.join(root, id) });
+    await application.configureCapabilityExport("tests/configuration", "library", { capability: "ui.button", description: "Shared button" });
+    await application.configureCapabilityExport("tests/configuration", "library", { capability: "ui.button", artifact: { ecosystem: "npm", name: "@tests/ui" } });
+    assert.equal((await application.getComponent("tests/configuration", "library")).component.provides?.[0]?.description, "Shared button");
+    await application.configureCapabilityRequirement("tests/configuration", "product", { capability: "ui.button", from: "library", optional: true });
+    await application.configureCapabilityRequirement("tests/configuration", "other", { capability: "ui.button", from: "library" });
+    const renamed = await application.renameCapability("tests/configuration", "library", "ui.button", "ui.control");
+    assert.deepEqual(renamed.updatedConsumers, ["other", "product"]);
+    assert.equal((await application.getComponent("tests/configuration", "library")).component.id, "library");
+    assert.equal((await application.getComponent("tests/configuration", "product")).component.consumes?.[0]?.capability, "ui.control");
+    await assert.rejects(application.removeCapabilityExport("tests/configuration", "library", "ui.control"), /leave consumers unresolved/);
+    await application.removeCapabilityRequirement("tests/configuration", "product", "ui.control");
+    await application.removeCapabilityRequirement("tests/configuration", "other", "ui.control");
+    await application.removeCapabilityExport("tests/configuration", "library", "ui.control");
+    assert.equal((await application.getComponent("tests/configuration", "library")).component.provides, undefined);
+    await application.configureGuidance("tests/configuration", "product", { path: "AGENTS.md", description: "Local rules" });
+    await application.removeGuidance("tests/configuration", "product", "AGENTS.md");
+    assert.equal((await application.getComponent("tests/configuration", "product")).component.guidance, undefined);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

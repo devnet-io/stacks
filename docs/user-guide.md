@@ -77,7 +77,7 @@ Manage shows whether the descriptor is absent, valid, invalid, or unavailable, a
 
 ## Consuming implementation artifacts
 
-When a consumed capability identifies an artifact, `stacks context`, `context_resolve`, and `turn_start` return `artifactGuidance`. For npm-compatible packages it includes the package name, provider and package roots, and a local `file:` candidate derived from the consumer and provider bindings.
+When a consumed capability identifies an artifact, `stacks context`, `context_resolve`, and `turn_start` return `artifactGuidance`. The Stack relationship records dependency intent; it does not install or link the package. For npm-compatible packages the guidance includes the package name, provider and package roots, a local `file:` candidate derived from the consumer and provider bindings, and the exact fallback `package.json` dependency entry.
 
 The agent must inspect the repositories before changing dependency files:
 

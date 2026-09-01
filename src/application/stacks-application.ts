@@ -1,6 +1,6 @@
 import path from "node:path";
-import type { CapabilityExport, CapabilityRequirement, ComponentDescriptorReport, ContextBriefing, ContextPlan, EventActor, Guidance, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
-import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, updateRegisteredComponentMetadata, type ComponentMembership, type ComponentMetadataPatch, type PlatformDirectories } from "../core/catalog.ts";
+import type { ComponentDescriptorReport, ContextBriefing, ContextPlan, EventActor, LoadedStack, StackEvent, StackManifest, UsageData, UsageReport } from "../core/types.ts";
+import { addRegisteredComponent, bindRegisteredComponent, configureRegisteredCapabilityExport, configureRegisteredCapabilityRequirement, configureRegisteredGuidance, createRegisteredStack, findRegisteredComponentMemberships, listRegisteredStacks, loadRegisteredStack, removeRegisteredCapabilityExport, removeRegisteredCapabilityRequirement, removeRegisteredGuidance, renameRegisteredCapability, updateRegisteredComponentMetadata, type CapabilityExportPatch, type CapabilityRequirementPatch, type ComponentMembership, type ComponentMetadataPatch, type GuidancePatch, type PlatformDirectories } from "../core/catalog.ts";
 import { resolveContext } from "../core/context.ts";
 import { materializeContextBriefing, type BriefingOptions } from "../core/briefing.ts";
 import { completeTurn, completeWork, createCapabilityRequest, importUsage, readEvents, recordComponentAdded, recordComponentBindingChanged, recordComponentConfigurationChanged, recordStackCreated, startTurn as startCoreTurn, startWork, transitionCapabilityRequest } from "../core/events.ts";
@@ -47,6 +47,12 @@ export interface ComponentListOutput {
   schemaVersion: "0.1";
   stack: StackIdentity;
   components: Array<{ component: StackManifest["components"][number]; binding?: string; descriptor: ComponentDescriptorReport }>;
+}
+
+export interface CapabilityRenameOutput extends ComponentOutput {
+  previousCapability: string;
+  capability: string;
+  updatedConsumers: string[];
 }
 
 export interface MembershipOutput {
@@ -97,9 +103,13 @@ export interface StacksApplication {
   addComponent(input: AddComponentInput): Promise<ComponentMutationOutput>;
   bindComponent(stack: string, componentId: string, localPath: string, options?: BindComponentOptions): Promise<ComponentMutationOutput>;
   updateComponent(stack: string, componentId: string, value: ComponentMetadataPatch, options?: MutationOptions): Promise<ComponentOutput>;
-  configureCapabilityExport(stack: string, componentId: string, value: CapabilityExport, options?: MutationOptions): Promise<ComponentOutput>;
-  configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirement, options?: MutationOptions): Promise<ComponentOutput>;
-  configureGuidance(stack: string, componentId: string, value: Guidance, options?: MutationOptions): Promise<ComponentOutput>;
+  configureCapabilityExport(stack: string, componentId: string, value: CapabilityExportPatch, options?: MutationOptions): Promise<ComponentOutput>;
+  removeCapabilityExport(stack: string, componentId: string, capability: string, options?: MutationOptions & { allowUnresolved?: boolean }): Promise<ComponentOutput>;
+  renameCapability(stack: string, componentId: string, capability: string, replacement: string, options?: MutationOptions): Promise<CapabilityRenameOutput>;
+  configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirementPatch, options?: MutationOptions): Promise<ComponentOutput>;
+  removeCapabilityRequirement(stack: string, componentId: string, capability: string, options?: MutationOptions): Promise<ComponentOutput>;
+  configureGuidance(stack: string, componentId: string, value: GuidancePatch, options?: MutationOptions): Promise<ComponentOutput>;
+  removeGuidance(stack: string, componentId: string, path: string, options?: MutationOptions): Promise<ComponentOutput>;
   getStack(reference: StackReference): Promise<StackDefinitionOutput>;
   initializeLegacyStack(root: string, namespace: string, name: string): Promise<InitOutput>;
   validateStack(reference: StackReference): Promise<ValidateOutput>;
@@ -236,19 +246,34 @@ export class LocalStacksApplication implements StacksApplication {
     loaded: LoadedStack,
     changed: boolean,
     componentId: string,
-    configuration: "metadata" | "capability-export" | "capability-requirement" | "guidance",
+    configuration: "metadata" | "capability-export" | "capability-requirement" | "capability-rename" | "guidance",
     subject: string,
     actor?: EventActor,
+    action?: "configured" | "removed" | "renamed",
   ): Promise<ComponentOutput> {
-    if (changed) await recordComponentConfigurationChanged(loaded, { componentId, configuration, subject, ...(actor === undefined ? {} : { actor }) });
+    if (changed) await recordComponentConfigurationChanged(loaded, { componentId, configuration, subject, ...(actor === undefined ? {} : { actor }), ...(action === undefined ? {} : { action }) });
     const resolution = await resolveComponentDescriptors(loaded);
     const component = resolution.stack.manifest.components.find((candidate) => candidate.id === componentId)!;
     return { schemaVersion: "0.1", stack: stackIdentity(loaded.manifest), component, ...(loaded.bindings?.[componentId] ? { binding: loaded.bindings[componentId] } : {}), descriptor: resolution.reports[componentId]! };
   }
 
-  async configureCapabilityExport(stack: string, componentId: string, value: CapabilityExport, options: MutationOptions = {}): Promise<ComponentOutput> {
+  async configureCapabilityExport(stack: string, componentId: string, value: CapabilityExportPatch, options: MutationOptions = {}): Promise<ComponentOutput> {
     const configured = await configureRegisteredCapabilityExport(stack, componentId, value, this.options.catalogDirectories);
     return this.configuredComponent(configured.stack, configured.changed, componentId, "capability-export", value.capability, options.actor);
+  }
+
+  async removeCapabilityExport(stack: string, componentId: string, capability: string, options: MutationOptions & { allowUnresolved?: boolean } = {}): Promise<ComponentOutput> {
+    const configured = await removeRegisteredCapabilityExport(stack, componentId, capability, options.allowUnresolved ?? false, this.options.catalogDirectories);
+    return this.configuredComponent(configured.stack, configured.changed, componentId, "capability-export", capability, options.actor, "removed");
+  }
+
+  async renameCapability(stack: string, componentId: string, capability: string, replacement: string, options: MutationOptions = {}): Promise<CapabilityRenameOutput> {
+    const from = capability.trim(); const to = replacement.trim();
+    if (!from || !to) throw new Error("Current and replacement capability names are required.");
+    const configured = await renameRegisteredCapability(stack, componentId, from, to, this.options.catalogDirectories);
+    const component = await this.configuredComponent(configured.stack, configured.changed, componentId, "capability-rename", `${from} to ${to}`, options.actor, "renamed");
+    if (configured.changed) for (const consumerId of configured.updatedConsumers) await recordComponentConfigurationChanged(configured.stack, { componentId: consumerId, configuration: "capability-requirement", subject: `${from} to ${to}`, action: "renamed", ...(options.actor === undefined ? {} : { actor: options.actor }) });
+    return { ...component, previousCapability: from, capability: to, updatedConsumers: configured.updatedConsumers };
   }
 
   async updateComponent(stack: string, componentId: string, value: ComponentMetadataPatch, options: MutationOptions = {}): Promise<ComponentOutput> {
@@ -266,14 +291,24 @@ export class LocalStacksApplication implements StacksApplication {
     return this.configuredComponent(configured.stack, configured.changed, componentId, "metadata", Object.keys(value).join(", "), options.actor);
   }
 
-  async configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirement, options: MutationOptions = {}): Promise<ComponentOutput> {
+  async configureCapabilityRequirement(stack: string, componentId: string, value: CapabilityRequirementPatch, options: MutationOptions = {}): Promise<ComponentOutput> {
     const configured = await configureRegisteredCapabilityRequirement(stack, componentId, value, this.options.catalogDirectories);
     return this.configuredComponent(configured.stack, configured.changed, componentId, "capability-requirement", value.capability, options.actor);
   }
 
-  async configureGuidance(stack: string, componentId: string, value: Guidance, options: MutationOptions = {}): Promise<ComponentOutput> {
+  async removeCapabilityRequirement(stack: string, componentId: string, capability: string, options: MutationOptions = {}): Promise<ComponentOutput> {
+    const configured = await removeRegisteredCapabilityRequirement(stack, componentId, capability, this.options.catalogDirectories);
+    return this.configuredComponent(configured.stack, configured.changed, componentId, "capability-requirement", capability, options.actor, "removed");
+  }
+
+  async configureGuidance(stack: string, componentId: string, value: GuidancePatch, options: MutationOptions = {}): Promise<ComponentOutput> {
     const configured = await configureRegisteredGuidance(stack, componentId, value, this.options.catalogDirectories);
     return this.configuredComponent(configured.stack, configured.changed, componentId, "guidance", value.path, options.actor);
+  }
+
+  async removeGuidance(stack: string, componentId: string, guidancePath: string, options: MutationOptions = {}): Promise<ComponentOutput> {
+    const configured = await removeRegisteredGuidance(stack, componentId, guidancePath, this.options.catalogDirectories);
+    return this.configuredComponent(configured.stack, configured.changed, componentId, "guidance", guidancePath, options.actor, "removed");
   }
 
   async getStack(reference: StackReference): Promise<StackDefinitionOutput> {

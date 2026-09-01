@@ -81,7 +81,7 @@ export function buildArtifactGuidance(stack: LoadedStack, targetComponentId: str
         artifactRoot,
         ...(local === undefined ? {} : { localFallback: { dependencySpecifier: local, packageJson: { [provided.artifact.name]: local } } }),
         strategyOrder: ["existing-project-configuration", "workspace", "registry", "local-file"],
-        instruction: "Inspect the consumer and provider package configuration first. Preserve an existing dependency, workspace convention, or registry setup. Use the local file dependency only when no established project strategy applies; do not run package-manager commands or lifecycle scripts without the normal authorization for repository changes.",
+        instruction: `The Stack relationship records intent; it does not make ${provided.artifact.name} importable. Inspect the consumer package.json, provider package.json, workspace configuration, and lockfile. If the dependency is not already usable, edit the consumer package.json using the repository's established workspace or registry convention. Workspace members may use that convention even when other Stack components are outside the workspace. When no established strategy applies, use localFallback.packageJson exactly as the recommended local dependency entry. Then use the repository's normal install and verification workflow when authorized. Stacks never edits package metadata or runs the package manager for the agent.`,
       });
     } catch (error) {
       warnings.push(`Artifact guidance for ${requirement.capability} from ${provider.id} is unavailable: ${message(error)}`);

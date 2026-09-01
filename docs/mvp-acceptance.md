@@ -53,6 +53,6 @@ Run `npm run check` before delivery. The complete check also validates documenta
 
 - Turn refresh is a smaller deterministic current-plan briefing, not a change-aware delta.
 - Consumer relationships and Stack overrides remain Stack-managed; provider descriptors intentionally cannot declare them.
-- Artifact guidance does not inspect every possible workspace or registry convention and does not invoke a package manager. The agent must inspect the repositories before choosing the local fallback.
+- Artifact guidance explicitly requires the agent to inspect both package manifests, workspace configuration, and the lockfile before editing the consumer. It does not inspect every possible convention or invoke a package manager itself.
 - The acceptance client uses live stdio MCP but is deterministic automation rather than a vendor-specific agent harness.
 - Remote application and Streamable HTTP MCP transports remain future work.

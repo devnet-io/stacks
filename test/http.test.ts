@@ -140,6 +140,31 @@ test("global local API lists and explicitly selects registered Stacks", async ()
   } finally { await api.close(); await rm(root, { recursive: true, force: true }); }
 });
 
+test("configuration HTTP mutations rename and remove exact graph declarations", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "stacks-http-configuration-"));
+  const directories = { config: path.join(root, "config"), state: path.join(root, "state") };
+  await mkdir(path.join(root, "provider"));
+  await mkdir(path.join(root, "consumer"));
+  await createRegisteredStack("tests/http-configuration", directories);
+  await addRegisteredComponent("tests/http-configuration", { id: "provider", path: path.join(root, "provider") }, directories);
+  await addRegisteredComponent("tests/http-configuration", { id: "consumer", path: path.join(root, "consumer") }, directories);
+  const api = await startLocalApi({ port: 0, catalogDirectories: directories });
+  const mutate = (route: string, method: "PUT" | "DELETE", body: Record<string, unknown>) => fetch(`${api.origin}${route}`, { method, headers: { "Content-Type": "application/json", Origin: api.origin }, body: JSON.stringify({ stack: "tests/http-configuration", ...body }) });
+  try {
+    assert.equal((await mutate("/api/v0.1/capability-provider", "PUT", { componentId: "provider", capability: "ui.button", description: "Button" })).status, 200);
+    assert.equal((await mutate("/api/v0.1/capability-requirement", "PUT", { componentId: "consumer", capability: "ui.button", from: "provider" })).status, 200);
+    const refused = await mutate("/api/v0.1/capability-provider", "DELETE", { componentId: "provider", capability: "ui.button" });
+    assert.equal(refused.status, 409, await refused.text());
+    const renamed = await mutate("/api/v0.1/capability-rename", "PUT", { componentId: "provider", capability: "ui.button", replacement: "ui.control" });
+    assert.equal(renamed.status, 200, await renamed.text());
+    assert.equal((await mutate("/api/v0.1/capability-requirement", "DELETE", { componentId: "consumer", capability: "ui.control" })).status, 200);
+    assert.equal((await mutate("/api/v0.1/capability-provider", "DELETE", { componentId: "provider", capability: "ui.control" })).status, 200);
+    const stack = await loadRegisteredStack("tests/http-configuration", directories);
+    assert.equal(stack.manifest.components.find((item) => item.id === "provider")?.provides, undefined);
+    assert.equal(stack.manifest.components.find((item) => item.id === "consumer")?.consumes, undefined);
+  } finally { await api.close(); await rm(root, { recursive: true, force: true }); }
+});
+
 test("local overview API is Stack-scoped, versioned, read-only, and browser-accessible", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "stacks-http-"));
   const staticRoot = path.join(root, "web");

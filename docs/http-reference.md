@@ -142,7 +142,23 @@ These idempotent mutations update the portable Stack definition and append a `co
 }
 ```
 
-Upserts by component and capability. `description`, `contextPath`, `strength`, `priority`, and artifact fields are optional. `artifactEcosystem` and `artifactName` must appear together; `artifactPath` is component-relative. The endpoint records portable metadata only and does not invoke a package manager.
+Patches by component and capability. Omitted fields preserve their current values. `description: null`, `contextPath: null`, and `artifactName: null` clear the corresponding optional declaration; clearing `artifactName` removes the complete artifact. `artifactEcosystem` and a non-null `artifactName` must appear together; `artifactPath` is component-relative. The endpoint records portable metadata only and does not invoke a package manager.
+
+### `DELETE /api/v0.1/capability-provider`
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "shared-ui", "capability": "ui.react.components", "allowUnresolved": false }
+```
+
+Removes one exact Stack-owned export. By default it returns a conflict rather than stranding resolved consumers. `allowUnresolved: true` explicitly permits the graph to retain unresolved requirements. Descriptor-only exports remain repository-owned.
+
+### `PUT /api/v0.1/capability-rename`
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "shared-ui", "capability": "ui.react.components", "replacement": "ui.react.controls" }
+```
+
+Atomically renames the Stack-owned export and consumer requirements resolved to that provider while preserving stable IDs and unrelated configuration.
 
 ### `PUT /api/v0.1/capability-requirement`
 
@@ -150,7 +166,15 @@ Upserts by component and capability. `description`, `contextPath`, `strength`, `
 { "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components", "from": "shared-ui", "optional": false }
 ```
 
-Upserts by component and capability. `from` and `optional` are optional. `optional` defaults to `false`; unresolved required relationships become context errors while unresolved optional relationships become warnings. Graph returns the distinction for resolved and unresolved capability relationships. Direct `dependsOn` relationships are currently required.
+Patches by component and capability. Omitted fields preserve current values; `from: null` clears an explicit provider and `optional: false` makes an existing relationship required. New requirements are required by default. Unresolved required relationships become context errors while unresolved optional relationships become warnings. Graph returns the distinction for resolved and unresolved capability relationships. Direct `dependsOn` relationships are currently required.
+
+### `DELETE /api/v0.1/capability-requirement`
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "app", "capability": "ui.react.components" }
+```
+
+Removes one exact consumer relationship and preserves unrelated declarations.
 
 ### `PUT /api/v0.1/component-guidance`
 
@@ -166,7 +190,15 @@ Upserts by component and capability. `from` and `optional` are optional. `option
 }
 ```
 
-Upserts by component and path. Every path is component-relative; the referenced content remains repository-owned.
+Patches by component and path. Omitted fields preserve current values; `description: null` clears that field. Every path is component-relative; the referenced content remains repository-owned.
+
+### `DELETE /api/v0.1/component-guidance`
+
+```json
+{ "stack": "acme/customer-portal", "componentId": "standards", "path": "engineering.md" }
+```
+
+Removes the exact Stack-owned descriptor and never changes or deletes the repository file.
 
 ## Capability request mutations
 

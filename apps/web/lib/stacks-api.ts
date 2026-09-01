@@ -34,7 +34,7 @@ export interface ComponentMutationResponse {
 
 async function mutation<T>(
   path: string,
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'DELETE',
   input: Record<string, unknown>,
 ): Promise<T> {
   const response = await fetch(endpoint(path), {
@@ -98,37 +98,53 @@ export async function configureCapabilityProvider(input: {
   stack: string;
   componentId: string;
   capability: string;
-  description?: string;
-  contextPath?: string;
+  description?: string | null;
+  contextPath?: string | null;
   strength?: 'required' | 'preferred' | 'reference';
   priority?: number;
   artifactEcosystem?: string;
-  artifactName?: string;
+  artifactName?: string | null;
   artifactPath?: string;
 }): Promise<ComponentOutput> {
   return mutation('/api/v0.1/capability-provider', 'PUT', input);
+}
+
+export async function removeCapabilityProvider(input: { stack: string; componentId: string; capability: string }): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/capability-provider', 'DELETE', input);
+}
+
+export async function renameCapability(input: { stack: string; componentId: string; capability: string; replacement: string }): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/capability-rename', 'PUT', input);
 }
 
 export async function configureCapabilityRequirement(input: {
   stack: string;
   componentId: string;
   capability: string;
-  from?: string;
+  from?: string | null;
   optional?: boolean;
 }): Promise<ComponentOutput> {
   return mutation('/api/v0.1/capability-requirement', 'PUT', input);
+}
+
+export async function removeCapabilityRequirement(input: { stack: string; componentId: string; capability: string }): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/capability-requirement', 'DELETE', input);
 }
 
 export async function configureComponentGuidance(input: {
   stack: string;
   componentId: string;
   path: string;
-  description?: string;
+  description?: string | null;
   strength?: 'required' | 'preferred' | 'reference';
   priority?: number;
   appliesTo?: string[];
 }): Promise<ComponentOutput> {
   return mutation('/api/v0.1/component-guidance', 'PUT', input);
+}
+
+export async function removeComponentGuidance(input: { stack: string; componentId: string; path: string }): Promise<ComponentOutput> {
+  return mutation('/api/v0.1/component-guidance', 'DELETE', input);
 }
 
 export async function fetchComponents(

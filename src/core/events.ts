@@ -161,14 +161,14 @@ export async function recordComponentBindingChanged(
 
 export async function recordComponentConfigurationChanged(
   stack: LoadedStack,
-  input: { componentId: string; configuration: "metadata" | "capability-export" | "capability-requirement" | "guidance"; subject: string; actor?: EventActor },
+  input: { componentId: string; configuration: "metadata" | "capability-export" | "capability-requirement" | "capability-rename" | "guidance"; subject: string; action?: "configured" | "removed" | "renamed"; actor?: EventActor },
 ): Promise<StackEvent> {
   return appendEvent(stack, {
     type: "component.configuration.changed",
     componentId: input.componentId,
     ...(input.actor === undefined ? {} : { actor: input.actor }),
     data: {
-      summary: `Configured ${input.configuration} ${input.subject} for ${input.componentId}.`,
+      summary: `${input.action === "removed" ? "Removed" : input.action === "renamed" ? "Renamed" : "Configured"} ${input.configuration} ${input.subject} for ${input.componentId}.`,
       configuration: input.configuration,
       subject: input.subject,
     },
