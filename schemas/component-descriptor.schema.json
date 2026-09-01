@@ -33,7 +33,18 @@
       "properties": {
         "capability": { "type": "string", "minLength": 1 },
         "description": { "type": "string", "minLength": 1 },
-        "context": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/contextPath" } }
+        "context": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/contextPath" } },
+        "artifact": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ecosystem", "name"],
+      "properties": {
+        "ecosystem": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 }
       }
     }
   }

@@ -25,4 +25,4 @@ Never put the bearer token value in documentation, URLs, committed configuration
 
 ## Release verification
 
-Before release, run `npm run check`, install the packed candidate with `npm run install:local`, run `stacks doctor`, create or select a registered Stack, run `stacks status --stack namespace/name`, start `stacks ui`, switch Stacks, and confirm Tools & agents reports the intended adapter metadata. The package gate initializes the packed stdio server and compares its actual `tools/list` and `resources/list` responses with the canonical MCP catalog.
+Before release, run `npm run check`, install the candidate with `npm run install:local`, run `stacks doctor`, create or select a registered Stack, run `stacks status --stack namespace/name`, start `stacks ui`, switch Stacks, and confirm Tools & agents reports the intended adapter metadata. The temporary installation test initializes the installed stdio server and compares its actual `tools/list` and `resources/list` responses with the canonical MCP catalog.

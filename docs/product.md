@@ -10,6 +10,7 @@ This document defines the product independent of release state. See [Project sta
 - Component repositories remain independent; local composition does not turn them into submodules by default.
 - Context is a bounded, explainable selection of resources rather than a repository dump.
 - Capability relationships identify authoritative providers so consumers can reuse established knowledge and implementations instead of inventing parallel ones.
+- Capability providers may identify the portable artifact that carries an implementation. Stacks can offer machine-local consumption guidance while preserving an organization's existing registry, workspace, and package-manager conventions.
 - Agent context is progressively acquired: a useful orientation, compact refreshes, and deeper task-driven consultation rather than the same full payload on every turn.
 - Human and agent interfaces use the same application semantics.
 - Stack-management changes, starts, turns, completions, usage, and decisions are append-only events.
@@ -24,7 +25,7 @@ People interact through readable definitions, the global `stacks` CLI, and one l
 
 ## Agent experience
 
-Agents use CLI, MCP, or Skills to discover where they are, identify applicable rules and authoritative providers, resolve bounded target-specific context, report progress and usage, and inspect activity. Participating clients may use a session and turn protocol to refresh context without repeatedly loading everything. Stacks supplies the map, context, and shared protocol; it does not plan, assign, schedule, or execute development work.
+Agents use CLI, MCP, or Skills to discover where they are, identify applicable rules and authoritative providers, resolve bounded target-specific context, understand how provided artifacts can be consumed, report progress and usage, and inspect activity. Participating clients may use a session and turn protocol to refresh context without repeatedly loading everything. Stacks supplies the map, context, and shared protocol; it does not plan, assign, schedule, install dependencies, or execute development work.
 
 ## Relationship to Vaultar
 

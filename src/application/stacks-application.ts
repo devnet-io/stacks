@@ -17,6 +17,7 @@ import { buildActivityTurnDetail, buildActivityWorkDetail, buildStackActivity, t
 import { buildCapabilityRequestDetail, buildCapabilityRequestList, relevantCapabilityRequests, type CapabilityRequestDetail, type CapabilityRequestList, type CapabilityRequestSummary } from "./capability-requests.ts";
 import { initOutput, lockOutput, stackIdentity, statusOutput, syncOutput, validateOutput, type InitOutput, type LockOutput, type StackIdentity, type StatusOutput, type SyncOutput, type ValidateOutput } from "./contracts.ts";
 import { resolveComponentDescriptors, type ComponentDescriptorResolution } from "../core/component-descriptor.ts";
+import { buildArtifactGuidance, type ArtifactGuidance } from "../core/artifacts.ts";
 
 export type StackReference = { stack: string; root?: never } | { root: string; stack?: never };
 
@@ -85,7 +86,7 @@ export interface TurnStartOutput {
   context: ResolvedContext;
 }
 
-export interface ResolvedContext extends ContextPlan { briefing: ContextBriefing; capabilityRequests: CapabilityRequestSummary[] }
+export interface ResolvedContext extends ContextPlan { briefing: ContextBriefing; capabilityRequests: CapabilityRequestSummary[]; artifactGuidance: ArtifactGuidance[] }
 
 export interface StacksApplication {
   listStacks(): Promise<StackIdentity[]>;
@@ -309,8 +310,10 @@ export class LocalStacksApplication implements StacksApplication {
     const stack = resolution.stack;
     const plan = resolveContext(stack, target, task);
     plan.warnings.push(...descriptorDiagnostics(resolution.reports));
+    const artifacts = buildArtifactGuidance(stack, target);
+    plan.warnings.push(...artifacts.warnings);
     const requests = await buildCapabilityRequestList(stack);
-    return { ...plan, briefing: await materializeContextBriefing(stack, plan, options), capabilityRequests: relevantCapabilityRequests(requests.requests, target) };
+    return { ...plan, briefing: await materializeContextBriefing(stack, plan, options), capabilityRequests: relevantCapabilityRequests(requests.requests, target), artifactGuidance: artifacts.guidance };
   }
 
   async startWork(reference: StackReference, input: Parameters<typeof startWork>[1]): Promise<StackEvent> {
@@ -326,12 +329,14 @@ export class LocalStacksApplication implements StacksApplication {
     const previousTurns = history.events.filter((event) => event.type === "turn.started" && event.sessionId === input.sessionId).length;
     const plan = resolveContext(stack, session.componentId, input.task);
     plan.warnings.push(...descriptorDiagnostics(resolution.reports));
+    const artifacts = buildArtifactGuidance(stack, session.componentId);
+    plan.warnings.push(...artifacts.warnings);
     const briefing = await materializeContextBriefing(stack, plan, {
       mode: previousTurns === 0 ? "orientation" : "refresh",
       ...(input.maxBytes === undefined ? {} : { maxBytes: input.maxBytes }),
     });
     const requests = await buildCapabilityRequestList(stack);
-    const context: ResolvedContext = { ...plan, briefing, capabilityRequests: relevantCapabilityRequests(requests.requests, session.componentId) };
+    const context: ResolvedContext = { ...plan, briefing, capabilityRequests: relevantCapabilityRequests(requests.requests, session.componentId), artifactGuidance: artifacts.guidance };
     const turn = await startCoreTurn(stack, {
       sessionId: input.sessionId,
       context: {

@@ -66,7 +66,7 @@ For work on the local agent MVP, also read `docs/mvp-acceptance.md` and the acti
 5. Add or update tests and schemas.
 6. Run `npm run check` before considering a milestone complete.
 7. Update current documentation and `docs/project-status.md` before considering the work complete.
-8. For a product delivery intended for local evaluation, refresh the copied installation with `npm run install:local`, verify the installed version, and leave the global UI running again. MCP contract changes also require the agent client to be fully restarted before its live tool registry can be evaluated.
+8. For a product delivery intended for local evaluation, refresh the standalone local installation with `npm run install:local`, verify the installed version, and leave the global UI running again. MCP contract changes also require the agent client to be fully restarted before its live tool registry can be evaluated.
 9. The user expects each completed coherent delivery in this workspace to be committed and pushed. Preserve unrelated work, stage explicit files when necessary, and report the commit and push result.
 
 ## Admin UI vertical slices

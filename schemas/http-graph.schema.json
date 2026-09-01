@@ -23,13 +23,21 @@
   "$defs": {
     "node": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "name", "kind", "sourceType", "access", "provides", "consumes"],
+      "required": ["id", "name", "kind", "sourceType", "access", "provides", "consumes", "artifacts"],
       "properties": {
         "id": { "type": "string" }, "name": { "type": "string" }, "kind": { "type": "string" },
-        "description": { "type": "string" }, "sourceType": { "enum": ["path", "git"] },
+        "description": { "type": "string" }, "sourceType": { "enum": ["path", "git", "local"] },
         "access": { "enum": ["read-only", "read-write"] },
         "provides": { "type": "array", "items": { "type": "string" } },
-        "consumes": { "type": "array", "items": { "type": "string" } }
+        "consumes": { "type": "array", "items": { "type": "string" } },
+        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifact" } }
+      }
+    },
+    "artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capability", "ecosystem", "name"],
+      "properties": {
+        "capability": { "type": "string" }, "ecosystem": { "type": "string" }, "name": { "type": "string" }
       }
     },
     "edge": {

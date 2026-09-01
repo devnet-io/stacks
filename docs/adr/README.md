@@ -15,3 +15,4 @@ These records explain accepted decisions that shape the current system. They are
 - [0011: Context plans materialize as bounded briefings](0011-bounded-context-briefings.md)
 - [0012: Capability requests are role-checked events](0012-capability-requests-are-role-checked-events.md)
 - [0013: Provider descriptors are bounded component-owned inputs](0013-provider-descriptors-are-bounded-inputs.md)
+- [0014: Capabilities may identify consumable artifacts](0014-capabilities-may-identify-consumable-artifacts.md)

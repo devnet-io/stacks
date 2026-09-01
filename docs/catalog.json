@@ -13,7 +13,7 @@
     { "path": "docs/architecture.md", "id": "architecture", "category": "current", "lifecycle": "current", "order": 20, "summary": "Implemented repository architecture and current limitations." },
     { "path": "docs/07-agent-interfaces.md", "id": "agent-interfaces", "category": "current", "lifecycle": "current", "order": 30 },
     { "path": "docs/08-roadmap.md", "id": "roadmap", "category": "current", "lifecycle": "current", "order": 40, "summary": "Milestones and the agreed active implementation sequence." },
-    { "path": "docs/mvp-acceptance.md", "id": "mvp-acceptance", "category": "current", "lifecycle": "current", "order": 45, "summary": "Continuously verified three-component copied-install agent workflow." },
+    { "path": "docs/mvp-acceptance.md", "id": "mvp-acceptance", "category": "current", "lifecycle": "current", "order": 45, "summary": "Continuously verified three-component agent workflow using a clean temporary installation." },
     { "path": "docs/project-status.md", "id": "project-status", "category": "current", "lifecycle": "current", "order": 50, "summary": "Evidence-backed implemented, proposed, and validation state." },
     { "path": "docs/09-open-questions.md", "id": "open-questions", "category": "current", "lifecycle": "proposed", "order": 60 },
     { "path": "docs/11-mvp-agent-workflow-vision.md", "id": "mvp-agent-workflow-vision", "category": "archive", "lifecycle": "archive", "order": 95, "summary": "Historical design narrative that led to the implemented local MVP acceptance workflow." },
@@ -33,6 +33,7 @@
     { "path": "docs/adr/0011-bounded-context-briefings.md", "id": "adr-0011", "category": "decisions", "lifecycle": "decision", "order": 11 },
     { "path": "docs/adr/0012-capability-requests-are-role-checked-events.md", "id": "adr-0012", "category": "decisions", "lifecycle": "decision", "order": 12 },
     { "path": "docs/adr/0013-provider-descriptors-are-bounded-inputs.md", "id": "adr-0013", "category": "decisions", "lifecycle": "decision", "order": 13 },
+    { "path": "docs/adr/0014-capabilities-may-identify-consumable-artifacts.md", "id": "adr-0014", "category": "decisions", "lifecycle": "decision", "order": 14 },
     { "path": "docs/rfcs/README.md", "id": "rfc-index", "category": "decisions", "lifecycle": "proposed", "order": 200 },
     { "path": "docs/rfcs/0001-portable-runtime-and-hosted-adapters.md", "id": "rfc-portable-runtime", "category": "decisions", "lifecycle": "proposed", "order": 210 },
 

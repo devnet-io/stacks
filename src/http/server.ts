@@ -238,10 +238,15 @@ export async function startLocalApi(options: LocalApiOptions): Promise<LocalApiH
         const contextPath = optionalString(body, "contextPath");
         const contextStrength = optionalStrength(body, "strength");
         const priority = optionalNumber(body, "priority");
+        const artifactEcosystem = optionalString(body, "artifactEcosystem");
+        const artifactName = optionalString(body, "artifactName");
+        const artifactPath = optionalString(body, "artifactPath");
+        if (Boolean(artifactEcosystem) !== Boolean(artifactName)) throw new HttpError(400, "artifactEcosystem and artifactName must be supplied together.");
         const output = await application.configureCapabilityExport(requiredString(body, "stack"), requiredString(body, "componentId"), {
           capability: requiredString(body, "capability"),
           ...(optionalString(body, "description") === undefined ? {} : { description: optionalString(body, "description")! }),
           ...(contextPath === undefined ? {} : { context: [{ path: contextPath, ...(contextStrength === undefined ? {} : { strength: contextStrength }), ...(priority === undefined ? {} : { priority }) }] }),
+          ...(artifactEcosystem && artifactName ? { artifact: { ecosystem: artifactEcosystem, name: artifactName, ...(artifactPath === undefined ? {} : { path: artifactPath }) } } : {}),
         }, { actor: { client: "stacks-web" } });
         send(response, 200, output as unknown as Record<string, unknown>);
         return;

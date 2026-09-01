@@ -56,15 +56,36 @@ A reusable component may publish `.stack/component.json` in its own repository:
       "description": "Accessible shared dialog",
       "context": [
         { "path": "docs/dialog.md", "strength": "preferred" }
-      ]
+      ],
+      "artifact": {
+        "ecosystem": "npm",
+        "name": "@acme/ui",
+        "path": "."
+      }
     }
   ]
 }
 ```
 
-This file is optional and provider-owned. It may publish only capabilities and bounded context paths; it cannot identify the component, bind directories, declare consumers or dependencies, install instructions, or execute anything. Stacks reads at most 64 KiB from the fixed location after the component is explicitly bound. A Stack-owned provider declaration with the same capability replaces the descriptor entry completely. Consumer requirements always remain explicit Stack data.
+This file is optional and provider-owned. It may publish only capabilities, bounded context paths, and portable artifact identities; it cannot identify the component, bind directories, declare consumers or dependencies, install instructions, or execute anything. Stacks reads at most 64 KiB from the fixed location after the component is explicitly bound. A Stack-owned provider declaration with the same capability replaces the descriptor entry completely. Consumer requirements always remain explicit Stack data.
 
 Manage shows whether the descriptor is absent, valid, invalid, or unavailable, along with published, applied, and overridden capabilities. Invalid descriptors are ignored without changing the Stack definition. Edit and review the descriptor in the component repository through its normal Git workflow; Stacks does not create or update it.
+
+## Consuming implementation artifacts
+
+When a consumed capability identifies an artifact, `stacks context`, `context_resolve`, and `turn_start` return `artifactGuidance`. For npm-compatible packages it includes the package name, provider and package roots, and a local `file:` candidate derived from the consumer and provider bindings.
+
+The agent must inspect the repositories before changing dependency files:
+
+1. Preserve an existing dependency or project-specific package configuration.
+2. If provider and consumer already participate in the same npm, pnpm, Yarn, or Bun workspace, follow that workspace's convention.
+3. If the organization already publishes the package through a configured registry, use the registry coordinate and normal version policy.
+4. In a mixed layout, apply workspace conventions to members and consider `file:` only for a provider outside that workspace.
+5. When the components are in unrelated directory trees and no registry/workspace strategy exists, use the returned local `file:` value as the development fallback.
+
+The portable definition stores `npm` and `@acme/ui`, never `../ui-library` or an absolute machine path. Each machine derives its own candidate from explicit bindings. Stacks does not edit `package.json`, choose npm versus pnpm/Yarn/Bun, run installs, execute lifecycle scripts, build packages, or publish them.
+
+The fallback uses the common `file:` protocol, but native behavior is not identical: [npm accepts local package paths](https://docs.npmjs.com/files/package.json/#local-paths), [pnpm hard-links `file:` packages and installs their dependencies](https://pnpm.io/cli/link#whats-the-difference-between-pnpm-link-and-using-the-file-protocol), [Yarn copies folder-based `file:` packages](https://yarnpkg.com/protocol/file), and [Bun treats local-source dependencies as project-local and separately controls lifecycle-script trust](https://bun.sh/docs/pm/lifecycle). This is why Stacks returns evidence and a fallback rather than pretending to offer one universal install operation.
 
 Documentation is grouped by purpose. Selecting a document reveals its second- and third-level headings as nested navigation. The current section, document, and heading are encoded in the URL as `view`, `document`, and `heading`, so bookmarks and shared local links reopen the same location. Links between canonical Markdown documents remain inside the documentation interface.
 
@@ -143,6 +164,6 @@ Pass `--json` when automation consumes a supported command. stdout contains one 
 
 Explicit `--root /path/to/stack` remains supported for checked-in examples and migration. In that mode Stacks searches for `stack.json`, `stack.yaml`, or `stack.yml`, and relative component paths resolve under the manifest directory. Stacks never enters this mode merely because the current directory contains—or does not contain—a manifest.
 
-## Repository quality gate
+## Repository checks
 
-For contributors to Stacks itself, `npm run check` runs tests, strict types, the core and static Vite builds, and an isolated pack/install/start verification. `npm run check:docker` repeats the gate in clean Node 22 Linux userspace. These are development commands, not part of using an installed Stack.
+For contributors to Stacks itself, `npm run check` runs documentation checks, tests, strict types, the core and static Vite builds, and a clean temporary installation test. `npm run check:docker` repeats the checks in clean Node 22 Linux userspace. These are development commands, not part of using an installed Stack.

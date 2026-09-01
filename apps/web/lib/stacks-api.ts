@@ -91,6 +91,9 @@ export async function configureCapabilityProvider(input: {
   contextPath?: string;
   strength?: 'required' | 'preferred' | 'reference';
   priority?: number;
+  artifactEcosystem?: string;
+  artifactName?: string;
+  artifactPath?: string;
 }): Promise<ComponentOutput> {
   return mutation('/api/v0.1/capability-provider', 'PUT', input);
 }

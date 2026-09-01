@@ -114,7 +114,7 @@ function printJson(value: unknown): void {
 function help(topic?: string): void {
   const topics: Record<string, string> = {
     stack: `Create and list Stacks in this machine's catalog.\n\n  stacks stack create <namespace/name> [--json]\n  stacks stack list [--json]\n`,
-    component: `View, attach, and configure components in registered Stacks. Get/list compose validated provider-owned .stack/component.json exports beneath explicit Stack overrides. Configuration operations upsert Stack-owned data by capability or path.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path>] [--description <text>] [--strength <strength>] [--priority <number>] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component>] [--optional] [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text>] [--strength <strength>] [--priority <number>] [--applies-to <a,b>] [--json]\n`,
+    component: `View, attach, and configure components in registered Stacks. Get/list compose validated provider-owned .stack/component.json exports beneath explicit Stack overrides. Configuration operations upsert Stack-owned data by capability or path.\n\n  stacks component list <namespace/name> [--json]\n  stacks component get <namespace/name> <id> [--json]\n  stacks component add <namespace/name> <id> --path <dir> [--git <url>] [--kind <kind>] [--name <name>] [--json]\n  stacks component bind <namespace/name> <id> --path <dir> [--json]\n  stacks component provide <namespace/name> <id> <capability> [--context <path>] [--description <text>] [--strength <strength>] [--priority <number>] [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <path>]] [--json]\n  stacks component consume <namespace/name> <id> <capability> [--from <component>] [--optional] [--json]\n  stacks component guidance <namespace/name> <id> --path <path> [--description <text>] [--strength <strength>] [--priority <number>] [--applies-to <a,b>] [--json]\n`,
     locate: `Find direct Stack component membership or descendant components under an ancestor workspace. Direct matches take precedence; multiple matches are never guessed.\n\n  stacks locate [directory] [--json]\n`,
     agent: `Manage only the delimited Stacks activation block in a repository AGENTS.md. Existing instructions are preserved; malformed markers are refused.\n\n  stacks agent print [--path <directory>] [--json]\n  stacks agent check [--path <directory>] [--json]\n  stacks agent install [--path <directory>] [--json]\n  stacks agent remove [--path <directory>] [--json]\n`,
     status: `Inspect registered Stack component paths and Git state without changing repositories. With no selector, inspect every registered Stack. Loading a Stack also validates its definition.\n\n  stacks status [--stack <namespace/name> | --root <legacy-directory>] [--json]\n`,
@@ -238,6 +238,10 @@ async function commandContext(parsed: ParsedArgs): Promise<void> {
     process.stdout.write(`Briefing: ${plan.briefing.items.length} materialized, ${plan.briefing.budget.usedBytes}/${plan.briefing.budget.maxBytes} bytes, digest ${plan.briefing.digest}\n`);
     for (const item of plan.briefing.items) process.stdout.write(`- materialized ${item.componentId}:${item.path}${item.truncated ? " (truncated)" : ""}\n`);
     for (const omitted of plan.briefing.omissions) process.stdout.write(`OMITTED [${omitted.reason}] ${omitted.componentId}:${omitted.path} - ${omitted.detail}\n`);
+    for (const artifact of plan.artifactGuidance) {
+      process.stdout.write(`ARTIFACT ${artifact.capability}: ${artifact.artifact.ecosystem}:${artifact.artifact.name} from ${artifact.providerComponentId}\n`);
+      if (artifact.localFallback) process.stdout.write(`    Local fallback: ${artifact.localFallback.dependencySpecifier} (preserve existing project, workspace, or registry configuration when present)\n`);
+    }
     for (const warning of plan.warnings) process.stdout.write(`WARNING: ${warning}\n`);
     for (const error of plan.errors) process.stdout.write(`ERROR: ${error}\n`);
   }
@@ -535,10 +539,15 @@ async function commandComponent(parsed: ParsedArgs): Promise<void> {
     const strength = stringOption(parsed, "strength") as "required" | "preferred" | "reference" | undefined;
     if (strength && !["required", "preferred", "reference"].includes(strength)) throw new Error("Invalid --strength.");
     const priority = numericOption(parsed, "priority");
+    const artifactEcosystem = stringOption(parsed, "artifact-ecosystem");
+    const artifactName = stringOption(parsed, "artifact-name");
+    const artifactPath = stringOption(parsed, "artifact-path");
+    if (Boolean(artifactEcosystem) !== Boolean(artifactName)) throw new Error("Use --artifact-ecosystem and --artifact-name together.");
     const output = await application.configureCapabilityExport(selector, id, {
       capability,
       ...(stringOption(parsed, "description") === undefined ? {} : { description: stringOption(parsed, "description")! }),
       ...(contextPath === undefined ? {} : { context: [{ path: contextPath, ...(strength === undefined ? {} : { strength }), ...(priority === undefined ? {} : { priority }) }] }),
+      ...(artifactEcosystem && artifactName ? { artifact: { ecosystem: artifactEcosystem, name: artifactName, ...(artifactPath === undefined ? {} : { path: artifactPath }) } } : {}),
     }, { actor: { client: "stacks-cli" } });
     if (booleanOption(parsed, "json")) printJson(output);
     else process.stdout.write(`Configured ${id} as a provider of ${capability}.\n`);

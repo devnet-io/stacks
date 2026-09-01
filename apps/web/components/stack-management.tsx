@@ -181,7 +181,7 @@ function ContextConfiguration({
             </div>
             {selected && (
               <div className="grid gap-4 border-t pt-5 text-sm md:grid-cols-3">
-                <ConfigurationSummary label="Provides" values={(selected.provides ?? []).map((item) => item.capability)} />
+                <ConfigurationSummary label="Provides" values={(selected.provides ?? []).map((item) => `${item.capability}${item.artifact ? ` · ${item.artifact.ecosystem}:${item.artifact.name}` : ''}`)} />
                 <ConfigurationSummary label="Consumes" values={(selected.consumes ?? []).map((item) => `${item.capability}${item.from ? ` from ${item.from}` : ''}`)} />
                 <ConfigurationSummary label="Guidance" values={(selected.guidance ?? []).map((item) => `${item.path} · ${item.strength ?? 'reference'}`)} />
               </div>
@@ -207,16 +207,18 @@ function CapabilityProviderForm({ stack, componentId, onChanged }: { stack: stri
   const [capability, setCapability] = useState('');
   const [contextPath, setContextPath] = useState('');
   const [description, setDescription] = useState('');
+  const [artifactName, setArtifactName] = useState('');
+  const [artifactPath, setArtifactPath] = useState('.');
   const [strength, setStrength] = useState<'required' | 'preferred' | 'reference'>('reference');
   const operation = useOperation();
   const submit = async (event: FormEvent) => {
     event.preventDefault(); operation.start();
     try {
-      await configureCapabilityProvider({ stack, componentId, capability: capability.trim(), contextPath: contextPath.trim() || undefined, description: description.trim() || undefined, strength });
-      await onChanged(); setCapability(''); setContextPath(''); setDescription(''); operation.succeed('Capability provider saved.');
+      await configureCapabilityProvider({ stack, componentId, capability: capability.trim(), contextPath: contextPath.trim() || undefined, description: description.trim() || undefined, strength, artifactEcosystem: artifactName.trim() ? 'npm' : undefined, artifactName: artifactName.trim() || undefined, artifactPath: artifactName.trim() ? artifactPath.trim() || '.' : undefined });
+      await onChanged(); setCapability(''); setContextPath(''); setDescription(''); setArtifactName(''); setArtifactPath('.'); operation.succeed('Capability provider saved.');
     } catch (error) { operation.fail(error); }
   };
-  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Provides</h3><p className="text-xs text-muted-foreground">Publish an authoritative capability and its usage guide.</p><Field label="Capability" htmlFor="provider-capability"><Input id="provider-capability" required placeholder="ui.react.components" value={capability} onChange={(event) => setCapability(event.target.value)} /></Field><Field label="Context path" htmlFor="provider-context"><Input id="provider-context" placeholder="docs/components.md" value={contextPath} onChange={(event) => setContextPath(event.target.value)} /></Field><Field label="Description" htmlFor="provider-description"><Input id="provider-description" value={description} onChange={(event) => setDescription(event.target.value)} /></Field><StrengthSelect id="provider-strength" value={strength} onChange={setStrength} /><Button type="submit" size="sm" disabled={operation.pending || !componentId || !capability.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save provider</Button><OperationMessage operation={operation} /></form>;
+  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Provides</h3><p className="text-xs text-muted-foreground">Publish an authoritative capability, its usage guide, and—when applicable—the package that carries it.</p><Field label="Capability" htmlFor="provider-capability"><Input id="provider-capability" required placeholder="ui.react.components" value={capability} onChange={(event) => setCapability(event.target.value)} /></Field><Field label="Context path" htmlFor="provider-context"><Input id="provider-context" placeholder="docs/components.md" value={contextPath} onChange={(event) => setContextPath(event.target.value)} /></Field><Field label="Description" htmlFor="provider-description"><Input id="provider-description" value={description} onChange={(event) => setDescription(event.target.value)} /></Field><StrengthSelect id="provider-strength" value={strength} onChange={setStrength} /><div className="border-t pt-3"><p className="text-sm font-medium">Optional npm artifact</p><p className="mt-1 text-xs text-muted-foreground">Portable package identity. Agents preserve existing registry or workspace conventions and use a local file dependency only as a fallback.</p></div><Field label="Package name" htmlFor="provider-artifact-name"><Input id="provider-artifact-name" placeholder="@acme/ui" value={artifactName} onChange={(event) => setArtifactName(event.target.value)} /></Field><Field label="Package root" htmlFor="provider-artifact-path"><Input id="provider-artifact-path" disabled={!artifactName.trim()} placeholder="." value={artifactPath} onChange={(event) => setArtifactPath(event.target.value)} /></Field><Button type="submit" size="sm" disabled={operation.pending || !componentId || !capability.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save provider</Button><OperationMessage operation={operation} /></form>;
 }
 
 function CapabilityRequirementForm({ stack, componentId, components, onChanged }: { stack: string; componentId: string; components: ComponentListOutput; onChanged(): Promise<void> }) {

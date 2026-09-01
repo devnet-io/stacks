@@ -21,13 +21,15 @@ export async function verifyMvpWorkflow({ packageRoot, root, run }) {
   await Promise.all([mkdir(knowledge, { recursive: true }), mkdir(ui, { recursive: true }), mkdir(product, { recursive: true })]);
   await writeFile(path.join(knowledge, "engineering.md"), "# Engineering rules\n\nReuse authoritative shared capabilities. Verify accessibility and tests before completion.\n", "utf8");
   await writeFile(path.join(ui, "components.md"), "# Shared UI capabilities\n\n- `ui.button`: accessible actions\n- `ui.paged-data-list`: paginated administrative data\n", "utf8");
+  await writeFile(path.join(ui, "package.json"), `${JSON.stringify({ name: "@verification/ui", version: "1.0.0", type: "module", exports: "./index.js" }, null, 2)}\n`, "utf8");
+  await writeFile(path.join(ui, "index.js"), "export const sharedButton = () => 'shared-button';\n", "utf8");
   await mkdir(path.join(ui, ".stack"), { recursive: true });
   const uiDescriptor = (includeDialog = false) => ({
     schemaVersion: "0.1",
     provides: [
-      { capability: "ui.button", description: "Accessible shared actions", context: [{ path: "components.md", strength: "preferred" }] },
-      { capability: "ui.paged-data-list", description: "Paginated administrative data", context: [{ path: "components.md", strength: "preferred" }] },
-      ...(includeDialog ? [{ capability: "ui.dialog", description: "Accessible shared dialog", context: [{ path: "dialog.md", strength: "preferred" }] }] : []),
+      { capability: "ui.button", description: "Accessible shared actions", context: [{ path: "components.md", strength: "preferred" }], artifact: { ecosystem: "npm", name: "@verification/ui", path: "." } },
+      { capability: "ui.paged-data-list", description: "Paginated administrative data", context: [{ path: "components.md", strength: "preferred" }], artifact: { ecosystem: "npm", name: "@verification/ui", path: "." } },
+      ...(includeDialog ? [{ capability: "ui.dialog", description: "Accessible shared dialog", context: [{ path: "dialog.md", strength: "preferred" }], artifact: { ecosystem: "npm", name: "@verification/ui", path: "." } }] : []),
     ],
   });
   await writeFile(path.join(ui, ".stack", "component.json"), `${JSON.stringify(uiDescriptor(), null, 2)}\n`, "utf8");
@@ -76,6 +78,14 @@ export async function verifyMvpWorkflow({ packageRoot, root, run }) {
     assert.match(orientation, /Reuse authoritative shared capabilities/u);
     assert.match(orientation, /ui\.button/u);
     assert.match(orientation, /ui\.paged-data-list/u);
+    assert.equal(reuseTurn.context.artifactGuidance[0]?.artifact.name, "@verification/ui");
+    assert.equal(reuseTurn.context.artifactGuidance[0]?.localFallback.dependencySpecifier, "file:../ui-library");
+    await writeFile(path.join(product, "package.json"), `${JSON.stringify({ name: "verification-product", private: true, type: "module", dependencies: reuseTurn.context.artifactGuidance[0].localFallback.packageJson }, null, 2)}\n`, "utf8");
+    await writeFile(path.join(product, "verify-artifact.mjs"), "import { sharedButton } from '@verification/ui';\nif (sharedButton() !== 'shared-button') throw new Error('Shared artifact did not load.');\n", "utf8");
+    const npmCli = process.env.npm_execpath;
+    if (!npmCli) throw new Error("The temporary installation test requires npm_execpath from the npm script runner.");
+    await run(process.execPath, [npmCli, "install", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: product, env });
+    await run(process.execPath, [path.join(product, "verify-artifact.mjs")], { cwd: product, env });
     await mcp.call("turn_complete", { stack, sessionId: productSession, turnId: reuseTurn.turnId, summary: "Selected the authoritative button and paged data list.", status: "progress" });
 
     const blockedTurn = await mcp.call("turn_start", { stack, sessionId: productSession, task: "Add an accessible dialog to the administration page" });

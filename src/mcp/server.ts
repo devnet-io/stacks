@@ -88,13 +88,14 @@ export function buildMcpServer(application: StacksApplication = createLocalStack
   }, async ({ stack: stackSelector, componentId, path }) => result(await application.bindComponent(stackSelector, componentId, path, { materialize: false, actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
   server.registerTool("capability_provide", {
-    title: "Configure capability provider", description: "Upsert one capability exported by a component, optionally with one bounded context path.",
-    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), description: z.string().min(1).optional(), contextPath: z.string().min(1).optional(), strength: strength.optional(), priority: z.number().optional() }),
+    title: "Configure capability provider", description: "Upsert one capability exported by a component, optionally with one bounded context path and portable artifact identity.",
+    inputSchema: z.object({ stack: selector, componentId: z.string().min(1), capability: z.string().min(1), description: z.string().min(1).optional(), contextPath: z.string().min(1).optional(), strength: strength.optional(), priority: z.number().optional(), artifactEcosystem: z.string().min(1).optional(), artifactName: z.string().min(1).optional(), artifactPath: z.string().min(1).optional() }).refine((value) => Boolean(value.artifactEcosystem) === Boolean(value.artifactName), { message: "artifactEcosystem and artifactName must be supplied together" }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-  }, async ({ stack: stackSelector, componentId, capability, description, contextPath, strength: contextStrength, priority }) => result(await application.configureCapabilityExport(stackSelector, componentId, {
+  }, async ({ stack: stackSelector, componentId, capability, description, contextPath, strength: contextStrength, priority, artifactEcosystem, artifactName, artifactPath }) => result(await application.configureCapabilityExport(stackSelector, componentId, {
     capability,
     ...(description ? { description } : {}),
     ...(contextPath ? { context: [{ path: contextPath, ...(contextStrength ? { strength: contextStrength } : {}), ...(priority === undefined ? {} : { priority }) }] } : {}),
+    ...(artifactEcosystem && artifactName ? { artifact: { ecosystem: artifactEcosystem, name: artifactName, ...(artifactPath ? { path: artifactPath } : {}) } } : {}),
   }, { actor: { client: "stacks-mcp" } }) as unknown as Record<string, unknown>));
 
   server.registerTool("capability_consume", {

@@ -26,7 +26,7 @@ test("keeps exercised MVP acceptance separate from its archived design narrative
   assert.match(doc("08-roadmap.md"), /minimum dependable briefing/u);
   assert.match(doc("08-roadmap.md"), /cross-component capability requests as a complete vertical slice/u);
   assert.match(agents, /mvp-acceptance\.md/u);
-  assert.match(agents, /refresh the copied installation/u);
+  assert.match(agents, /refresh the standalone local installation/u);
 });
 
 test("does not retain unused pre-milestone interfaces at the expense of a clear product", () => {

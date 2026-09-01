@@ -2,7 +2,7 @@
 
 Stacks documentation is organized by the kind of truth it records. Do not combine these categories in an unlabeled document.
 
-Every Markdown document is registered once in `catalog.json` with a stable ID, navigation category, lifecycle (`current`, `proposed`, `decision`, or `archive`), and order. The repository quality gate fails when a document is uncataloged, a catalog entry is missing, IDs or paths repeat, lifecycle metadata is invalid, or a relative Markdown link is broken. The web UI consumes the same catalog and visibly warns when a reader is viewing proposed, decision-record, or archived material.
+Every Markdown document is registered once in `catalog.json` with a stable ID, navigation category, lifecycle (`current`, `proposed`, `decision`, or `archive`), and order. The documentation check fails when a document is uncataloged, a catalog entry is missing, IDs or paths repeat, lifecycle metadata is invalid, or a relative Markdown link is broken. The web UI consumes the same catalog and visibly warns when a reader is viewing proposed, decision-record, or archived material.
 
 | Category | Source | Meaning |
 | --- | --- | --- |
@@ -11,9 +11,9 @@ Every Markdown document is registered once in `catalog.json` with a stable ID, n
 | Current technical truth | [Architecture](architecture.md) and current subsystem guides | What repository evidence shows is implemented now, including limitations. |
 | User documentation | [User guide](user-guide.md) | Common procedures that work against the current implementation. |
 | Interface references | [CLI commands](cli-reference.md), [MCP server](mcp-reference.md), and [local HTTP API](http-reference.md) | Exhaustive current command, tool, resource, endpoint, input, output, side-effect, and example documentation. |
-| Installation and deployment | [Current contract](deployment.md) | Copied package installation, runtime-derived instructions, and secret handling supported now. |
+| Installation and deployment | [Current contract](deployment.md) | Standalone local installation, runtime-derived instructions, and secret handling supported now. |
 | Delivery plan | [Roadmap](08-roadmap.md) and [open questions](09-open-questions.md) | The ordered implementation sequence and unresolved product decisions. |
-| Local MVP acceptance | [MVP acceptance workflow](mvp-acceptance.md) | The continuously exercised copied-install, three-component agent journey and its current limitations. |
+| Local MVP acceptance | [MVP acceptance workflow](mvp-acceptance.md) | The continuously exercised three-component agent journey using a clean temporary installation. |
 | Architecture decisions | [ADR index](adr/README.md) | Accepted decisions that explain why the current architecture has its shape. |
 | Change proposals | [RFC index](rfcs/README.md) | Proposed or accepted-but-not-yet-implemented direction. Acceptance is not implementation. |
 | Delivery evidence | [Project status](project-status.md) | What is implemented, in progress, proposed, or blocked, with validation evidence. |

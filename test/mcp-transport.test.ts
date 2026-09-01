@@ -60,17 +60,19 @@ test("stdio MCP exposes instructions and documented tools/resources without stdo
     const structured = (instructions.result as { structuredContent: { resources: Array<{ uri: string }> } }).structuredContent;
     assert.ok(structured.resources.some((resource) => resource.uri === "stacks://reference/cli"));
 
-    send({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "capability_provide", arguments: { stack: "tests/mcp-authoring", componentId: "knowledge", capability: "practice.engineering", contextPath: "engineering.md", strength: "required" } } });
+    send({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "capability_provide", arguments: { stack: "tests/mcp-authoring", componentId: "knowledge", capability: "practice.engineering", contextPath: "engineering.md", strength: "required", artifactEcosystem: "npm", artifactName: "@tests/engineering", artifactPath: "." } } });
     assert.equal((await response(6)).result !== undefined, true);
     send({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "capability_consume", arguments: { stack: "tests/mcp-authoring", componentId: "product", capability: "practice.engineering", from: "knowledge" } } });
     assert.equal((await response(7)).result !== undefined, true);
     send({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "guidance_configure", arguments: { stack: "tests/mcp-authoring", componentId: "product", path: "AGENTS.md", strength: "preferred" } } });
     assert.equal((await response(8)).result !== undefined, true);
     send({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "context_resolve", arguments: { stack: "tests/mcp-authoring", target: "product" } } });
-    const resolved = (await response(9)).result as { structuredContent: { items: Array<{ componentId: string; path: string }>; briefing: { items: Array<{ content: string }>; omissions: Array<{ reason: string }> } } };
+    const resolved = (await response(9)).result as { structuredContent: { items: Array<{ componentId: string; path: string }>; artifactGuidance: Array<{ artifact: { name: string }; localFallback: { dependencySpecifier: string } }>; briefing: { items: Array<{ content: string }>; omissions: Array<{ reason: string }> } } };
     assert.deepEqual(resolved.structuredContent.items.map((item) => [item.componentId, item.path]), [["knowledge", "engineering.md"], ["product", "AGENTS.md"]]);
     assert.equal(resolved.structuredContent.briefing.items[0]?.content, "# Engineering\n");
     assert.equal(resolved.structuredContent.briefing.omissions[0]?.reason, "missing");
+    assert.equal(resolved.structuredContent.artifactGuidance[0]?.artifact.name, "@tests/engineering");
+    assert.equal(resolved.structuredContent.artifactGuidance[0]?.localFallback.dependencySpecifier, "file:../knowledge");
 
     send({ jsonrpc: "2.0", id: 10, method: "tools/call", params: { name: "work_start", arguments: { stack: "tests/mcp-authoring", componentId: "product", summary: "Exercise logical work", agent: "codex" } } });
     const startedWork = (await response(10)).result as { structuredContent: { sessionId: string } };

@@ -84,9 +84,24 @@ export function validateComponentDescriptor(value: unknown, root = process.cwd()
 
 function validateExport(value: unknown, at: string, root: string, errors: string[]): value is CapabilityExport {
   if (!record(value)) { errors.push(`${at} must be an object.`); return false; }
-  rejectUnknown(value, ["capability", "description", "context"], at, errors);
+  rejectUnknown(value, ["capability", "description", "context", "artifact"], at, errors);
   if (!nonEmpty(value.capability)) errors.push(`${at}.capability must be a non-empty string.`);
   if (value.description !== undefined && !nonEmpty(value.description)) errors.push(`${at}.description must be a non-empty string.`);
+  if (value.artifact !== undefined) {
+    if (!record(value.artifact)) errors.push(`${at}.artifact must be an object.`);
+    else {
+      rejectUnknown(value.artifact, ["ecosystem", "name", "path"], `${at}.artifact`, errors);
+      if (!nonEmpty(value.artifact.ecosystem)) errors.push(`${at}.artifact.ecosystem must be a non-empty string.`);
+      if (!nonEmpty(value.artifact.name)) errors.push(`${at}.artifact.name must be a non-empty string.`);
+      if (value.artifact.path !== undefined) {
+        if (!nonEmpty(value.artifact.path)) errors.push(`${at}.artifact.path must be a non-empty relative path.`);
+        else {
+          try { contextAbsolutePath(root, value.artifact.path, `${at}.artifact.path`); }
+          catch (error) { errors.push(message(error)); }
+        }
+      }
+    }
+  }
   if (value.context !== undefined) {
     if (!Array.isArray(value.context)) errors.push(`${at}.context must be an array.`);
     else {

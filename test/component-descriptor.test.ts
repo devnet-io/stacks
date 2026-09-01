@@ -19,7 +19,7 @@ test("composes validated provider descriptors under explicit Stack overlays", as
       schemaVersion: "0.1",
       provides: [
         { capability: "ui.button", context: [{ path: "descriptor-button.md" }] },
-        { capability: "ui.dialog", description: "Shared accessible dialog", context: [{ path: "descriptor-dialog.md", strength: "preferred" }] },
+        { capability: "ui.dialog", description: "Shared accessible dialog", context: [{ path: "descriptor-dialog.md", strength: "preferred" }], artifact: { ecosystem: "npm", name: "@tests/ui", path: "." } },
       ],
     }), "utf8");
     await application.createStack("tests/descriptors");
@@ -42,9 +42,12 @@ test("composes validated provider descriptors under explicit Stack overlays", as
     assert.deepEqual(definition.effectiveManifest.components.find((item) => item.id === "ui")?.provides?.map((item) => item.capability), ["ui.dialog", "ui.button"]);
     const graph = await application.getGraph({ stack: "tests/descriptors" });
     assert.deepEqual(graph.nodes.find((item) => item.id === "ui")?.provides, ["ui.button", "ui.dialog"]);
+    assert.deepEqual(graph.nodes.find((item) => item.id === "ui")?.artifacts, [{ capability: "ui.dialog", ecosystem: "npm", name: "@tests/ui" }]);
     const context = await application.resolveContext({ stack: "tests/descriptors" }, "product", "Use the shared dialog");
     assert.ok(context.items.some((item) => item.path === "descriptor-dialog.md" && item.componentId === "ui"));
     assert.ok(context.items.some((item) => item.path === "stack-button.md" && item.componentId === "ui"));
+    assert.deepEqual(context.artifactGuidance.map((item) => [item.capability, item.artifact.name, item.localFallback?.dependencySpecifier]), [["ui.dialog", "@tests/ui", "file:../ui"]]);
+    assert.deepEqual(context.artifactGuidance[0]?.strategyOrder, ["existing-project-configuration", "workspace", "registry", "local-file"]);
 
     await writeFile(path.join(ui, ".stack", "component.json"), JSON.stringify({ schemaVersion: "0.1", provides: [{ capability: "ui.bad", context: [{ path: "../escape.md" }] }], consumes: [] }), "utf8");
     const invalid = await application.getComponent("tests/descriptors", "ui");

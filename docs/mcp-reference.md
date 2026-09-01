@@ -158,7 +158,7 @@ Side effects: writes the machine-local binding and, when the path changed, appen
 
 ### `capability_provide`
 
-Upserts a capability exported by a component and optionally exposes one component-relative context path.
+Upserts a capability exported by a component and optionally exposes one component-relative context path and portable artifact identity. `artifactEcosystem` and `artifactName` must be supplied together; `artifactPath` defaults conceptually to the component root.
 
 ```json
 {
@@ -168,7 +168,10 @@ Upserts a capability exported by a component and optionally exposes one componen
   "description": "Shared React components",
   "contextPath": "docs/components.md",
   "strength": "required",
-  "priority": 1000
+  "priority": 1000,
+  "artifactEcosystem": "npm",
+  "artifactName": "@acme/ui",
+  "artifactPath": "."
 }
 ```
 
@@ -234,7 +237,11 @@ Input:
 
 `mode` is optional (`orientation` by default); `maxBytes` is optional and must be from 1 through 262144. Orientation defaults to 32768 bytes and refresh to 8192 bytes. Task keywords match declared path, description, tags, capabilities, and selection reasons within each strength tier.
 
-Output includes the plan plus `briefing`: safely read content, source/included byte counts, SHA-256 content hashes, truncation state, provenance, omissions, exact budget use, and a SHA-256 digest. Missing, unreadable, directory, unsafe symlink escape, binary, and budget exclusions are explicit. The tool never scans undeclared paths. Side effects: none; read-only and idempotent.
+Output includes the plan plus `briefing`: safely read content, source/included byte counts, SHA-256 content hashes, truncation state, provenance, omissions, exact budget use, and a SHA-256 digest. Missing, unreadable, directory, unsafe symlink escape, binary, and budget exclusions are explicit.
+
+`artifactGuidance` lists artifacts attached to capabilities consumed by the target. Each item includes provider/consumer identity, resolved local roots, a fixed strategy order, and—currently for the `npm` ecosystem—a derived local `file:` dependency candidate. The agent must inspect project configuration first: preserve an existing dependency, use the repository's workspace convention when applicable, then use an established registry. The local candidate is only a fallback. Stacks does not select a package manager, edit manifests, run installs, or execute lifecycle scripts.
+
+The tool never scans undeclared context paths. Side effects: none; read-only and idempotent.
 
 ## Capability request tools
 
@@ -353,7 +360,7 @@ Opens one turn in an active work session, appends `turn.started`, and returns to
 
 Required input: `stack`, `sessionId`, `task`. Optional `maxBytes` overrides the cadence default from 1 through 262144.
 
-The first turn is an `orientation` with a 32768-byte default. Later turns are `refresh` briefings with an 8192-byte default. Refresh currently re-materializes the ranked current plan under the smaller budget; it is not yet a change-aware delta. Task text and file contents are transient. The durable event records the briefing digest, mode, bytes, budget, and aggregate counts.
+The first turn is an `orientation` with a 32768-byte default. Later turns are `refresh` briefings with an 8192-byte default. Both return the same current `artifactGuidance` contract as `context_resolve`. Refresh currently re-materializes the ranked current plan under the smaller budget; it is not yet a change-aware delta. Task text and file contents are transient. The durable event records the briefing digest, mode, bytes, budget, and aggregate counts.
 
 ```json
 {

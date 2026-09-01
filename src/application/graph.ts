@@ -12,6 +12,7 @@ export interface StackGraphNode {
   access: "read-only" | "read-write";
   provides: string[];
   consumes: string[];
+  artifacts: Array<{ capability: string; ecosystem: string; name: string }>;
 }
 
 export interface StackGraphEdge {
@@ -50,6 +51,7 @@ function graphNode(component: StackComponent): StackGraphNode {
     access: component.access ?? "read-write",
     provides: (component.provides ?? []).map((item) => item.capability).sort(),
     consumes: (component.consumes ?? []).map((item) => item.capability).sort(),
+    artifacts: (component.provides ?? []).flatMap((item) => item.artifact ? [{ capability: item.capability, ecosystem: item.artifact.ecosystem, name: item.artifact.name }] : []).sort((left, right) => `${left.ecosystem}:${left.name}:${left.capability}`.localeCompare(`${right.ecosystem}:${right.name}:${right.capability}`)),
   };
 }
 

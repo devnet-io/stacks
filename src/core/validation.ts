@@ -1,3 +1,4 @@
+import path from "node:path";
 import type {
   CapabilityExport,
   CapabilityRequirement,
@@ -51,6 +52,17 @@ function validateExport(value: unknown, at: string, errors: string[]): value is 
     return false;
   }
   if (!isNonEmptyString(value.capability)) errors.push(`${at}.capability must be a non-empty string.`);
+  if (value.artifact !== undefined) {
+    if (!isRecord(value.artifact)) errors.push(`${at}.artifact must be an object.`);
+    else {
+      if (!isNonEmptyString(value.artifact.ecosystem)) errors.push(`${at}.artifact.ecosystem must be a non-empty string.`);
+      if (!isNonEmptyString(value.artifact.name)) errors.push(`${at}.artifact.name must be a non-empty string.`);
+      if (value.artifact.path !== undefined) {
+        if (!isNonEmptyString(value.artifact.path)) errors.push(`${at}.artifact.path must be a non-empty relative path.`);
+        else if (path.posix.isAbsolute(value.artifact.path) || path.win32.isAbsolute(value.artifact.path) || value.artifact.path.split(/[\\/]/u).includes("..")) errors.push(`${at}.artifact.path must stay within the component root.`);
+      }
+    }
+  }
   if (value.context !== undefined) {
     if (!Array.isArray(value.context)) errors.push(`${at}.context must be an array.`);
     else value.context.forEach((item, index) => validateContextPath(item, `${at}.context[${index}]`, errors));

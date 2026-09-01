@@ -60,7 +60,7 @@ Requires `?stack=namespace%2Fname&request=<requestId>`. Returns one request, new
 
 ### `GET /api/v0.1/graph`
 
-Returns component nodes, capability/dependency edges, and unresolved requirements.
+Returns component nodes, their declared implementation artifacts, capability/dependency edges, and unresolved requirements.
 
 ### `GET /api/v0.1/integrations`
 
@@ -125,11 +125,14 @@ These idempotent mutations update the portable Stack definition and append a `co
   "description": "Shared React components",
   "contextPath": "docs/components.md",
   "strength": "required",
-  "priority": 1000
+  "priority": 1000,
+  "artifactEcosystem": "npm",
+  "artifactName": "@acme/ui",
+  "artifactPath": "."
 }
 ```
 
-Upserts by component and capability. `description`, `contextPath`, `strength`, and `priority` are optional.
+Upserts by component and capability. `description`, `contextPath`, `strength`, `priority`, and artifact fields are optional. `artifactEcosystem` and `artifactName` must appear together; `artifactPath` is component-relative. The endpoint records portable metadata only and does not invoke a package manager.
 
 ### `PUT /api/v0.1/capability-requirement`
 

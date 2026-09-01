@@ -39,7 +39,11 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     assert.equal(added.stack, "tests/global-cli");
     assert.equal(added.path, path.resolve(component));
     runJson(["component", "add", "tests/global-cli", "knowledge", "--path", knowledge, "--kind", "knowledge"], 0, env);
-    const provided = runJson(["component", "provide", "tests/global-cli", "knowledge", "practice.engineering", "--context", "engineering.md", "--strength", "required"], 0, env);
+    const provided = runJson([
+      "component", "provide", "tests/global-cli", "knowledge", "practice.engineering",
+      "--context", "engineering.md", "--strength", "required",
+      "--artifact-ecosystem", "npm", "--artifact-name", "@tests/engineering",
+    ], 0, env);
     assert.equal(object(provided.component).id, "knowledge");
     const consumed = runJson(["component", "consume", "tests/global-cli", "app", "practice.engineering", "--from", "knowledge"], 0, env);
     assert.equal(object(consumed.component).id, "app");
@@ -47,6 +51,9 @@ test("global catalog CLI creates, binds, and inspects a Stack from any directory
     assert.equal(object(guided.component).id, "app");
     const context = runJson(["context", "app", "--stack", "tests/global-cli"], 0, env);
     assert.ok((context.items as unknown[]).some((item) => object(item).path === "engineering.md"));
+    const artifactGuidance = context.artifactGuidance as Array<{ artifact: { name: string }; localFallback: { dependencySpecifier: string } }>;
+    assert.equal(artifactGuidance[0]?.artifact.name, "@tests/engineering");
+    assert.equal(artifactGuidance[0]?.localFallback.dependencySpecifier, "file:../knowledge");
     const requestWork = runJson(["checkin", "start", "--stack", "tests/global-cli", "--component", "app", "--summary", "Need shared security capability"], 0, env);
     const request = runJson(["request", "create", "--stack", "tests/global-cli", "--requester", "app", "--provider", "knowledge", "--session", String(requestWork.sessionId), "--capability", "practice.security", "--reason", "Avoid product-local policy"], 0, env);
     const requestId = String(object(request.request).requestId);

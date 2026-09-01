@@ -57,9 +57,15 @@ test("global local API lists and explicitly selects registered Stacks", async ()
     assert.equal(addedKnowledge.status, 201, await addedKnowledge.text());
     const provider = await fetch(`${api.origin}/api/v0.1/capability-provider`, {
       method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
-      body: JSON.stringify({ stack: "acme/three", componentId: "knowledge", capability: "practice.engineering", contextPath: "engineering.md", strength: "required" }),
+      body: JSON.stringify({
+        stack: "acme/three", componentId: "knowledge", capability: "practice.engineering",
+        contextPath: "engineering.md", strength: "required", artifactEcosystem: "npm", artifactName: "@acme/engineering",
+      }),
     });
-    assert.equal(provider.status, 200, await provider.text());
+    const providerText = await provider.text();
+    assert.equal(provider.status, 200, providerText);
+    const providerBody = JSON.parse(providerText) as { component: { provides: Array<{ artifact?: { ecosystem: string; name: string } }> } };
+    assert.deepEqual(providerBody.component.provides.find((item) => item.artifact)?.artifact, { ecosystem: "npm", name: "@acme/engineering" });
     const requirement = await fetch(`${api.origin}/api/v0.1/capability-requirement`, {
       method: "PUT", headers: { "Content-Type": "application/json", Origin: api.origin },
       body: JSON.stringify({ stack: "acme/three", componentId: "app", capability: "practice.engineering", from: "knowledge" }),
@@ -70,10 +76,11 @@ test("global local API lists and explicitly selects registered Stacks", async ()
       body: JSON.stringify({ stack: "acme/three", componentId: "app", path: "AGENTS.md", strength: "preferred" }),
     });
     assert.equal(guidance.status, 200, await guidance.text());
-    const configuredComponents = await (await fetch(`${api.origin}/api/v0.1/components?stack=acme%2Fthree`)).json() as { components: Array<{ component: { id: string; consumes?: unknown[] }; descriptor: { status: string } }> };
+    const configuredComponents = await (await fetch(`${api.origin}/api/v0.1/components?stack=acme%2Fthree`)).json() as { components: Array<{ component: { id: string; consumes?: unknown[]; provides?: Array<{ artifact?: { name: string } }> }; descriptor: { status: string } }> };
     assert.equal(configuredComponents.components.find((item) => item.component.id === "app")?.component.consumes?.length, 1);
     assert.equal(configuredComponents.components.find((item) => item.component.id === "app")?.descriptor.status, "absent");
     assert.equal(configuredComponents.components.find((item) => item.component.id === "knowledge")?.descriptor.status, "valid");
+    assert.equal(configuredComponents.components.find((item) => item.component.id === "knowledge")?.component.provides?.find((item) => item.artifact)?.artifact?.name, "@acme/engineering");
 
     const registered = await loadRegisteredStack("acme/three", directories);
     const requestWork = await startWork(registered, { componentId: "app", summary: "Need shared modal" });

@@ -96,7 +96,7 @@ The command safely includes only declared regular text files, defaults to a 32 K
 The CLI, MCP, and Manage UI can configure the minimum context graph without editing catalog files directly. For example:
 
 ```bash
-stacks component provide your-name/my-stack shared-ui ui.react.components --context docs/components.md --strength required
+stacks component provide your-name/my-stack shared-ui ui.react.components --context docs/components.md --strength required --artifact-ecosystem npm --artifact-name @your-name/ui --artifact-path .
 stacks component consume your-name/my-stack app ui.react.components --from shared-ui
 stacks component guidance your-name/my-stack standards --path engineering.md --strength required
 stacks context app --stack your-name/my-stack

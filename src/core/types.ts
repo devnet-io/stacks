@@ -19,6 +19,13 @@ export interface CapabilityExport {
   capability: string;
   description?: string;
   context?: ContextPath[];
+  artifact?: CapabilityArtifact;
+}
+
+export interface CapabilityArtifact {
+  ecosystem: string;
+  name: string;
+  path?: string;
 }
 
 export interface ComponentDescriptor {

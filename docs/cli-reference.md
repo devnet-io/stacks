@@ -120,21 +120,24 @@ For a Git component, a missing bound destination may be cloned. Existing reposit
 
 ### `stacks component provide`
 
-Upserts one capability exported by a component. An optional component-relative context path identifies the bounded guide or index that explains how consumers should use it.
+Upserts one capability exported by a component. An optional component-relative context path identifies the bounded guide or index that explains how consumers should use it. Optional artifact fields identify the portable package that carries the capability; all artifact fields are stored in the capability export rather than as machine paths.
 
 ```text
 stacks component provide <namespace/name> <id> <capability>
   [--context <path>] [--description <text>]
-  [--strength required|preferred|reference] [--priority <number>] [--json]
+  [--strength required|preferred|reference] [--priority <number>]
+  [--artifact-ecosystem <name> --artifact-name <coordinate> [--artifact-path <relative-path>]] [--json]
 ```
 
 ```bash
-stacks component provide acme/customer-portal shared-ui ui.react.components --context docs/components.md --strength required
+stacks component provide acme/customer-portal shared-ui ui.react.components --context docs/components.md --strength required --artifact-ecosystem npm --artifact-name @acme/ui --artifact-path .
 ```
 
 Saving the same component and capability replaces that export instead of creating a duplicate. A state change writes only the portable Stack definition and appends a `component.configuration.changed` event; an identical upsert is an event no-op. It never modifies the component repository.
 
 An explicit Stack export also replaces the complete provider-owned `.stack/component.json` entry for the same capability. Other valid descriptor exports remain effective. See [Provider-owned component descriptors](user-guide.md#provider-owned-component-descriptors).
+
+For consumed npm artifacts, `stacks context` returns `artifactGuidance` containing the provider and artifact roots plus a derived `file:` dependency candidate. This is fallback guidance, not an install action: inspect and preserve the consumer's existing registry, workspace, lockfile, and package-manager conventions first. Stacks never edits `package.json`, runs an install, or executes lifecycle scripts.
 
 ### `stacks component consume`
 

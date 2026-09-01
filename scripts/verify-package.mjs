@@ -133,7 +133,7 @@ try {
   await waitForMarker(port);
   const health = await (await fetch(`http://127.0.0.1:${port}/api/v0.1/health`)).json();
   assert.equal(health.status, "ok");
-  process.stdout.write("Verified copied CLI, packaged MCP contract, three-component agent workflow, and web runtime.\n");
+  process.stdout.write("Verified temporary installation: CLI, MCP contract, three-component agent workflow, and web runtime.\n");
 } finally {
   if (web && web.exitCode === null) {
     const exited = new Promise((resolve) => web.once("exit", resolve));
