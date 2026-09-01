@@ -70,6 +70,8 @@ test("keeps installation instructions current and secret-safe", () => {
 
 test("documents the implemented Graph and supplementary Docker quality gate", () => {
   assert.match(doc("architecture.md"), /Graph renders the declarative provider\/dependency relationships/u);
+  assert.match(doc("architecture.md"), /deterministic top-down layered SVG/u);
+  assert.match(doc("user-guide.md"), /selected-component details below the full-width composition canvas/u);
   assert.match(doc("user-guide.md"), /GET \/api\/v0\.1\/graph/u);
   assert.match(doc("user-guide.md"), /npm run check:docker/u);
 });

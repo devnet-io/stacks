@@ -45,7 +45,7 @@ The UI is machine-level. A subdued Stack selector sits directly below the sideba
 
 Component IDs are stable Stack-local identities. Choose a concise portable ID when adding a component; later edit its display name, description, kind, and agent access without changing that ID. Bindings, relationships, requests, events, and work refer to the stable ID. Change the local directory through the binding control rather than treating the path as identity.
 
-Capability consumption is required unless explicitly marked optional. A missing or ambiguous required provider is a context error; an optional one remains visible but is a warning. Manage labels every saved requirement as required or optional, and Graph shows the same distinction on relationship details and unresolved requirements. Direct component dependencies are currently always required.
+Capability consumption is required unless explicitly marked optional. A missing or ambiguous required provider is a context error; an optional one remains visible but is a warning. Manage labels every saved requirement as required or optional. Graph lays providers and dependencies above their consumers, distinguishes capability, dependency, and optional edges in a compact legend, and keeps selected-component details below the full-width composition canvas. Direct component dependencies are currently always required.
 
 ## Provider-owned component descriptors
 
