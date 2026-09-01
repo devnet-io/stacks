@@ -151,22 +151,160 @@ export function StackManagement({
   );
 }
 
+export function StackAddPanel({
+  stack,
+  onCatalogChanged,
+}: {
+  stack?: string;
+  onCatalogChanged(stack?: string): Promise<void>;
+}) {
+  return (
+    <div className="space-y-5">
+      {stack ? (
+        <AddComponentForm
+          stack={stack}
+          onChanged={() => onCatalogChanged(stack)}
+        />
+      ) : null}
+      <CreateStackForm onCreated={onCatalogChanged} />
+    </div>
+  );
+}
+
+export function ComponentManagementPanel({
+  stack,
+  componentId,
+  onChanged,
+}: {
+  stack: string;
+  componentId: string;
+  onChanged(): Promise<void>;
+}) {
+  const [overview, setOverview] = useState<StackOverview>();
+  const [components, setComponents] = useState<ComponentListOutput>();
+  const [error, setError] = useState<string>();
+  const load = useCallback(async () => {
+    setError(undefined);
+    try {
+      const [nextOverview, nextComponents] = await Promise.all([
+        fetchOverview(stack),
+        fetchComponents(stack),
+      ]);
+      setOverview(nextOverview);
+      setComponents(nextComponents);
+    } catch (caught) {
+      setError(message(caught));
+    }
+  }, [stack]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const changed = async () => {
+    await load();
+    await onChanged();
+  };
+  if (error && !components) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle />
+        <AlertTitle>Could not load component details</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+  if (!overview || !components) return <ManagementSkeleton />;
+  const entry = components.components.find(
+    (item) => item.component.id === componentId,
+  );
+  const health = overview.components.find((item) => item.id === componentId);
+  if (!entry || !health)
+    return (
+      <Alert variant="destructive">
+        <AlertCircle />
+        <AlertTitle>Component not found</AlertTitle>
+        <AlertDescription>
+          This component may have been removed since the view was opened.
+        </AlertDescription>
+      </Alert>
+    );
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border bg-muted/20 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-semibold">
+            {entry.component.name ?? entry.component.id}
+          </h2>
+          <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+            {entry.component.kind}
+          </span>
+          <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+            {health.health}
+          </span>
+        </div>
+        <p className="mt-1 font-mono text-xs text-muted-foreground">
+          {entry.component.id}
+        </p>
+        {entry.component.description ? (
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            {entry.component.description}
+          </p>
+        ) : null}
+        <p className="mt-3 break-all font-mono text-xs text-muted-foreground">
+          {health.root}
+        </p>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <ComponentMetadataForm
+          stack={stack}
+          components={components}
+          fixedComponentId={componentId}
+          onChanged={changed}
+        />
+        <BindingForm
+          stack={stack}
+          overview={overview}
+          fixedComponentId={componentId}
+          onChanged={changed}
+        />
+      </div>
+      <ContextConfiguration
+        stack={stack}
+        components={components}
+        fixedComponentId={componentId}
+        onChanged={changed}
+      />
+    </div>
+  );
+}
+
 function ContextConfiguration({
   stack,
   components,
+  fixedComponentId,
   onChanged,
 }: {
   stack: string;
   components: ComponentListOutput;
+  fixedComponentId?: string;
   onChanged(): Promise<void>;
 }) {
-  const [componentId, setComponentId] = useState(components.components[0]?.component.id ?? '');
+  const [componentId, setComponentId] = useState(
+    fixedComponentId ?? components.components[0]?.component.id ?? '',
+  );
   useEffect(() => {
-    if (!components.components.some((item) => item.component.id === componentId)) {
+    if (fixedComponentId) {
+      setComponentId(fixedComponentId);
+      return;
+    }
+    if (
+      !components.components.some((item) => item.component.id === componentId)
+    ) {
       setComponentId(components.components[0]?.component.id ?? '');
     }
-  }, [componentId, components]);
-  const selectedEntry = components.components.find((item) => item.component.id === componentId);
+  }, [componentId, components, fixedComponentId]);
+  const selectedEntry = components.components.find(
+    (item) => item.component.id === componentId,
+  );
   const selected = selectedEntry?.component;
 
   return (
@@ -174,30 +312,82 @@ function ContextConfiguration({
       <CardHeader>
         <CardTitle>Context and capabilities</CardTitle>
         <CardDescription>
-          Declare what a component provides, what it consumes, and which component-relative guidance agents should inspect.
+          Declare what a component provides, what it consumes, and which
+          component-relative guidance agents should inspect.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {components.components.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Add a component before configuring agent context.</p>
+          <p className="text-sm text-muted-foreground">
+            Add a component before configuring agent context.
+          </p>
         ) : (
           <>
-            <Field label="Component to configure" htmlFor="context-component">
-              <select id="context-component" value={componentId} onChange={(event) => setComponentId(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm sm:max-w-md">
-                {components.components.map(({ component }) => <option key={component.id} value={component.id}>{component.name ?? component.id} ({component.id})</option>)}
-              </select>
-            </Field>
-            {selectedEntry ? <DescriptorSummary descriptor={selectedEntry.descriptor} /> : null}
-            {selected && <div className="grid gap-6 xl:grid-cols-3">
-              <CapabilityProviderForm key={`provider-${componentId}`} stack={stack} component={selected} descriptor={selectedEntry!.descriptor} onChanged={onChanged} />
-              <CapabilityRequirementForm key={`requirement-${componentId}`} stack={stack} component={selected} components={components} onChanged={onChanged} />
-              <GuidanceForm key={`guidance-${componentId}`} stack={stack} component={selected} onChanged={onChanged} />
-            </div>}
+            {!fixedComponentId ? (
+              <Field label="Component to configure" htmlFor="context-component">
+                <select
+                  id="context-component"
+                  value={componentId}
+                  onChange={(event) => setComponentId(event.target.value)}
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm sm:max-w-md"
+                >
+                  {components.components.map(({ component }) => (
+                    <option key={component.id} value={component.id}>
+                      {component.name ?? component.id} ({component.id})
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
+            {selectedEntry ? (
+              <DescriptorSummary descriptor={selectedEntry.descriptor} />
+            ) : null}
+            {selected && (
+              <div className="grid gap-6 xl:grid-cols-3">
+                <CapabilityProviderForm
+                  key={`provider-${componentId}`}
+                  stack={stack}
+                  component={selected}
+                  descriptor={selectedEntry!.descriptor}
+                  onChanged={onChanged}
+                />
+                <CapabilityRequirementForm
+                  key={`requirement-${componentId}`}
+                  stack={stack}
+                  component={selected}
+                  components={components}
+                  onChanged={onChanged}
+                />
+                <GuidanceForm
+                  key={`guidance-${componentId}`}
+                  stack={stack}
+                  component={selected}
+                  onChanged={onChanged}
+                />
+              </div>
+            )}
             {selected && (
               <div className="grid gap-4 border-t pt-5 text-sm md:grid-cols-3">
-                <ConfigurationSummary label="Provides" values={(selected.provides ?? []).map((item) => `${item.capability}${item.artifact ? ` · ${item.artifact.ecosystem}:${item.artifact.name} · root ${item.artifact.path ?? '.'}` : ''}`)} />
-                <ConfigurationSummary label="Consumes" values={(selected.consumes ?? []).map((item) => `${item.capability} · ${item.optional ? 'optional' : 'required'}${item.from ? ` · from ${item.from}` : ' · provider inferred only when unique'}`)} />
-                <ConfigurationSummary label="Guidance" values={(selected.guidance ?? []).map((item) => `${item.path} · ${item.strength ?? 'reference'}`)} />
+                <ConfigurationSummary
+                  label="Provides"
+                  values={(selected.provides ?? []).map(
+                    (item) =>
+                      `${item.capability}${item.artifact ? ` · ${item.artifact.ecosystem}:${item.artifact.name} · root ${item.artifact.path ?? '.'}` : ''}`,
+                  )}
+                />
+                <ConfigurationSummary
+                  label="Consumes"
+                  values={(selected.consumes ?? []).map(
+                    (item) =>
+                      `${item.capability} · ${item.optional ? 'optional' : 'required'}${item.from ? ` · from ${item.from}` : ' · provider inferred only when unique'}`,
+                  )}
+                />
+                <ConfigurationSummary
+                  label="Guidance"
+                  values={(selected.guidance ?? []).map(
+                    (item) => `${item.path} · ${item.strength ?? 'reference'}`,
+                  )}
+                />
               </div>
             )}
           </>
@@ -207,17 +397,84 @@ function ContextConfiguration({
   );
 }
 
-function DescriptorSummary({ descriptor }: { descriptor: ComponentDescriptorReport }) {
+function DescriptorSummary({
+  descriptor,
+}: {
+  descriptor: ComponentDescriptorReport;
+}) {
   if (descriptor.status === 'invalid' || descriptor.status === 'unavailable') {
-    return <Alert variant="destructive"><AlertCircle /><AlertTitle>Provider descriptor {descriptor.status}</AlertTitle><AlertDescription><p className="break-all">{descriptor.path}</p><ul className="mt-2 list-disc space-y-1 pl-4">{descriptor.errors.map((error) => <li key={error}>{error}</li>)}</ul><p className="mt-2">Stacks ignored the descriptor and kept explicit Stack declarations active.</p></AlertDescription></Alert>;
+    return (
+      <Alert variant="destructive">
+        <AlertCircle />
+        <AlertTitle>Provider descriptor {descriptor.status}</AlertTitle>
+        <AlertDescription>
+          <p className="break-all">{descriptor.path}</p>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            {descriptor.errors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+          <p className="mt-2">
+            Stacks ignored the descriptor and kept explicit Stack declarations
+            active.
+          </p>
+        </AlertDescription>
+      </Alert>
+    );
   }
   if (descriptor.status === 'absent') {
-    return <div className="rounded-lg border border-dashed p-4 text-sm"><p className="font-medium">No provider descriptor</p><p className="mt-1 text-muted-foreground">Optional descriptor: <span className="break-all font-mono text-xs">{descriptor.path}</span>. Explicit Stack declarations remain the complete source for this component.</p></div>;
+    return (
+      <div className="rounded-lg border border-dashed p-4 text-sm">
+        <p className="font-medium">No provider descriptor</p>
+        <p className="mt-1 text-muted-foreground">
+          Optional descriptor:{' '}
+          <span className="break-all font-mono text-xs">{descriptor.path}</span>
+          . Explicit Stack declarations remain the complete source for this
+          component.
+        </p>
+      </div>
+    );
   }
-  return <div className="rounded-lg border bg-muted/20 p-4 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">Provider descriptor</p><span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">valid</span></div><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{descriptor.path}</p><div className="mt-3 grid gap-3 sm:grid-cols-3"><ConfigurationSummary label="Published" values={descriptor.publishedCapabilities} /><ConfigurationSummary label="Applied" values={descriptor.appliedCapabilities} /><ConfigurationSummary label="Stack overrides" values={descriptor.overriddenCapabilities} /></div></div>;
+  return (
+    <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-medium">Provider descriptor</p>
+        <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+          valid
+        </span>
+      </div>
+      <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+        {descriptor.path}
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <ConfigurationSummary
+          label="Published"
+          values={descriptor.publishedCapabilities}
+        />
+        <ConfigurationSummary
+          label="Applied"
+          values={descriptor.appliedCapabilities}
+        />
+        <ConfigurationSummary
+          label="Stack overrides"
+          values={descriptor.overriddenCapabilities}
+        />
+      </div>
+    </div>
+  );
 }
 
-function CapabilityProviderForm({ stack, component, descriptor, onChanged }: { stack: string; component: ComponentListOutput['components'][number]['component']; descriptor: ComponentDescriptorReport; onChanged(): Promise<void> }) {
+function CapabilityProviderForm({
+  stack,
+  component,
+  descriptor,
+  onChanged,
+}: {
+  stack: string;
+  component: ComponentListOutput['components'][number]['component'];
+  descriptor: ComponentDescriptorReport;
+  onChanged(): Promise<void>;
+}) {
   const componentId = component.id;
   const [originalCapability, setOriginalCapability] = useState('');
   const [capability, setCapability] = useState('');
@@ -225,10 +482,14 @@ function CapabilityProviderForm({ stack, component, descriptor, onChanged }: { s
   const [description, setDescription] = useState('');
   const [artifactName, setArtifactName] = useState('');
   const [artifactPath, setArtifactPath] = useState('.');
-  const [strength, setStrength] = useState<'required' | 'preferred' | 'reference'>('reference');
+  const [strength, setStrength] = useState<
+    'required' | 'preferred' | 'reference'
+  >('reference');
   const operation = useOperation();
   const chooseExisting = (value: string) => {
-    const existing = (component.provides ?? []).find((item) => item.capability === value);
+    const existing = (component.provides ?? []).find(
+      (item) => item.capability === value,
+    );
     setOriginalCapability(value);
     setCapability(value);
     setContextPath(existing?.context?.[0]?.path ?? '');
@@ -238,20 +499,228 @@ function CapabilityProviderForm({ stack, component, descriptor, onChanged }: { s
     setArtifactPath(existing?.artifact?.path ?? '.');
   };
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); operation.start();
+    event.preventDefault();
+    operation.start();
     try {
-      await configureCapabilityProvider({ stack, componentId, capability: capability.trim(), contextPath: contextPath.trim() || null, description: description.trim() || null, strength, artifactEcosystem: artifactName.trim() ? 'npm' : undefined, artifactName: artifactName.trim() || null, artifactPath: artifactName.trim() ? artifactPath.trim() || '.' : undefined });
-      await onChanged(); setOriginalCapability(''); setCapability(''); setContextPath(''); setDescription(''); setArtifactName(''); setArtifactPath('.'); operation.succeed('Capability provider saved.');
-    } catch (error) { operation.fail(error); }
+      await configureCapabilityProvider({
+        stack,
+        componentId,
+        capability: capability.trim(),
+        contextPath: contextPath.trim() || null,
+        description: description.trim() || null,
+        strength,
+        artifactEcosystem: artifactName.trim() ? 'npm' : undefined,
+        artifactName: artifactName.trim() || null,
+        artifactPath: artifactName.trim()
+          ? artifactPath.trim() || '.'
+          : undefined,
+      });
+      await onChanged();
+      setOriginalCapability('');
+      setCapability('');
+      setContextPath('');
+      setDescription('');
+      setArtifactName('');
+      setArtifactPath('.');
+      operation.succeed('Capability provider saved.');
+    } catch (error) {
+      operation.fail(error);
+    }
   };
-  const descriptorOnly = Boolean(originalCapability && descriptor.appliedCapabilities.includes(originalCapability) && !descriptor.overriddenCapabilities.includes(originalCapability));
-  const renamePending = Boolean(originalCapability && originalCapability !== capability.trim());
-  const rename = async () => { if (!originalCapability || !capability.trim()) return; operation.start(); try { const replacement = capability.trim(); await renameCapability({ stack, componentId, capability: originalCapability, replacement }); await onChanged(); setOriginalCapability(replacement); operation.succeed('Capability and resolved consumer relationships renamed.'); } catch (error) { operation.fail(error); } };
-  const remove = async () => { if (!originalCapability) return; operation.start(); try { await removeCapabilityProvider({ stack, componentId, capability: originalCapability }); await onChanged(); setOriginalCapability(''); setCapability(''); operation.succeed('Capability provider removed.'); } catch (error) { operation.fail(error); } };
-  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Provides</h3><p className="text-xs text-muted-foreground">Publish an authoritative capability, its usage guide, and—when applicable—the package that carries it. Renaming updates consumer edges atomically. Descriptor-owned declarations must be changed in the component repository.</p>{(component.provides ?? []).length > 0 && <Field label="Edit existing" htmlFor="provider-existing"><select id="provider-existing" value={originalCapability} onChange={(event) => chooseExisting(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="">New capability</option>{(component.provides ?? []).map((item) => <option key={item.capability} value={item.capability}>{item.capability}</option>)}</select></Field>}<Field label="Capability" htmlFor="provider-capability"><Input id="provider-capability" required placeholder="ui.react.components" value={capability} disabled={descriptorOnly} onChange={(event) => setCapability(event.target.value)} /></Field>{descriptorOnly ? <p className="text-xs text-muted-foreground">Saving other fields creates a Stack override; rename or remove this declaration in <span className="font-mono">.stack/component.json</span>.</p> : renamePending ? <p className="text-xs text-muted-foreground">Rename first so provider and consumer declarations change in one atomic operation; then save any metadata edits.</p> : null}<Field label="Context path" htmlFor="provider-context"><Input id="provider-context" placeholder="docs/components.md" value={contextPath} onChange={(event) => setContextPath(event.target.value)} /></Field><Field label="Description" htmlFor="provider-description"><Input id="provider-description" value={description} onChange={(event) => setDescription(event.target.value)} /></Field><StrengthSelect id="provider-strength" value={strength} onChange={setStrength} /><div className="border-t pt-3"><p className="text-sm font-medium">Optional npm artifact</p><p className="mt-1 text-xs text-muted-foreground">Portable package identity. The agent must still make the dependency usable in the consumer; Stacks supplies workspace, registry, or local-file guidance.</p></div><Field label="Package name" htmlFor="provider-artifact-name"><Input id="provider-artifact-name" placeholder="@acme/ui" value={artifactName} onChange={(event) => setArtifactName(event.target.value)} /></Field><Field label="Package root" htmlFor="provider-artifact-path"><Input id="provider-artifact-path" disabled={!artifactName.trim()} placeholder="." value={artifactPath} onChange={(event) => setArtifactPath(event.target.value)} /></Field><div className="flex flex-wrap gap-2"><Button type="submit" size="sm" disabled={operation.pending || !componentId || !capability.trim() || renamePending}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save provider</Button>{renamePending ? <Button type="button" size="sm" disabled={operation.pending} onClick={() => void rename()}>Rename and update consumers</Button> : null}{originalCapability && !descriptorOnly && !renamePending ? <Button type="button" size="sm" variant="destructive" disabled={operation.pending} onClick={() => void remove()}><Trash2 />Remove</Button> : null}</div><OperationMessage operation={operation} /></form>;
+  const descriptorOnly = Boolean(
+    originalCapability &&
+    descriptor.appliedCapabilities.includes(originalCapability) &&
+    !descriptor.overriddenCapabilities.includes(originalCapability),
+  );
+  const renamePending = Boolean(
+    originalCapability && originalCapability !== capability.trim(),
+  );
+  const rename = async () => {
+    if (!originalCapability || !capability.trim()) return;
+    operation.start();
+    try {
+      const replacement = capability.trim();
+      await renameCapability({
+        stack,
+        componentId,
+        capability: originalCapability,
+        replacement,
+      });
+      await onChanged();
+      setOriginalCapability(replacement);
+      operation.succeed(
+        'Capability and resolved consumer relationships renamed.',
+      );
+    } catch (error) {
+      operation.fail(error);
+    }
+  };
+  const remove = async () => {
+    if (!originalCapability) return;
+    operation.start();
+    try {
+      await removeCapabilityProvider({
+        stack,
+        componentId,
+        capability: originalCapability,
+      });
+      await onChanged();
+      setOriginalCapability('');
+      setCapability('');
+      operation.succeed('Capability provider removed.');
+    } catch (error) {
+      operation.fail(error);
+    }
+  };
+  return (
+    <form
+      onSubmit={(event) => void submit(event)}
+      className="space-y-3 rounded-lg border p-4"
+    >
+      <h3 className="font-medium">Provides</h3>
+      <p className="text-xs text-muted-foreground">
+        Publish an authoritative capability, its usage guide, and—when
+        applicable—the package that carries it. Renaming updates consumer edges
+        atomically. Descriptor-owned declarations must be changed in the
+        component repository.
+      </p>
+      {(component.provides ?? []).length > 0 && (
+        <Field label="Edit existing" htmlFor="provider-existing">
+          <select
+            id="provider-existing"
+            value={originalCapability}
+            onChange={(event) => chooseExisting(event.target.value)}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          >
+            <option value="">New capability</option>
+            {(component.provides ?? []).map((item) => (
+              <option key={item.capability} value={item.capability}>
+                {item.capability}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <Field label="Capability" htmlFor="provider-capability">
+        <Input
+          id="provider-capability"
+          required
+          placeholder="ui.react.components"
+          value={capability}
+          disabled={descriptorOnly}
+          onChange={(event) => setCapability(event.target.value)}
+        />
+      </Field>
+      {descriptorOnly ? (
+        <p className="text-xs text-muted-foreground">
+          Saving other fields creates a Stack override; rename or remove this
+          declaration in{' '}
+          <span className="font-mono">.stack/component.json</span>.
+        </p>
+      ) : renamePending ? (
+        <p className="text-xs text-muted-foreground">
+          Rename first so provider and consumer declarations change in one
+          atomic operation; then save any metadata edits.
+        </p>
+      ) : null}
+      <Field label="Context path" htmlFor="provider-context">
+        <Input
+          id="provider-context"
+          placeholder="docs/components.md"
+          value={contextPath}
+          onChange={(event) => setContextPath(event.target.value)}
+        />
+      </Field>
+      <Field label="Description" htmlFor="provider-description">
+        <Input
+          id="provider-description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        />
+      </Field>
+      <StrengthSelect
+        id="provider-strength"
+        value={strength}
+        onChange={setStrength}
+      />
+      <div className="border-t pt-3">
+        <p className="text-sm font-medium">Optional npm artifact</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Portable package identity. The agent must still make the dependency
+          usable in the consumer; Stacks supplies workspace, registry, or
+          local-file guidance.
+        </p>
+      </div>
+      <Field label="Package name" htmlFor="provider-artifact-name">
+        <Input
+          id="provider-artifact-name"
+          placeholder="@acme/ui"
+          value={artifactName}
+          onChange={(event) => setArtifactName(event.target.value)}
+        />
+      </Field>
+      <Field label="Package root" htmlFor="provider-artifact-path">
+        <Input
+          id="provider-artifact-path"
+          disabled={!artifactName.trim()}
+          placeholder="."
+          value={artifactPath}
+          onChange={(event) => setArtifactPath(event.target.value)}
+        />
+      </Field>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={
+            operation.pending ||
+            !componentId ||
+            !capability.trim() ||
+            renamePending
+          }
+        >
+          {operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}
+          Save provider
+        </Button>
+        {renamePending ? (
+          <Button
+            type="button"
+            size="sm"
+            disabled={operation.pending}
+            onClick={() => void rename()}
+          >
+            Rename and update consumers
+          </Button>
+        ) : null}
+        {originalCapability && !descriptorOnly && !renamePending ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={operation.pending}
+            onClick={() => void remove()}
+          >
+            <Trash2 />
+            Remove
+          </Button>
+        ) : null}
+      </div>
+      <OperationMessage operation={operation} />
+    </form>
+  );
 }
 
-function CapabilityRequirementForm({ stack, component, components, onChanged }: { stack: string; component: ComponentListOutput['components'][number]['component']; components: ComponentListOutput; onChanged(): Promise<void> }) {
+function CapabilityRequirementForm({
+  stack,
+  component,
+  components,
+  onChanged,
+}: {
+  stack: string;
+  component: ComponentListOutput['components'][number]['component'];
+  components: ComponentListOutput;
+  onChanged(): Promise<void>;
+}) {
   const componentId = component.id;
   const [editingCapability, setEditingCapability] = useState('');
   const [capability, setCapability] = useState('');
@@ -259,48 +728,332 @@ function CapabilityRequirementForm({ stack, component, components, onChanged }: 
   const [optional, setOptional] = useState(false);
   const operation = useOperation();
   const chooseExisting = (value: string) => {
-    const existing = (component.consumes ?? []).find((item) => item.capability === value);
+    const existing = (component.consumes ?? []).find(
+      (item) => item.capability === value,
+    );
     setEditingCapability(value);
     setCapability(value);
     setFrom(existing?.from ?? '');
     setOptional(existing?.optional ?? false);
   };
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); operation.start();
+    event.preventDefault();
+    operation.start();
     try {
-      await configureCapabilityRequirement({ stack, componentId, capability: capability.trim(), from: from || null, optional });
-      await onChanged(); setEditingCapability(''); setCapability(''); setFrom(''); setOptional(false); operation.succeed('Capability requirement saved.');
-    } catch (error) { operation.fail(error); }
+      await configureCapabilityRequirement({
+        stack,
+        componentId,
+        capability: capability.trim(),
+        from: from || null,
+        optional,
+      });
+      await onChanged();
+      setEditingCapability('');
+      setCapability('');
+      setFrom('');
+      setOptional(false);
+      operation.succeed('Capability requirement saved.');
+    } catch (error) {
+      operation.fail(error);
+    }
   };
-  const remove = async () => { if (!editingCapability) return; operation.start(); try { await removeCapabilityRequirement({ stack, componentId, capability: editingCapability }); await onChanged(); setEditingCapability(''); setCapability(''); operation.succeed('Capability requirement removed.'); } catch (error) { operation.fail(error); } };
-  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Consumes</h3><p className="text-xs text-muted-foreground">Connect this component to an authoritative provider. Requirements are required by default; optional unresolved requirements are warnings.</p>{(component.consumes ?? []).length > 0 && <Field label="Edit existing" htmlFor="consumer-existing"><select id="consumer-existing" value={editingCapability} onChange={(event) => chooseExisting(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="">New requirement</option>{(component.consumes ?? []).map((item) => <option key={item.capability} value={item.capability}>{item.capability} · {item.optional ? 'optional' : 'required'}</option>)}</select></Field>}<Field label="Capability" htmlFor="consumer-capability"><Input id="consumer-capability" required disabled={Boolean(editingCapability)} placeholder="ui.react.components" value={capability} onChange={(event) => setCapability(event.target.value)} /></Field><Field label="Provider" htmlFor="consumer-provider"><select id="consumer-provider" value={from} onChange={(event) => setFrom(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="">Infer only if unique</option>{components.components.filter((item) => item.component.id !== componentId).map(({ component }) => <option key={component.id} value={component.id}>{component.name ?? component.id}</option>)}</select></Field><label className="flex items-start gap-2 text-sm"><input className="mt-0.5" type="checkbox" checked={optional} onChange={(event) => setOptional(event.target.checked)} /><span><span className="block">Optional requirement</span><span className="block text-xs text-muted-foreground">Leave unchecked when this capability is necessary for the component to work correctly.</span></span></label><div className="flex flex-wrap gap-2"><Button type="submit" size="sm" disabled={operation.pending || !componentId || !capability.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save requirement</Button>{editingCapability ? <Button type="button" size="sm" variant="destructive" disabled={operation.pending} onClick={() => void remove()}><Trash2 />Remove</Button> : null}</div><OperationMessage operation={operation} /></form>;
+  const remove = async () => {
+    if (!editingCapability) return;
+    operation.start();
+    try {
+      await removeCapabilityRequirement({
+        stack,
+        componentId,
+        capability: editingCapability,
+      });
+      await onChanged();
+      setEditingCapability('');
+      setCapability('');
+      operation.succeed('Capability requirement removed.');
+    } catch (error) {
+      operation.fail(error);
+    }
+  };
+  return (
+    <form
+      onSubmit={(event) => void submit(event)}
+      className="space-y-3 rounded-lg border p-4"
+    >
+      <h3 className="font-medium">Consumes</h3>
+      <p className="text-xs text-muted-foreground">
+        Connect this component to an authoritative provider. Requirements are
+        required by default; optional unresolved requirements are warnings.
+      </p>
+      {(component.consumes ?? []).length > 0 && (
+        <Field label="Edit existing" htmlFor="consumer-existing">
+          <select
+            id="consumer-existing"
+            value={editingCapability}
+            onChange={(event) => chooseExisting(event.target.value)}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          >
+            <option value="">New requirement</option>
+            {(component.consumes ?? []).map((item) => (
+              <option key={item.capability} value={item.capability}>
+                {item.capability} · {item.optional ? 'optional' : 'required'}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <Field label="Capability" htmlFor="consumer-capability">
+        <Input
+          id="consumer-capability"
+          required
+          disabled={Boolean(editingCapability)}
+          placeholder="ui.react.components"
+          value={capability}
+          onChange={(event) => setCapability(event.target.value)}
+        />
+      </Field>
+      <Field label="Provider" htmlFor="consumer-provider">
+        <select
+          id="consumer-provider"
+          value={from}
+          onChange={(event) => setFrom(event.target.value)}
+          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+        >
+          <option value="">Infer only if unique</option>
+          {components.components
+            .filter((item) => item.component.id !== componentId)
+            .map(({ component }) => (
+              <option key={component.id} value={component.id}>
+                {component.name ?? component.id}
+              </option>
+            ))}
+        </select>
+      </Field>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          className="mt-0.5"
+          type="checkbox"
+          checked={optional}
+          onChange={(event) => setOptional(event.target.checked)}
+        />
+        <span>
+          <span className="block">Optional requirement</span>
+          <span className="block text-xs text-muted-foreground">
+            Leave unchecked when this capability is necessary for the component
+            to work correctly.
+          </span>
+        </span>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={operation.pending || !componentId || !capability.trim()}
+        >
+          {operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}
+          Save requirement
+        </Button>
+        {editingCapability ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={operation.pending}
+            onClick={() => void remove()}
+          >
+            <Trash2 />
+            Remove
+          </Button>
+        ) : null}
+      </div>
+      <OperationMessage operation={operation} />
+    </form>
+  );
 }
 
-function GuidanceForm({ stack, component, onChanged }: { stack: string; component: ComponentListOutput['components'][number]['component']; onChanged(): Promise<void> }) {
+function GuidanceForm({
+  stack,
+  component,
+  onChanged,
+}: {
+  stack: string;
+  component: ComponentListOutput['components'][number]['component'];
+  onChanged(): Promise<void>;
+}) {
   const componentId = component.id;
   const [editingPath, setEditingPath] = useState('');
   const [guidancePath, setGuidancePath] = useState('');
   const [description, setDescription] = useState('');
-  const [strength, setStrength] = useState<'required' | 'preferred' | 'reference'>('required');
+  const [strength, setStrength] = useState<
+    'required' | 'preferred' | 'reference'
+  >('required');
   const operation = useOperation();
-  const chooseExisting = (value: string) => { const existing = (component.guidance ?? []).find((item) => item.path === value); setEditingPath(value); setGuidancePath(value); setDescription(existing?.description ?? ''); setStrength(existing?.strength ?? 'reference'); };
-  const submit = async (event: FormEvent) => {
-    event.preventDefault(); operation.start();
-    try {
-      await configureComponentGuidance({ stack, componentId, path: guidancePath.trim(), description: description.trim() || null, strength });
-      await onChanged(); setEditingPath(''); setGuidancePath(''); setDescription(''); operation.succeed('Guidance saved.');
-    } catch (error) { operation.fail(error); }
+  const chooseExisting = (value: string) => {
+    const existing = (component.guidance ?? []).find(
+      (item) => item.path === value,
+    );
+    setEditingPath(value);
+    setGuidancePath(value);
+    setDescription(existing?.description ?? '');
+    setStrength(existing?.strength ?? 'reference');
   };
-  const remove = async () => { if (!editingPath) return; operation.start(); try { await removeComponentGuidance({ stack, componentId, path: editingPath }); await onChanged(); setEditingPath(''); setGuidancePath(''); operation.succeed('Guidance removed.'); } catch (error) { operation.fail(error); } };
-  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border p-4"><h3 className="font-medium">Guidance</h3><p className="text-xs text-muted-foreground">Expose a readable file relative to this component.</p>{(component.guidance ?? []).length > 0 ? <Field label="Edit existing" htmlFor="guidance-existing"><select id="guidance-existing" value={editingPath} onChange={(event) => chooseExisting(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="">New guidance</option>{(component.guidance ?? []).map((item) => <option key={item.path} value={item.path}>{item.path}</option>)}</select></Field> : null}<Field label="Relative path" htmlFor="guidance-path"><Input id="guidance-path" required disabled={Boolean(editingPath)} placeholder="docs/engineering.md" value={guidancePath} onChange={(event) => setGuidancePath(event.target.value)} /></Field><Field label="Description" htmlFor="guidance-description"><Input id="guidance-description" value={description} onChange={(event) => setDescription(event.target.value)} /></Field><StrengthSelect id="guidance-strength" value={strength} onChange={setStrength} /><div className="flex flex-wrap gap-2"><Button type="submit" size="sm" disabled={operation.pending || !componentId || !guidancePath.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}Save guidance</Button>{editingPath ? <Button type="button" size="sm" variant="destructive" disabled={operation.pending} onClick={() => void remove()}><Trash2 />Remove</Button> : null}</div><OperationMessage operation={operation} /></form>;
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    operation.start();
+    try {
+      await configureComponentGuidance({
+        stack,
+        componentId,
+        path: guidancePath.trim(),
+        description: description.trim() || null,
+        strength,
+      });
+      await onChanged();
+      setEditingPath('');
+      setGuidancePath('');
+      setDescription('');
+      operation.succeed('Guidance saved.');
+    } catch (error) {
+      operation.fail(error);
+    }
+  };
+  const remove = async () => {
+    if (!editingPath) return;
+    operation.start();
+    try {
+      await removeComponentGuidance({ stack, componentId, path: editingPath });
+      await onChanged();
+      setEditingPath('');
+      setGuidancePath('');
+      operation.succeed('Guidance removed.');
+    } catch (error) {
+      operation.fail(error);
+    }
+  };
+  return (
+    <form
+      onSubmit={(event) => void submit(event)}
+      className="space-y-3 rounded-lg border p-4"
+    >
+      <h3 className="font-medium">Guidance</h3>
+      <p className="text-xs text-muted-foreground">
+        Expose a readable file relative to this component.
+      </p>
+      {(component.guidance ?? []).length > 0 ? (
+        <Field label="Edit existing" htmlFor="guidance-existing">
+          <select
+            id="guidance-existing"
+            value={editingPath}
+            onChange={(event) => chooseExisting(event.target.value)}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          >
+            <option value="">New guidance</option>
+            {(component.guidance ?? []).map((item) => (
+              <option key={item.path} value={item.path}>
+                {item.path}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : null}
+      <Field label="Relative path" htmlFor="guidance-path">
+        <Input
+          id="guidance-path"
+          required
+          disabled={Boolean(editingPath)}
+          placeholder="docs/engineering.md"
+          value={guidancePath}
+          onChange={(event) => setGuidancePath(event.target.value)}
+        />
+      </Field>
+      <Field label="Description" htmlFor="guidance-description">
+        <Input
+          id="guidance-description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        />
+      </Field>
+      <StrengthSelect
+        id="guidance-strength"
+        value={strength}
+        onChange={setStrength}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={operation.pending || !componentId || !guidancePath.trim()}
+        >
+          {operation.pending ? <Loader2 className="animate-spin" /> : <Plus />}
+          Save guidance
+        </Button>
+        {editingPath ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={operation.pending}
+            onClick={() => void remove()}
+          >
+            <Trash2 />
+            Remove
+          </Button>
+        ) : null}
+      </div>
+      <OperationMessage operation={operation} />
+    </form>
+  );
 }
 
-function StrengthSelect({ id, value, onChange }: { id: string; value: 'required' | 'preferred' | 'reference'; onChange(value: 'required' | 'preferred' | 'reference'): void }) {
-  return <Field label="Strength" htmlFor={id}><select id={id} value={value} onChange={(event) => onChange(event.target.value as 'required' | 'preferred' | 'reference')} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="required">Required</option><option value="preferred">Preferred</option><option value="reference">Reference</option></select></Field>;
+function StrengthSelect({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: 'required' | 'preferred' | 'reference';
+  onChange(value: 'required' | 'preferred' | 'reference'): void;
+}) {
+  return (
+    <Field label="Strength" htmlFor={id}>
+      <select
+        id={id}
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value as 'required' | 'preferred' | 'reference')
+        }
+        className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+      >
+        <option value="required">Required</option>
+        <option value="preferred">Preferred</option>
+        <option value="reference">Reference</option>
+      </select>
+    </Field>
+  );
 }
 
-function ConfigurationSummary({ label, values }: { label: string; values: string[] }) {
-  return <div><p className="font-medium">{label}</p>{values.length ? <ul className="mt-2 space-y-1 text-muted-foreground">{values.map((value) => <li key={value} className="break-all">{value}</li>)}</ul> : <p className="mt-2 text-muted-foreground">None configured</p>}</div>;
+function ConfigurationSummary({
+  label,
+  values,
+}: {
+  label: string;
+  values: string[];
+}) {
+  return (
+    <div>
+      <p className="font-medium">{label}</p>
+      {values.length ? (
+        <ul className="mt-2 space-y-1 text-muted-foreground">
+          {values.map((value) => (
+            <li key={value} className="break-all">
+              {value}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-muted-foreground">None configured</p>
+      )}
+    </div>
+  );
 }
 
 function CreateStackForm({
@@ -486,27 +1239,38 @@ function AddComponentForm({
 function ComponentMetadataForm({
   stack,
   components,
+  fixedComponentId,
   onChanged,
 }: {
   stack: string;
   components: ComponentListOutput;
+  fixedComponentId?: string;
   onChanged(): Promise<void>;
 }) {
-  const [componentId, setComponentId] = useState(components.components[0]?.component.id ?? '');
+  const [componentId, setComponentId] = useState(
+    fixedComponentId ?? components.components[0]?.component.id ?? '',
+  );
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [kind, setKind] = useState('component');
-  const [access, setAccess] = useState<'read-only' | 'read-write'>('read-write');
+  const [access, setAccess] = useState<'read-only' | 'read-write'>(
+    'read-write',
+  );
   const operation = useOperation();
-  const selected = components.components.find((item) => item.component.id === componentId)?.component;
+  const selected = components.components.find(
+    (item) => item.component.id === componentId,
+  )?.component;
   useEffect(() => {
-    const component = components.components.find((item) => item.component.id === componentId)?.component ?? components.components[0]?.component;
+    const component =
+      components.components.find(
+        (item) => item.component.id === (fixedComponentId ?? componentId),
+      )?.component ?? components.components[0]?.component;
     setComponentId(component?.id ?? '');
     setName(component?.name ?? '');
     setDescription(component?.description ?? '');
     setKind(component?.kind ?? 'component');
     setAccess(component?.access ?? 'read-write');
-  }, [componentId, components]);
+  }, [componentId, components, fixedComponentId]);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!selected) return;
@@ -522,32 +1286,127 @@ function ComponentMetadataForm({
       });
       await onChanged();
       operation.succeed('Component details saved.');
-    } catch (error) { operation.fail(error); }
+    } catch (error) {
+      operation.fail(error);
+    }
   };
-  return <Card><CardHeader><CardTitle>Edit component details</CardTitle><CardDescription>Change descriptive metadata. The component ID is a stable Stack-local reference and cannot be renamed.</CardDescription></CardHeader><CardContent>{components.components.length === 0 ? <p className="text-sm text-muted-foreground">Add a component before editing its details.</p> : <form onSubmit={(event) => void submit(event)} className="space-y-4"><Field label="Component" htmlFor="metadata-component"><select id="metadata-component" value={componentId} onChange={(event) => setComponentId(event.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm">{components.components.map(({ component }) => <option key={component.id} value={component.id}>{component.name ?? component.id} ({component.id})</option>)}</select></Field><Field label="Stable component ID" htmlFor="metadata-id"><Input id="metadata-id" value={componentId} disabled /></Field><Field label="Display name" htmlFor="metadata-name"><Input id="metadata-name" placeholder={componentId} value={name} onChange={(event) => setName(event.target.value)} /></Field><Field label="Description" htmlFor="metadata-description"><Input id="metadata-description" placeholder="What this component contributes" value={description} onChange={(event) => setDescription(event.target.value)} /></Field><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1"><Field label="Kind" htmlFor="metadata-kind"><Input id="metadata-kind" required value={kind} onChange={(event) => setKind(event.target.value)} /></Field><Field label="Declared access" htmlFor="metadata-access"><select id="metadata-access" value={access} onChange={(event) => setAccess(event.target.value as 'read-only' | 'read-write')} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"><option value="read-write">Read and write</option><option value="read-only">Read only</option></select><p className="mt-1 text-xs text-muted-foreground">Guidance for agents and people; Stacks does not enforce operating-system permissions.</p></Field></div><Button type="submit" disabled={operation.pending || !componentId || !kind.trim()}>{operation.pending ? <Loader2 className="animate-spin" /> : null}Save details</Button></form>}<OperationMessage operation={operation} /></CardContent></Card>;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Edit component details</CardTitle>
+        <CardDescription>
+          Change descriptive metadata. The component ID is a stable Stack-local
+          reference and cannot be renamed.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {components.components.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Add a component before editing its details.
+          </p>
+        ) : (
+          <form onSubmit={(event) => void submit(event)} className="space-y-4">
+            {!fixedComponentId ? (
+              <Field label="Component" htmlFor="metadata-component">
+                <select
+                  id="metadata-component"
+                  value={componentId}
+                  onChange={(event) => setComponentId(event.target.value)}
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                >
+                  {components.components.map(({ component }) => (
+                    <option key={component.id} value={component.id}>
+                      {component.name ?? component.id} ({component.id})
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
+            <Field label="Stable component ID" htmlFor="metadata-id">
+              <Input id="metadata-id" value={componentId} disabled />
+            </Field>
+            <Field label="Display name" htmlFor="metadata-name">
+              <Input
+                id="metadata-name"
+                placeholder={componentId}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </Field>
+            <Field label="Description" htmlFor="metadata-description">
+              <Input
+                id="metadata-description"
+                placeholder="What this component contributes"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+              <Field label="Kind" htmlFor="metadata-kind">
+                <Input
+                  id="metadata-kind"
+                  required
+                  value={kind}
+                  onChange={(event) => setKind(event.target.value)}
+                />
+              </Field>
+              <Field label="Declared access" htmlFor="metadata-access">
+                <select
+                  id="metadata-access"
+                  value={access}
+                  onChange={(event) =>
+                    setAccess(event.target.value as 'read-only' | 'read-write')
+                  }
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                >
+                  <option value="read-write">Read and write</option>
+                  <option value="read-only">Read only</option>
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Guidance for agents and people; Stacks does not enforce
+                  operating-system permissions.
+                </p>
+              </Field>
+            </div>
+            <Button
+              type="submit"
+              disabled={operation.pending || !componentId || !kind.trim()}
+            >
+              {operation.pending ? <Loader2 className="animate-spin" /> : null}
+              Save details
+            </Button>
+          </form>
+        )}
+        <OperationMessage operation={operation} />
+      </CardContent>
+    </Card>
+  );
 }
 
 function BindingForm({
   stack,
   overview,
+  fixedComponentId,
   onChanged,
 }: {
   stack: string;
   overview: StackOverview;
+  fixedComponentId?: string;
   onChanged(): Promise<void>;
 }) {
   const [componentId, setComponentId] = useState(
-    overview.components[0]?.id ?? '',
+    fixedComponentId ?? overview.components[0]?.id ?? '',
   );
   const [path, setPath] = useState(overview.components[0]?.root ?? '');
   const operation = useOperation();
   useEffect(() => {
     const component =
-      overview.components.find((item) => item.id === componentId) ??
-      overview.components[0];
+      overview.components.find(
+        (item) => item.id === (fixedComponentId ?? componentId),
+      ) ?? overview.components[0];
     setComponentId(component?.id ?? '');
     setPath(component?.root ?? '');
-  }, [componentId, overview]);
+  }, [componentId, fixedComponentId, overview]);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     operation.start();
@@ -583,30 +1442,32 @@ function BindingForm({
           </p>
         ) : (
           <form onSubmit={(event) => void submit(event)} className="space-y-4">
-            <Field label="Component" htmlFor="binding-component">
-              <select
-                id="binding-component"
-                value={componentId}
-                onChange={(event) => {
-                  const id = event.target.value;
-                  setComponentId(id);
-                  setPath(
-                    overview.components.find((item) => item.id === id)?.root ??
-                      '',
-                  );
-                }}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-              >
-                <option value="" disabled>
-                  Select a component
-                </option>
-                {overview.components.map((component) => (
-                  <option key={component.id} value={component.id}>
-                    {component.name} ({component.id})
+            {!fixedComponentId ? (
+              <Field label="Component" htmlFor="binding-component">
+                <select
+                  id="binding-component"
+                  value={componentId}
+                  onChange={(event) => {
+                    const id = event.target.value;
+                    setComponentId(id);
+                    setPath(
+                      overview.components.find((item) => item.id === id)
+                        ?.root ?? '',
+                    );
+                  }}
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                >
+                  <option value="" disabled>
+                    Select a component
                   </option>
-                ))}
-              </select>
-            </Field>
+                  {overview.components.map((component) => (
+                    <option key={component.id} value={component.id}>
+                      {component.name} ({component.id})
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
             <Field label="Directory on this machine" htmlFor="binding-path">
               <Input
                 id="binding-path"

@@ -4,17 +4,15 @@ import {
   Boxes,
   Network,
   Search,
-  Settings2,
   GitPullRequest,
   TerminalSquare,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { StackOverview as StackOverviewData } from '../../../src/application/overview.ts';
 import { MarkdownDocument } from '@/components/markdown-document';
-import { StackOverview } from '@/components/stack-overview';
 import { CliMcp } from '@/components/cli-mcp';
-import { StackGraph } from '@/components/stack-graph';
-import { StackManagement } from '@/components/stack-management';
+import { StackComponents } from '@/components/stack-components';
+import { StackAddPanel } from '@/components/stack-management';
 import { StackActivity } from '@/components/stack-activity';
 import { CapabilityRequests } from '@/components/capability-requests';
 import { AppMenu } from '@/components/app-menu';
@@ -33,22 +31,14 @@ import {
   fetchStacks,
   type RegisteredStack,
 } from '@/lib/stacks-api';
+import { sectionFromView, type AppSection } from '@/lib/navigation';
 
-type Section =
-  | 'overview'
-  | 'graph'
-  | 'activity'
-  | 'management'
-  | 'requests'
-  | 'documentation'
-  | 'integrations';
+type Section = AppSection;
 
 const navigation = [
-  { name: 'Overview', icon: Boxes, section: 'overview' },
-  { name: 'Graph', icon: Network, section: 'graph' },
+  { name: 'Components', icon: Boxes, section: 'components' },
   { name: 'Activity', icon: Activity, section: 'activity' },
   { name: 'Requests', icon: GitPullRequest, section: 'requests' },
-  { name: 'Manage', icon: Settings2, section: 'management' },
   { name: 'Tools & agents', icon: TerminalSquare, section: 'integrations' },
   { name: 'Documentation', icon: BookOpen, section: 'documentation' },
 ] as const;
@@ -185,27 +175,27 @@ export default function Home() {
       <main className="lg:pl-72">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/92 px-5 py-4 backdrop-blur-xl sm:px-8">
           <div className="mx-auto flex max-w-[1500px] items-start justify-between gap-3">
-            <div><h1 className="text-lg font-semibold tracking-tight">
-              {section === 'overview'
-                ? 'Overview'
-                : section === 'graph'
-                  ? 'Graph'
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight">
+                {section === 'components'
+                  ? 'Components'
                   : section === 'activity'
                     ? 'Activity'
-                  : section === 'management'
-                    ? 'Manage'
-                  : section === 'requests'
-                    ? 'Requests'
-                    : section === 'documentation'
-                      ? 'Documentation'
-                      : 'Tools & agents'}
-            </h1>
-            {overview && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {overview.stack.namespace}/{overview.stack.name}
-              </p>
-            )}</div>
-            <div className="lg:hidden"><AppMenu compact /></div>
+                    : section === 'requests'
+                      ? 'Requests'
+                      : section === 'documentation'
+                        ? 'Documentation'
+                        : 'Tools & agents'}
+              </h1>
+              {overview && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {overview.stack.namespace}/{overview.stack.name}
+                </p>
+              )}
+            </div>
+            <div className="lg:hidden">
+              <AppMenu compact />
+            </div>
           </div>
         </header>
         <nav
@@ -227,17 +217,14 @@ export default function Home() {
         <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:py-9">
           {section === 'documentation' ? (
             <DocumentationLibrary />
-          ) : section === 'management' ? (
-            <StackManagement
+          ) : !selectedStack ? (
+            <NoStack onCreated={async (stack) => loadCatalog(stack)} />
+          ) : section === 'components' ? (
+            <StackComponents
               stack={selectedStack}
+              onOverviewLoaded={onOverviewLoaded}
               onCatalogChanged={async (stack) => loadCatalog(stack)}
             />
-          ) : !selectedStack ? (
-            <NoStack />
-          ) : section === 'overview' ? (
-            <StackOverview stack={selectedStack} onLoaded={onOverviewLoaded} />
-          ) : section === 'graph' ? (
-            <StackGraph stack={selectedStack} />
           ) : section === 'activity' ? (
             <StackActivity stack={selectedStack} />
           ) : section === 'requests' ? (
@@ -253,13 +240,12 @@ export default function Home() {
 
 function sectionFromUrl(): Section {
   if (typeof window === 'undefined') return 'documentation';
-  const requested = new URLSearchParams(window.location.search).get('view');
-  return navigation.some((item) => item.section === requested)
-    ? (requested as Section)
-    : 'documentation';
+  return sectionFromView(
+    new URLSearchParams(window.location.search).get('view'),
+  );
 }
 
-function NoStack() {
+function NoStack({ onCreated }: { onCreated(stack?: string): Promise<void> }) {
   return (
     <section className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-8">
       <Badge variant="secondary">No Stack selected</Badge>
@@ -273,6 +259,9 @@ function NoStack() {
       <pre className="mt-5 overflow-x-auto rounded-lg bg-slate-950 p-4 font-mono text-sm leading-7 text-slate-100">
         <code>{`stacks stack create your-name/my-stack\nstacks component add your-name/my-stack app --path .`}</code>
       </pre>
+      <div className="mt-6">
+        <StackAddPanel onCatalogChanged={onCreated} />
+      </div>
     </section>
   );
 }
@@ -398,25 +387,27 @@ function DocumentationLibrary() {
                       >
                         {entry.title}
                       </button>
-                      {selected.id === entry.id && headings.length > 0 && !query && (
-                        <div className="ml-3 mt-1 space-y-0.5 border-l border-border pl-2">
-                          {headings.map((heading) => (
-                            <button
-                              type="button"
-                              key={heading.id}
-                              aria-current={
-                                selectedHeading === heading.id
-                                  ? 'location'
-                                  : undefined
-                              }
-                              onClick={() => selectHeading(heading.id)}
-                              className={`block w-full rounded-md py-1.5 pr-2 text-left text-xs leading-4 hover:bg-muted hover:text-foreground ${heading.level === 3 ? 'pl-5' : 'pl-2'} ${selectedHeading === heading.id ? 'bg-muted font-semibold text-primary' : 'text-muted-foreground'}`}
-                            >
-                              {heading.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      {selected.id === entry.id &&
+                        headings.length > 0 &&
+                        !query && (
+                          <div className="ml-3 mt-1 space-y-0.5 border-l border-border pl-2">
+                            {headings.map((heading) => (
+                              <button
+                                type="button"
+                                key={heading.id}
+                                aria-current={
+                                  selectedHeading === heading.id
+                                    ? 'location'
+                                    : undefined
+                                }
+                                onClick={() => selectHeading(heading.id)}
+                                className={`block w-full rounded-md py-1.5 pr-2 text-left text-xs leading-4 hover:bg-muted hover:text-foreground ${heading.level === 3 ? 'pl-5' : 'pl-2'} ${selectedHeading === heading.id ? 'bg-muted font-semibold text-primary' : 'text-muted-foreground'}`}
+                              >
+                                {heading.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   ))}
                 </div>
@@ -428,7 +419,11 @@ function DocumentationLibrary() {
       <div id="documentation-content" className="min-w-0 scroll-mt-24">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
           <span className="flex flex-wrap items-center gap-2">
-            <Badge variant={selected.lifecycle === 'current' ? 'secondary' : 'outline'}>
+            <Badge
+              variant={
+                selected.lifecycle === 'current' ? 'secondary' : 'outline'
+              }
+            >
               {documentationLifecycleLabels[selected.lifecycle]}
             </Badge>
             {selected.path}

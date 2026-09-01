@@ -6,7 +6,7 @@ This document is a retained Milestone 1 validation and handoff snapshot. It is n
 
 - Installed the root npm workspace and generated the unified lockfile.
 - The documentation audit requires lifecycle metadata for every Markdown source and rejects missing sources, duplicate paths or IDs, invalid classifications, and broken relative Markdown links. The UI consumes the same lifecycle catalog.
-- The Node suite covers global catalog paths and bindings, safe `AGENTS.md` activation, CLI product/version contracts and linked-entrypoint resolution, exhaustive CLI/MCP documentation drift, MCP initialization instructions and reference resources, local Overview, Graph, Activity, integration/runtime HTTP APIs, global stdio MCP transport, context, documentation truth, events, examples, Git safety, initialization, and validation.
+- The Node suite covers global catalog paths and bindings, safe `AGENTS.md` activation, CLI product/version contracts and linked-entrypoint resolution, exhaustive CLI/MCP documentation drift, MCP initialization instructions and reference resources, the Components navigation model, local Overview/Graph contracts, Activity, integration/runtime HTTP APIs, global stdio MCP transport, context, documentation truth, events, examples, Git safety, initialization, and validation.
 - Ran strict TypeScript checking successfully.
 - Built the core package successfully.
 - Built the static Vite web workspace successfully with the canonical Markdown documentation library.
@@ -26,7 +26,7 @@ This document is a retained Milestone 1 validation and handoff snapshot. It is n
 - Runtime validation and JSON Schema remain separate representations and can drift.
 - Canonical context-plan DTOs still contain local absolute paths.
 - Registered Git components require explicit destinations; broader remote mismatch and failure-rollback coverage remains useful.
-- The beginner documentation, Overview, Graph, and Tools & agents sections are complete against the checked-in web workspace and copied local installation. Publishing the package to a registry remains future release work.
+- The beginner documentation, Components workspace, and Tools & agents sections are complete against the checked-in web workspace and copied local installation. Publishing the package to a registry remains future release work.
 
 ## Handoff rule
 
